@@ -52,7 +52,7 @@ function FloatingPoster({ position, rotation, color, image = '' }: FloatingPoste
 }
 
 function Scene() {
-  const { camera } = useThree()
+  const _camera = useThree()
   const controlsRef = useRef<any>(null);
   
   useFrame((state) => {

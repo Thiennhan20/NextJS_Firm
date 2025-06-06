@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from 'react'
 import { motion, useScroll, useTransform } from 'framer-motion'
 import { StarIcon, ClockIcon, CalendarIcon } from '@heroicons/react/24/solid'
 import { Canvas } from '@react-three/fiber'
-import { OrbitControls, PerspectiveCamera, useGLTF } from '@react-three/drei'
+import { OrbitControls, PerspectiveCamera } from '@react-three/drei'
 import * as THREE from 'three'
 
 // Mock data - replace with actual API call
@@ -47,7 +47,7 @@ function MoviePoster3D({ posterUrl }: { posterUrl: string }) {
 }
 
 export default function MovieDetailClient({ movieId }: { movieId: string }) {
-  const [movie, setMovie] = useState(mockMovie)
+  const [movie] = useState(mockMovie)
   const [loading, setLoading] = useState(true)
   const [isMounted, setIsMounted] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
