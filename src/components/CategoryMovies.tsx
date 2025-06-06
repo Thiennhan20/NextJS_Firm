@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
-import { useSearchParams, useRouter } from 'next/navigation'
 import { motion, useScroll, useTransform, AnimatePresence } from 'framer-motion'
 import { StarIcon, FilmIcon } from '@heroicons/react/24/solid'
 import { Canvas } from '@react-three/fiber'
@@ -49,10 +48,7 @@ function MovieCard3D({ posterUrl }: { posterUrl: string }) {
   )
 }
 
-export default function CategoryMovies() {
-  const searchParams = useSearchParams()
-  const router = useRouter()
-  const category = searchParams.get('category') || 'default' // Lấy category từ query string
+export default function CategoryMovies({ category }: { category: string }) {
   const [movies] = useState(mockMovies)
   const [loading, setLoading] = useState(true)
   const [selectedMovie, setSelectedMovie] = useState<number | null>(null)
@@ -66,13 +62,8 @@ export default function CategoryMovies() {
   const opacity = useTransform(scrollYProgress, [0, 0.5], [1, 0])
 
   useEffect(() => {
-    // Kiểm tra nếu category hợp lệ, nếu không thì redirect
-    if (!category) {
-      router.push('/?category=default')
-    } else {
-      setLoading(false)
-    }
-  }, [category, router])
+    setLoading(false)
+  }, [category])
 
   if (loading) {
     return (
@@ -177,4 +168,4 @@ export default function CategoryMovies() {
       </div>
     </div>
   )
-}
+} 

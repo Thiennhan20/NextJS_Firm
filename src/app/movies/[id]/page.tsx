@@ -1,16 +1,16 @@
 import { Suspense } from 'react'
 import { MovieDetailClient } from './index'
 
-export async function generateMetadata({ params }: { params: { id: string } }) {
+export async function generateMetadata() {
   return {
-    title: `Movie ${params.id}`,
+    title: 'Movie Detail',
   }
 }
 
-export default async function MovieDetail({ params }: { params: { id: string } }) {
+export default async function MovieDetail() {
   return (
     <Suspense fallback={<div>Loading...</div>}>
-      <MovieDetailClient movieId={params.id} />
+      <MovieDetailClient />
     </Suspense>
   )
-} 
+}

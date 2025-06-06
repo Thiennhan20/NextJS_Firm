@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { motion, useScroll, useTransform } from 'framer-motion'
 import { StarIcon, ClockIcon, CalendarIcon } from '@heroicons/react/24/solid'
 import { Canvas } from '@react-three/fiber'
@@ -8,18 +9,33 @@ import { OrbitControls, PerspectiveCamera } from '@react-three/drei'
 import * as THREE from 'three'
 
 // Mock data - replace with actual API call
-const mockMovie = {
-  id: 1,
-  title: 'The Amazing Movie',
-  description: 'A thrilling adventure that takes you on a journey through time and space.',
-  rating: 4.5,
-  duration: '2h 15m',
-  releaseDate: '2024-03-15',
-  genre: ['Action', 'Adventure', 'Sci-Fi'],
-  director: 'John Director',  
-  cast: ['Actor One', 'Actor Two', 'Actor Three'],
-  poster: `https://picsum.photos/id/${Math.floor(Math.random() * 1000)}/300/450`,
-  trailer: `https://www.youtube.com/embed/${['dQw4w9WgXcQ', 'oHg5SJYRHA0', 'jNQXAC9IVRw'][Math.floor(Math.random() * 3)]}`,
+const mockMovies = {
+  '1': {
+    id: 1,
+    title: 'The Amazing Movie',
+    description: 'A thrilling adventure that takes you on a journey through time and space.',
+    rating: 4.5,
+    duration: '2h 15m',
+    releaseDate: '2024-03-15',
+    genre: ['Action', 'Adventure', 'Sci-Fi'],
+    director: 'John Director',  
+    cast: ['Actor One', 'Actor Two', 'Actor Three'],
+    poster: `https://picsum.photos/id/${Math.floor(Math.random() * 1000)}/300/450`,
+    trailer: `https://www.youtube.com/embed/${['dQw4w9WgXcQ', 'oHg5SJYRHA0', 'jNQXAC9IVRw'][Math.floor(Math.random() * 3)]}`,
+  },
+  '2': {
+    id: 2,
+    title: 'Action Movie 2',
+    description: 'A thrilling journey through danger and excitement.',
+    rating: 4.2,
+    duration: '1h 50m',
+    releaseDate: '2023-06-10',
+    genre: ['Action', 'Thriller'],
+    director: 'Jane Director',
+    cast: ['Actor Four', 'Actor Five'],
+    poster: `https://picsum.photos/id/${Math.floor(Math.random() * 1000)}/300/450`,
+    trailer: `https://www.youtube.com/embed/${['dQw4w9WgXcQ', 'oHg5SJYRHA0', 'jNQXAC9IVRw'][Math.floor(Math.random() * 3)]}`,
+  },
 }
 
 function MoviePoster3D({ posterUrl }: { posterUrl: string }) {
@@ -46,8 +62,10 @@ function MoviePoster3D({ posterUrl }: { posterUrl: string }) {
   )
 }
 
-export default function MovieDetailClient({ movieId }: { movieId: string }) {
-  const [movie] = useState(mockMovie)
+export default function MovieDetail() {
+  const searchParams = useSearchParams()
+  const id = searchParams.get('id') || '1' // Lấy id từ query string, mặc định là '1' nếu không có
+  const [movie, setMovie] = useState<{ id: number; title: string; description: string; rating: number; duration: string; releaseDate: string; genre: string[]; director: string; cast: string[]; poster: string; trailer: string } | null>(null)
   const [loading, setLoading] = useState(true)
   const [isMounted, setIsMounted] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -67,11 +85,13 @@ export default function MovieDetailClient({ movieId }: { movieId: string }) {
     if (isMounted) {
       setLoading(true)
       const timer = setTimeout(() => {
+        const fetchedMovie = mockMovies[id as keyof typeof mockMovies] || null
+        setMovie(fetchedMovie)
         setLoading(false)
       }, 500)
       return () => clearTimeout(timer)
     }
-  }, [movieId, isMounted])
+  }, [id, isMounted])
 
   if (loading) {
     return (
@@ -84,6 +104,10 @@ export default function MovieDetailClient({ movieId }: { movieId: string }) {
         <p className="mt-4 text-gray-400 text-lg">Loading Movie Details...</p>
       </div>
     )
+  }
+
+  if (!movie) {
+    return <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white">Movie not found</div>
   }
 
   return (
@@ -199,4 +223,4 @@ export default function MovieDetailClient({ movieId }: { movieId: string }) {
       </div>
     </div>
   )
-} 
+}
