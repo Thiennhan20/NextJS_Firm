@@ -6,7 +6,7 @@ import Navigation from "@/components/Navigation";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Movie 3D Website",
+  title: "Movie 3D",
   description: "A beautiful 3D movie website built with Next.js",
 };
 

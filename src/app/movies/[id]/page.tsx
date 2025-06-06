@@ -163,6 +163,22 @@ export default function MovieDetail() {
         </motion.div>
       </div>
 
+      {/* Watch Movie Section */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 text-white">
+        <h2 className="text-3xl font-bold mb-6">Watch Movie</h2>
+        <p className="text-gray-300 mb-6">Click the button below to watch the full movie.</p>
+        <motion.a
+          href="https://phimmoichill.day/xem/dem-thanh-doi-san-quy-tap-full-pm122496"
+          target="_blank"
+          rel="noopener noreferrer"
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          className="inline-block px-8 py-3 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition-colors"
+        >
+          Watch Full Movie
+        </motion.a>
+      </div>
+
       {/* Trailer Modal */}
       <AnimatePresence>
         {showTrailer && (
