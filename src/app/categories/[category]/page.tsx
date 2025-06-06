@@ -1,4 +1,3 @@
-// page.tsx
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
@@ -49,7 +48,8 @@ function MovieCard3D({ posterUrl }: { posterUrl: string }) {
   )
 }
 
-export default function CategoryMovies({ params }: { params: { category: string } }) {
+export default async function CategoryMovies({ params }: { params: Promise<{ category: string }> }) {
+  const { category } = await params; // Await the params Promise
   const [movies] = useState(mockMovies)
   const [loading, setLoading] = useState(true)
   const [selectedMovie, setSelectedMovie] = useState<number | null>(null)
@@ -64,7 +64,7 @@ export default function CategoryMovies({ params }: { params: { category: string 
 
   useEffect(() => {
     setLoading(false)
-  }, [params.category])
+  }, [category])
 
   if (loading) {
     return (
@@ -103,7 +103,7 @@ export default function CategoryMovies({ params }: { params: { category: string 
             animate={{ opacity: 1, y: 0 }}
             className="text-5xl font-bold text-white mb-4 capitalize"
           >
-            {params.category} Movies
+            {category} Movies
           </motion.h1>
         </div>
       </motion.div>
