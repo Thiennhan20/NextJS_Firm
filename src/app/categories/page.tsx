@@ -184,7 +184,13 @@ export default function Categories() {
                   <Link href={`/categories/${category.id}`}
                     className="block h-full">
                     <div className="relative h-40 overflow-hidden">
-                      <Image src={category.image} alt={category.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                      <Image 
+                        src={category.image} 
+                        alt={category.name} 
+                        width={400}
+                        height={250}
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
+                      />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent group-hover:opacity-80 transition-all duration-300" />
                       <div className="absolute top-3 right-3 bg-black/70 px-3 py-1 rounded-full text-xs text-white font-bold">
                         {category.count} movies

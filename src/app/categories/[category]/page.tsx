@@ -7,6 +7,7 @@ import { StarIcon, FilmIcon } from '@heroicons/react/24/solid'
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls, PerspectiveCamera } from '@react-three/drei'
 import * as THREE from 'three'
+import Image from 'next/image'
 
 // Mock data - replace with actual API call
 const mockMovies = [
@@ -123,14 +124,14 @@ export default function CategoryMovies({ params }: { params: { category: string 
               <Link href={`/movies/${movie.id}`}>
                 <div className="aspect-[2/3] relative">
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent z-10" />
-                  <motion.img
+                  <Image
                     src={movie.poster}
                     alt={movie.title}
+                    width={300}
+                    height={450}
                     className="w-full h-full object-cover"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 0.5 }}
                   />
+
                   <AnimatePresence>
                     {selectedMovie === movie.id && (
                       <motion.div
