@@ -24,6 +24,7 @@ const mockMovie = {
   trailer: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
   // Convert Google Drive share link to embed format
   movieUrl: 'https://drive.google.com/file/d/1wWnX06FjlkMcMIalRI_kMrc5goDxMCEm/preview',
+  // https://drive.google.com/file/d/1wWnX06FjlkMcMIalRI_kMrc5goDxMCEm/view?usp=sharing
   scenes: [
     `https://picsum.photos/800/450?random=${Math.random()}`,
     `https://picsum.photos/800/450?random=${Math.random()}`,
