@@ -2,7 +2,7 @@
 
 import { useRef } from 'react'
 import { motion } from 'framer-motion'
-
+import Image from 'next/image'
 const trending = [
   {
     id: 101,
@@ -60,7 +60,7 @@ export default function TrendingMovies() {
               whileHover={{ scale: 1.07 }}
               className="min-w-[220px] sm:min-w-[260px] max-w-[260px] bg-gray-800 rounded-xl overflow-hidden shadow-lg snap-center cursor-pointer group relative"
             >
-              <img
+              <Image
                 src={movie.image}
                 alt={movie.title}
                 className="w-full h-72 object-cover group-hover:scale-105 transition-transform duration-300"

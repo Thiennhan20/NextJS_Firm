@@ -1,7 +1,7 @@
 'use client'
 
 import { motion } from 'framer-motion'
-
+import Image from 'next/image'
 const reviews = [
   {
     id: 1,
@@ -47,7 +47,7 @@ export default function QuickReviews() {
               className="bg-gray-800 rounded-xl p-6 shadow-lg flex flex-col gap-3"
             >
               <div className="flex items-center gap-3">
-                <img src={item.avatar} alt={item.user} className="w-10 h-10 rounded-full border-2 border-pink-400" />
+                <Image src={item.avatar} alt={item.user} className="w-10 h-10 rounded-full border-2 border-pink-400" />
                 <div>
                   <div className="font-semibold text-white">{item.user}</div>
                   <div className="text-xs text-gray-400">{item.movie}</div>
