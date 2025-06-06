@@ -28,7 +28,22 @@ const mockMovies = [
     poster: `https://picsum.photos/300/450?random=${Math.random()}`,
     description: 'A thrilling journey through danger and excitement.',
   },
-  // Add more movies...
+  {
+    id: 3,
+    title: 'Action Movie 3',
+    rating: 4.7,
+    year: 2024,
+    poster: `https://picsum.photos/300/450?random=${Math.random()}`,
+    description: 'A heart-pounding action thriller that will leave you breathless.',
+  },
+  {
+    id: 4,
+    title: 'Action Movie 4',
+    rating: 4.3,
+    year: 2023,
+    poster: `https://picsum.photos/300/450?random=${Math.random()}`,
+    description: 'An epic adventure filled with stunning visuals and intense action sequences.',
+  },
 ]
 
 function MovieCard3D({ posterUrl }: { posterUrl: string }) {
@@ -52,10 +67,11 @@ function MovieCard3D({ posterUrl }: { posterUrl: string }) {
 export default function CategoryMovies() {
   const searchParams = useSearchParams()
   const router = useRouter()
-  const category = searchParams.get('category') || 'default' // Lấy category từ query string
+  const category = searchParams.get('category') || 'default'
   const [movies] = useState(mockMovies)
   const [loading, setLoading] = useState(true)
   const [selectedMovie, setSelectedMovie] = useState<number | null>(null)
+  const [sortBy, setSortBy] = useState<'rating' | 'year'>('rating')
   const containerRef = useRef<HTMLDivElement>(null)
   const { scrollYProgress } = useScroll({
     target: containerRef,
@@ -66,13 +82,19 @@ export default function CategoryMovies() {
   const opacity = useTransform(scrollYProgress, [0, 0.5], [1, 0])
 
   useEffect(() => {
-    // Kiểm tra nếu category hợp lệ, nếu không thì redirect
     if (!category) {
       router.push('/?category=default')
     } else {
       setLoading(false)
     }
   }, [category, router])
+
+  const sortedMovies = [...movies].sort((a, b) => {
+    if (sortBy === 'rating') {
+      return b.rating - a.rating
+    }
+    return b.year - a.year
+  })
 
   if (loading) {
     return (
@@ -116,14 +138,41 @@ export default function CategoryMovies() {
         </div>
       </motion.div>
 
+      {/* Sort Controls */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="flex justify-end space-x-4">
+          <button
+            onClick={() => setSortBy('rating')}
+            className={`px-4 py-2 rounded-lg transition-colors ${
+              sortBy === 'rating'
+                ? 'bg-red-500 text-white'
+                : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+            }`}
+          >
+            Sort by Rating
+          </button>
+          <button
+            onClick={() => setSortBy('year')}
+            className={`px-4 py-2 rounded-lg transition-colors ${
+              sortBy === 'year'
+                ? 'bg-red-500 text-white'
+                : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+            }`}
+          >
+            Sort by Year
+          </button>
+        </div>
+      </div>
+
       {/* Movies Grid */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
-          {movies.map((movie) => (
+          {sortedMovies.map((movie, index) => (
             <motion.div
               key={movie.id}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.1 }}
               whileHover={{ scale: 1.05, rotateY: 5 }}
               className="group relative bg-gray-900/50 backdrop-blur-sm rounded-xl overflow-hidden shadow-2xl"
               onMouseEnter={() => setSelectedMovie(movie.id)}
