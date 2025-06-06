@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { EnvelopeIcon, PhoneIcon, MapPinIcon } from '@heroicons/react/24/solid'
+import { EnvelopeIcon, PhoneIcon, MapPinIcon, ClockIcon } from '@heroicons/react/24/solid'
 
 export default function ContactPage() {
   const [formData, setFormData] = useState({
@@ -16,6 +16,13 @@ export default function ContactPage() {
     e.preventDefault()
     // Handle form submission
     console.log('Form submitted:', formData)
+    alert('Thank you for your message! We will get back to you shortly.')
+    setFormData({
+        name: '',
+        email: '',
+        subject: '',
+        message: ''
+    })
   }
 
   return (
@@ -24,7 +31,9 @@ export default function ContactPage() {
         {/* Hero Section */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5 }}
           className="text-center mb-16"
         >
           <h1 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-red-500 to-purple-500 text-transparent bg-clip-text">
@@ -35,18 +44,20 @@ export default function ContactPage() {
           </p>
         </motion.div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
           {/* Contact Information */}
           <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
+            initial={{ opacity: 0, x: -50 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5 }}
             className="space-y-8"
           >
             <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-8">
               <h2 className="text-2xl font-semibold mb-6">Contact Information</h2>
               <div className="space-y-6">
                 <div className="flex items-start space-x-4">
-                  <div className="bg-red-500/10 p-3 rounded-lg">
+                  <div className="bg-red-500/10 p-3 rounded-lg flex-shrink-0">
                     <EnvelopeIcon className="h-6 w-6 text-red-500" />
                   </div>
                   <div>
@@ -55,7 +66,7 @@ export default function ContactPage() {
                   </div>
                 </div>
                 <div className="flex items-start space-x-4">
-                  <div className="bg-red-500/10 p-3 rounded-lg">
+                  <div className="bg-red-500/10 p-3 rounded-lg flex-shrink-0">
                     <PhoneIcon className="h-6 w-6 text-red-500" />
                   </div>
                   <div>
@@ -64,12 +75,23 @@ export default function ContactPage() {
                   </div>
                 </div>
                 <div className="flex items-start space-x-4">
-                  <div className="bg-red-500/10 p-3 rounded-lg">
+                  <div className="bg-red-500/10 p-3 rounded-lg flex-shrink-0">
                     <MapPinIcon className="h-6 w-6 text-red-500" />
                   </div>
                   <div>
                     <h3 className="font-medium mb-1">Address</h3>
                     <p className="text-gray-400">123 Movie Street, Hollywood, CA 90028</p>
+                  </div>
+                </div>
+                <div className="flex items-start space-x-4">
+                  <div className="bg-red-500/10 p-3 rounded-lg flex-shrink-0">
+                    <ClockIcon className="h-6 w-6 text-red-500" />
+                  </div>
+                  <div>
+                    <h3 className="font-medium mb-1">Operating Hours</h3>
+                    <p className="text-gray-400">Monday - Friday: 9:00 AM - 6:00 PM</p>
+                    <p className="text-gray-400">Saturday: 10:00 AM - 4:00 PM</p>
+                    <p className="text-gray-400">Sunday: Closed</p>
                   </div>
                 </div>
               </div>
@@ -78,7 +100,7 @@ export default function ContactPage() {
             {/* Social Media */}
             <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-8">
               <h2 className="text-2xl font-semibold mb-6">Follow Us</h2>
-              <div className="flex space-x-4">
+              <div className="flex flex-wrap gap-4">
                 {['Facebook', 'Twitter', 'Instagram', 'YouTube'].map((platform) => (
                   <motion.a
                     key={platform}
@@ -92,12 +114,22 @@ export default function ContactPage() {
                 ))}
               </div>
             </div>
+            <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-8">
+              <h2 className="text-2xl font-semibold mb-6">Our Location</h2>
+              <div className="relative h-64 rounded-lg overflow-hidden">
+                <div className="w-full h-full bg-gray-700 flex items-center justify-center text-gray-400">
+                  [Placeholder Map Embed]
+                </div>
+              </div>
+            </div>
           </motion.div>
 
           {/* Contact Form */}
           <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
+            initial={{ opacity: 0, x: 50 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5 }}
             className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-8"
           >
             <h2 className="text-2xl font-semibold mb-6">Send us a Message</h2>

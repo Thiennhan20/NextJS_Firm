@@ -74,7 +74,7 @@ export default function Navigation() {
           </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-1">
+          <div className="hidden lg:flex items-center space-x-4">
             {navItems.map((item) => {
               const isActive = pathname === item.href
               return (
@@ -126,7 +126,7 @@ export default function Navigation() {
           </div>
 
           {/* Mobile menu button */}
-          <div className="md:hidden">
+          <div className="lg:hidden">
             <motion.button
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
@@ -151,9 +151,9 @@ export default function Navigation() {
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.2 }}
-            className="md:hidden bg-gray-900/95 backdrop-blur-md"
+            className="lg:hidden bg-gray-900/95 backdrop-blur-md z-20 w-full overflow-y-auto max-h-[calc(100vh-4rem)]"
           >
-            <div className="px-2 pt-2 pb-3 space-y-1">
+            <div className="px-4 py-4 space-y-2">
               {navItems.map((item) => {
                 const isActive = pathname === item.href
                 return (
@@ -164,7 +164,7 @@ export default function Navigation() {
                     className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors ${
                       isActive
                         ? 'bg-red-500/20 text-red-500'
-                        : 'text-white hover:bg-gray-800'
+                        : 'text-gray-300 hover:bg-gray-800 hover:text-white'
                     }`}
                   >
                     <item.icon className="h-5 w-5" />

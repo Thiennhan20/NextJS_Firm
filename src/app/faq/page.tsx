@@ -36,7 +36,23 @@ const faqs = [
   {
     question: 'Are there parental controls available?',
     answer: 'Yes, we offer comprehensive parental controls. You can set up age restrictions, content filters, and viewing time limits through your account settings.'
-  }
+  },
+  {
+    question: 'Is MovieWorld available internationally?',
+    answer: 'MovieWorld is available in many countries, but the content library may vary based on regional licensing agreements.'
+  },
+  {
+    question: 'How often is new content added?',
+    answer: 'We regularly update our library with new movies and shows. Check the \'New Releases\' section for the latest additions.'
+  },
+  {
+    question: 'Can I request movies or shows?',
+    answer: 'While we can\'t guarantee all requests, we welcome suggestions! You can submit your requests through the Contact Us page.'
+  },
+  {
+    question: 'What devices can I use to watch MovieWorld?',
+    answer: 'You can watch MovieWorld on your web browser, smartphone, tablet, smart TV, and various streaming devices.'
+  },
 ]
 
 export default function FAQPage() {
@@ -54,7 +70,9 @@ export default function FAQPage() {
         {/* Hero Section */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5 }}
           className="text-center mb-12"
         >
           <h1 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-red-500 to-purple-500 text-transparent bg-clip-text">
@@ -68,8 +86,9 @@ export default function FAQPage() {
         {/* Search Bar */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ delay: 0.2, duration: 0.5 }}
           className="relative mb-8"
         >
           <input
@@ -88,8 +107,9 @@ export default function FAQPage() {
             <motion.div
               key={index}
               initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, amount: 0.1 }}
+              transition={{ delay: index * 0.05, duration: 0.3 }}
               className="bg-gray-800/50 backdrop-blur-sm rounded-xl overflow-hidden"
             >
               <button
@@ -119,13 +139,19 @@ export default function FAQPage() {
               </AnimatePresence>
             </motion.div>
           ))}
+          {filteredFaqs.length === 0 && (
+            <div className="text-center text-gray-400 py-8">
+              No FAQs found matching your search.
+            </div>
+          )}
         </div>
 
         {/* Contact Support */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ delay: 0.4, duration: 0.5 }}
           className="mt-12 text-center"
         >
           <p className="text-gray-400 mb-4">Still have questions?</p>

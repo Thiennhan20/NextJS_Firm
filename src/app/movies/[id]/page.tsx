@@ -80,10 +80,8 @@ export default function MovieDetail() {
   return (
     <div ref={containerRef} className="min-h-screen bg-gradient-to-b from-gray-900 to-black">
       {/* Hero Section */}
-      <motion.div 
-        style={{ y, opacity }}
-        className="relative h-[70vh] w-full overflow-hidden"
-      >
+      <div className="relative w-full overflow-hidden py-16 lg:py-0 min-h-screen flex items-center">
+        {/* Background Image */}
         <div className="absolute inset-0">
           <Image
             src={movie.backdrop}
@@ -95,70 +93,75 @@ export default function MovieDetail() {
           <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/30 to-black" />
         </div>
         
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
-            <div className="relative h-[60vh] w-full">
-              <Canvas className="w-full h-full">
-                <PerspectiveCamera makeDefault position={[0, 0, 5]} />
-                <OrbitControls enableZoom={false} />
-                <ambientLight intensity={0.5} />
-                <spotLight position={[10, 10, 10]} angle={0.15} penumbra={1} />
-                <MoviePoster3D posterUrl={movie.poster} />
-              </Canvas>
-            </div>
-            
-            <div className="text-white space-y-6">
-              <motion.h1 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="text-5xl font-bold"
-              >
-                {movie.title}
-              </motion.h1>
-              
-              <div className="flex flex-wrap gap-4">
-                <div className="flex items-center space-x-2">
-                  <StarIcon className="h-6 w-6 text-yellow-500" />
-                  <span className="text-yellow-500">{movie.rating}</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <ClockIcon className="h-6 w-6 text-gray-400" />
-                  <span className="text-gray-400">{movie.duration}</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <CalendarIcon className="h-6 w-6 text-gray-400" />
-                  <span className="text-gray-400">{movie.year}</span>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <p className="text-gray-300">{movie.genre}</p>
-                <p className="text-gray-300">Director: {movie.director}</p>
-                <div className="flex flex-wrap gap-2">
-                  {movie.cast.map((actor, index) => (
-                    <span key={index} className="px-3 py-1 bg-gray-800 rounded-full text-sm">
-                      {actor}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              <p className="text-gray-300 leading-relaxed">
-                {movie.description}
-              </p>
-
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setShowTrailer(true)}
-                className="px-6 py-3 bg-red-500 text-white rounded-lg font-semibold hover:bg-red-600 transition-colors"
-              >
-                Watch Trailer
-              </motion.button>
-            </div>
+        {/* Content Area */}
+        <motion.div
+          style={{ y, opacity }}
+          className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 lg:grid lg:grid-cols-2 lg:gap-8 lg:items-center"
+        >
+          {/* 3D Poster Column (Visible on all screens, height adjusted for mobile) */}
+          <div className="relative h-[40vh] md:h-[50vh] lg:h-[60vh] w-full flex items-center justify-center mb-8 lg:mb-0">
+            <Canvas className="w-full h-full">
+              <PerspectiveCamera makeDefault position={[0, 0, 5]} />
+              <OrbitControls enableZoom={false} />
+              <ambientLight intensity={0.5} />
+              <spotLight position={[10, 10, 10]} angle={0.15} penumbra={1} />
+              <MoviePoster3D posterUrl={movie.poster} />
+            </Canvas>
           </div>
-        </div>
-      </motion.div>
+          
+          {/* Details Column (Visible on all screens) */}
+          <div className="text-white space-y-6">
+            <motion.h1 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-4xl md:text-5xl font-bold"
+            >
+              {movie.title}
+            </motion.h1>
+            
+            <div className="flex flex-wrap gap-4">
+              <div className="flex items-center space-x-2">
+                <StarIcon className="h-6 w-6 text-yellow-500" />
+                <span className="text-yellow-500">{movie.rating}</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <ClockIcon className="h-6 w-6 text-gray-400" />
+                <span className="text-gray-400">{movie.duration}</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <CalendarIcon className="h-6 w-6 text-gray-400" />
+                <span className="text-gray-400">{movie.year}</span>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-gray-300">{movie.genre}</p>
+              <p className="text-gray-300">Director: {movie.director}</p>
+              <div className="flex flex-wrap gap-2">
+                {movie.cast.map((actor, index) => (
+                  <span key={index} className="px-3 py-1 bg-gray-800 rounded-full text-sm">
+                    {actor}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <p className="text-gray-300 leading-relaxed">
+              {movie.description}
+            </p>
+
+            {/* Watch Trailer Button */}
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setShowTrailer(true)}
+              className="px-6 py-3 bg-red-500 text-white rounded-lg font-semibold hover:bg-red-600 transition-colors"
+            >
+              Watch Trailer
+            </motion.button>
+          </div>
+        </motion.div>
+      </div>
 
       {/* Trailer Modal */}
       <AnimatePresence>
@@ -184,7 +187,7 @@ export default function MovieDetail() {
                 allowFullScreen
               />
               <button
-                className="absolute -top-12 right-0 text-white bg-black/50 rounded-full p-2 hover:bg-black/80 transition-colors"
+                className="absolute top-4 right-4 text-white bg-black/50 rounded-full p-2 hover:bg-black/80 transition-colors"
                 onClick={() => setShowTrailer(false)}
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
