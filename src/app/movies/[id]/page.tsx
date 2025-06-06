@@ -6,7 +6,7 @@ import { Canvas } from '@react-three/fiber'
 import { OrbitControls, PerspectiveCamera } from '@react-three/drei'
 import * as THREE from 'three'
 import Image from 'next/image'
-import { StarIcon, ClockIcon, CalendarIcon } from '@heroicons/react/24/solid'
+import { StarIcon, ClockIcon, CalendarIcon, PlayIcon } from '@heroicons/react/24/solid'
 
 // Mock data - replace with actual API call
 const mockMovie = {
@@ -21,7 +21,9 @@ const mockMovie = {
   description: 'An epic journey through time and space, where a group of explorers must save humanity from an impending catastrophe. With stunning visuals and mind-bending plot twists, this film will keep you on the edge of your seat.',
   poster: `https://picsum.photos/800/1200?random=${Math.random()}`,
   backdrop: `https://picsum.photos/1920/1080?random=${Math.random()}`,
-  trailer: 'https://www.youtube.com/embed/dQw4w9WgXcQ', // Replace with actual trailer URL
+  trailer: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+  // Convert Google Drive share link to embed format
+  movieUrl: 'https://drive.google.com/file/d/1wWnX06FjlkMcMIalRI_kMrc5goDxMCEm/preview',
   scenes: [
     `https://picsum.photos/800/450?random=${Math.random()}`,
     `https://picsum.photos/800/450?random=${Math.random()}`,
@@ -52,6 +54,7 @@ export default function MovieDetail() {
   const [loading, setLoading] = useState(true)
   const [activeScene, setActiveScene] = useState<number | null>(null)
   const [showTrailer, setShowTrailer] = useState(false)
+  const [showMovie, setShowMovie] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const { scrollYProgress } = useScroll({
     target: containerRef,
@@ -98,7 +101,7 @@ export default function MovieDetail() {
           style={{ y, opacity }}
           className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 lg:grid lg:grid-cols-2 lg:gap-8 lg:items-center"
         >
-          {/* 3D Poster Column (Visible on all screens, height adjusted for mobile) */}
+          {/* 3D Poster Column */}
           <div className="relative h-[40vh] md:h-[50vh] lg:h-[60vh] w-full flex items-center justify-center mb-8 lg:mb-0">
             <Canvas className="w-full h-full">
               <PerspectiveCamera makeDefault position={[0, 0, 5]} />
@@ -109,7 +112,7 @@ export default function MovieDetail() {
             </Canvas>
           </div>
           
-          {/* Details Column (Visible on all screens) */}
+          {/* Details Column */}
           <div className="text-white space-y-6">
             <motion.h1 
               initial={{ opacity: 0, y: 20 }}
@@ -150,33 +153,52 @@ export default function MovieDetail() {
               {movie.description}
             </p>
 
-            {/* Watch Trailer Button */}
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => setShowTrailer(true)}
-              className="px-6 py-3 bg-red-500 text-white rounded-lg font-semibold hover:bg-red-600 transition-colors"
-            >
-              Watch Trailer
-            </motion.button>
+            {/* Action Buttons */}
+            <div className="flex flex-wrap gap-4">
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setShowTrailer(true)}
+                className="px-6 py-3 bg-gray-700 text-white rounded-lg font-semibold hover:bg-gray-600 transition-colors flex items-center gap-2"
+              >
+                <PlayIcon className="h-5 w-5" />
+                Watch Trailer
+              </motion.button>
+              
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setShowMovie(true)}
+                className="px-6 py-3 bg-red-500 text-white rounded-lg font-semibold hover:bg-red-600 transition-colors flex items-center gap-2"
+              >
+                <PlayIcon className="h-5 w-5" />
+                Watch Full Movie
+              </motion.button>
+            </div>
           </div>
         </motion.div>
       </div>
 
       {/* Watch Movie Section */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 text-white">
-        <h2 className="text-3xl font-bold mb-6">Watch Movie</h2>
-        <p className="text-gray-300 mb-6">Click the button below to watch the full movie.</p>
-        <motion.a
-          href="https://phimmoichill.day/xem/dem-thanh-doi-san-quy-tap-full-pm122496"
-          target="_blank"
-          rel="noopener noreferrer"
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          className="inline-block px-8 py-3 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition-colors"
-        >
-          Watch Full Movie
-        </motion.a>
+        <h2 className="text-3xl font-bold mb-6">About This Movie</h2>
+        <p className="text-gray-300 mb-6">
+          Experience this cinematic masterpiece in full HD quality. Click the &quot;Watch Full Movie&quot; button above to start streaming instantly.
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="bg-gray-800 p-6 rounded-lg">
+            <h3 className="text-xl font-semibold mb-2">High Quality</h3>
+            <p className="text-gray-300">Stream in crisp HD quality with optimal loading speeds.</p>
+          </div>
+          <div className="bg-gray-800 p-6 rounded-lg">
+            <h3 className="text-xl font-semibold mb-2">Instant Access</h3>
+            <p className="text-gray-300">No downloads required. Watch immediately in your browser.</p>
+          </div>
+          <div className="bg-gray-800 p-6 rounded-lg">
+            <h3 className="text-xl font-semibold mb-2">Full Experience</h3>
+            <p className="text-gray-300">Complete movie with original audio and subtitles.</p>
+          </div>
+        </div>
       </div>
 
       {/* Trailer Modal */}
@@ -210,6 +232,50 @@ export default function MovieDetail() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Movie Player Modal */}
+      <AnimatePresence>
+        {showMovie && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black z-50 flex items-center justify-center"
+            onClick={() => setShowMovie(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.9 }}
+              className="relative w-full h-full max-w-7xl max-h-screen p-4"
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Header with close button */}
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-white text-xl font-semibold">{movie.title}</h3>
+                <button
+                  className="text-white bg-black/50 rounded-full p-2 hover:bg-black/80 transition-colors"
+                  onClick={() => setShowMovie(false)}
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              
+              {/* Video Player */}
+              <div className="w-full h-[calc(100%-4rem)] rounded-lg overflow-hidden">
+                <iframe
+                  src={movie.movieUrl}
+                  className="w-full h-full"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              </div>
             </motion.div>
           </motion.div>
         )}
