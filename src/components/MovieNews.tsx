@@ -41,7 +41,13 @@ export default function MovieNews() {
               className="bg-gray-800 rounded-xl overflow-hidden shadow-lg group cursor-pointer transition-all"
             >
               <div className="relative">
-                <Image src={item.image} alt={item.title} className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300" />
+                <Image 
+                  src={item.image} 
+                  alt={item.title} 
+                  width={400}
+                  height={250}
+                  className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300" 
+                />
                 <div className="absolute top-2 left-2 bg-black/70 text-xs text-white px-2 py-1 rounded-full">{item.date}</div>
               </div>
               <div className="p-4">

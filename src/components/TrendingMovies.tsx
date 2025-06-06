@@ -63,6 +63,8 @@ export default function TrendingMovies() {
               <Image
                 src={movie.image}
                 alt={movie.title}
+                width={400}
+                height={600}
                 className="w-full h-72 object-cover group-hover:scale-105 transition-transform duration-300"
               />
               <div className="absolute top-3 right-3 bg-black/70 px-2 py-1 rounded-full text-xs text-yellow-400 font-bold">

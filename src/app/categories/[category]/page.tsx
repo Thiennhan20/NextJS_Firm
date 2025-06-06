@@ -1,3 +1,4 @@
+// page.tsx
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
@@ -30,7 +31,7 @@ const mockMovies = [
   // Add more movies...
 ]
 
-function MovieCard3D({ posterUrl, title }: { posterUrl: string; title: string }) {
+function MovieCard3D({ posterUrl }: { posterUrl: string }) {
   const meshRef = useRef<THREE.Mesh>(null)
   const texture = new THREE.TextureLoader().load(posterUrl)
 
@@ -92,8 +93,7 @@ export default function CategoryMovies({ params }: { params: { category: string 
             <ambientLight intensity={0.5} />
             <spotLight position={[10, 10, 10]} angle={0.15} penumbra={1} />
             <MovieCard3D 
-              posterUrl={movies[0].poster} 
-              title={movies[0].title}
+              posterUrl={movies[0].poster}
             />
           </Canvas>
         </div>
@@ -169,4 +169,4 @@ export default function CategoryMovies({ params }: { params: { category: string 
       </div>
     </div>
   )
-} 
+}

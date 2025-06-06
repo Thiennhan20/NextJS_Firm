@@ -1,7 +1,8 @@
+// Hero3D.tsx
 'use client'
 
 import { useRef, useState } from 'react'
-import { Canvas, useFrame, useThree } from '@react-three/fiber'
+import { Canvas, useFrame } from '@react-three/fiber'
 import { Environment, Float, OrbitControls, PerspectiveCamera } from '@react-three/drei'
 import { motion } from 'framer-motion'
 import * as THREE from 'three'
@@ -52,19 +53,21 @@ function FloatingPoster({ position, rotation, color, image = '' }: FloatingPoste
 }
 
 function Scene() {
-  // const _camera = useThree()
-  const controlsRef = useRef<any>(null);
+  const controlsRef = useRef<typeof OrbitControls>(null);
   
   useFrame((state) => {
     if (!state.gl.domElement.matches(':hover')) {
       // Auto rotate when not interacting
-      controlsRef.current.autoRotate = true
-      controlsRef.current.autoRotateSpeed = 0.5
+      if (controlsRef.current) {
+        (controlsRef.current as any).autoRotate = true;
+        (controlsRef.current as any).autoRotateSpeed = 0.5;
+      }
     } else {
-      controlsRef.current.autoRotate = false
+      if (controlsRef.current) {
+        (controlsRef.current as any).autoRotate = false
+      }
     }
   })
-  
   return (
     <>
       <PerspectiveCamera makeDefault position={[0, 0, 5]} />
@@ -97,7 +100,7 @@ function Scene() {
       />
       <Environment preset="city" />
       <OrbitControls 
-        ref={controlsRef}
+        ref={controlsRef as any}
         enableZoom={false}
         enablePan={false}
         autoRotate={true}
