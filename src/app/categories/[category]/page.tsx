@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { motion, useScroll, useTransform, AnimatePresence } from 'framer-motion'
 import { StarIcon, FilmIcon } from '@heroicons/react/24/solid'
 import { Canvas } from '@react-three/fiber'
-import { OrbitControls, PerspectiveCamera, useGLTF } from '@react-three/drei'
+import { OrbitControls, PerspectiveCamera } from '@react-three/drei'
 import * as THREE from 'three'
 
 // Mock data - replace with actual API call
@@ -48,7 +48,7 @@ function MovieCard3D({ posterUrl, title }: { posterUrl: string; title: string })
 }
 
 export default function CategoryMovies({ params }: { params: { category: string } }) {
-  const [movies, setMovies] = useState(mockMovies)
+  const [movies, _] = useState(mockMovies)
   const [loading, setLoading] = useState(true)
   const [selectedMovie, setSelectedMovie] = useState<number | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)

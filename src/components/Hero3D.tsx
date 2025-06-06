@@ -2,7 +2,7 @@
 
 import { useRef, useState } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { useGLTF, Environment, Float, Text3D, Center, OrbitControls, PerspectiveCamera } from '@react-three/drei'
+import { Environment, Float, OrbitControls, PerspectiveCamera } from '@react-three/drei'
 import { motion } from 'framer-motion'
 import * as THREE from 'three'
 
