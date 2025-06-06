@@ -54,7 +54,7 @@ export default function TrendingMovies() {
           ref={scrollRef}
           className="flex gap-6 overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-gray-900 snap-x snap-mandatory"
         >
-          {trending.map((movie, idx) => (
+          {trending.map((movie) => (
             <motion.div
               key={movie.id}
               whileHover={{ scale: 1.07 }}

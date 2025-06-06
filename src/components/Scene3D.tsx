@@ -2,10 +2,13 @@
 
 import { useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { useGLTF, Environment, Float } from '@react-three/drei'
+import { Environment, Float } from '@react-three/drei'
 import * as THREE from 'three'
 
-function MoviePoster({ position = [0, 0, 0], rotation = [0, 0, 0] }) {
+function MoviePoster({ 
+  position = [0, 0, 0] as [number, number, number], 
+  rotation = [0, 0, 0] as [number, number, number] 
+}) {
   const mesh = useRef<THREE.Mesh>(null!)
   
   useFrame((state) => {

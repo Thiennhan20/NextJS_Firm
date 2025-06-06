@@ -111,7 +111,7 @@ export default function MoviesPage() {
   const [sort, setSort] = useState('latest')
   const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(false)
-  const [movies, _] = useState(allMovies)
+  const [movies, setMovies] = useState(allMovies)
 
   useEffect(() => {
     setLoading(true)
@@ -130,7 +130,7 @@ export default function MoviesPage() {
       if (sort === 'rating-asc') filtered = filtered.sort((a, b) => a.rating - b.rating)
       if (sort === 'title-az') filtered = filtered.sort((a, b) => a.title.localeCompare(b.title))
       if (sort === 'title-za') filtered = filtered.sort((a, b) => b.title.localeCompare(a.title))
-      _(filtered)
+      setMovies(filtered)
       setPage(1) // Reset to first page on filter/sort change
       setLoading(false)
     }, 500)
