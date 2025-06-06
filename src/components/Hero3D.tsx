@@ -1,11 +1,12 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { Environment, Float, OrbitControls, PerspectiveCamera } from '@react-three/drei'
+import { Canvas, useFrame } from '@react-three/fiber' // Removed useThree
+import { Environment, Float, PerspectiveCamera } from '@react-three/drei'
 import { motion } from 'framer-motion'
 import * as THREE from 'three';
-import { OrbitControls as OrbitControlsImpl } from 'three/addons/controls/OrbitControls'; // Correct path for three@0.177.0
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+
 interface FloatingPosterProps {
   position: [number, number, number]
   rotation: [number, number, number]
@@ -52,7 +53,7 @@ function FloatingPoster({ position, rotation, color, image = '' }: FloatingPoste
 }
 
 function Scene() {
-  const controlsRef = useRef<OrbitControlsImpl>(null);
+  const controlsRef = useRef<OrbitControls>(null);
   
   useFrame((state) => {
     if (!state.gl.domElement.matches(':hover') && controlsRef.current) {
@@ -94,17 +95,6 @@ function Scene() {
         image="https://picsum.photos/400/250"
       />
       <Environment preset="city" />
-      <OrbitControls 
-        ref={controlsRef}
-        enableZoom={false}
-        enablePan={false}
-        autoRotate={true}
-        autoRotateSpeed={0.5}
-        rotateSpeed={0.5}
-        dampingFactor={0.05}
-        minDistance={4}
-        maxDistance={6}
-      />
     </>
   );
 }
