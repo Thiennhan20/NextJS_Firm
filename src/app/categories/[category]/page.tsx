@@ -1,3 +1,13 @@
+// src/app/categories/[category]/page.tsx
+
+// Server Component (not marked with 'use client')
+export default async function CategoryPage({ params }: { params: Promise<{ category: string }> }) {
+  const { category } = await params; // Resolve params in the server component
+
+  return <CategoryMovies category={category} />; // Pass category to the client component
+}
+
+// Client Component
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
@@ -48,8 +58,7 @@ function MovieCard3D({ posterUrl }: { posterUrl: string }) {
   )
 }
 
-export default async function CategoryMovies({ params }: { params: Promise<{ category: string }> }) {
-  const { category } = await params; // Await the params Promise
+function CategoryMovies({ category }: { category: string }) {
   const [movies] = useState(mockMovies)
   const [loading, setLoading] = useState(true)
   const [selectedMovie, setSelectedMovie] = useState<number | null>(null)
