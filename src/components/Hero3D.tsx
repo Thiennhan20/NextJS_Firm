@@ -4,8 +4,8 @@ import { useRef, useState } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Environment, Float, OrbitControls, PerspectiveCamera } from '@react-three/drei'
 import { motion } from 'framer-motion'
-import * as THREE from 'three'
-
+import * as THREE from 'three';
+import { OrbitControls as OrbitControlsImpl } from 'three/addons/controls/OrbitControls'; // Correct path for three@0.177.0
 interface FloatingPosterProps {
   position: [number, number, number]
   rotation: [number, number, number]
@@ -52,18 +52,16 @@ function FloatingPoster({ position, rotation, color, image = '' }: FloatingPoste
 }
 
 function Scene() {
-  const _camera = useThree()
-  const controlsRef = useRef<any>(null);
+  const controlsRef = useRef<OrbitControlsImpl>(null);
   
   useFrame((state) => {
-    if (!state.gl.domElement.matches(':hover')) {
-      // Auto rotate when not interacting
-      controlsRef.current.autoRotate = true
-      controlsRef.current.autoRotateSpeed = 0.5
-    } else {
-      controlsRef.current.autoRotate = false
+    if (!state.gl.domElement.matches(':hover') && controlsRef.current) {
+      controlsRef.current.autoRotate = true;
+      controlsRef.current.autoRotateSpeed = 0.5;
+    } else if (controlsRef.current) {
+      controlsRef.current.autoRotate = false;
     }
-  })
+  });
   
   return (
     <>
@@ -108,7 +106,7 @@ function Scene() {
         maxDistance={6}
       />
     </>
-  )
+  );
 }
 
 export default function Hero3D() {
