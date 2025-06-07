@@ -1,12 +1,26 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { useState, useEffect, useRef } from 'react'
+import { motion, AnimatePresence, useDragControls, PanInfo } from 'framer-motion'
 import { ChatBubbleLeftIcon, XMarkIcon } from '@heroicons/react/24/outline'
 import { marked } from 'marked'
 
 export default function FloatingChatbox() {
   const [isOpen, setIsOpen] = useState(false)
+  const [snapPositions, setSnapPositions] = useState({
+    bottomRight: { x: 0, y: 0 },
+    middleRight: { x: 0, y: 0 },
+    topRight: { x: 0, y: 0 },
+    bottomLeft: { x: 0, y: 0 },
+    middleLeft: { x: 0, y: 0 },
+    topLeft: { x: 0, y: 0 },
+  })
+  const [position, setPosition] = useState({ x: 0, y: 0 })
+  const [currentPosition, setCurrentPosition] = useState<'bottomRight' | 'middleRight' | 'topRight' | 'bottomLeft' | 'middleLeft' | 'topLeft'>('bottomRight')
+  const [viewportHeight, setViewportHeight] = useState(0)
+  const [scrollPosition, setScrollPosition] = useState(0)
+  const [documentHeight, setDocumentHeight] = useState(0)
+  const buttonRef = useRef<HTMLButtonElement>(null)
   const [messages, setMessages] = useState<{ role: 'user' | 'assistant', content: string }[]>(() => {
     if (typeof window !== 'undefined') {
       const storedMessages = sessionStorage.getItem('chatMessages')
@@ -16,6 +30,76 @@ export default function FloatingChatbox() {
   })
   const [inputMessage, setInputMessage] = useState('')
   const [isLoadingChat, setIsLoadingChat] = useState(false)
+  const dragControls = useDragControls()
+
+  // Calculate snap positions and update viewport dimensions
+  useEffect(() => {
+    const updateDimensions = () => {
+      const windowWidth = window.innerWidth
+      const windowHeight = window.innerHeight
+      const docHeight = Math.max(
+        document.body.scrollHeight,
+        document.documentElement.scrollHeight,
+        document.body.offsetHeight,
+        document.documentElement.offsetHeight,
+        document.body.clientHeight,
+        document.documentElement.clientHeight
+      )
+      
+      setViewportHeight(windowHeight)
+      setDocumentHeight(docHeight)
+      
+      setSnapPositions({
+        bottomRight: { x: 0, y: 0 },
+        middleRight: { x: 0, y: -windowHeight / 2 },
+        topRight: { x: 0, y: -windowHeight + 100 },
+        bottomLeft: { x: -windowWidth + 100, y: 0 },
+        middleLeft: { x: -windowWidth + 100, y: -windowHeight / 2 },
+        topLeft: { x: -windowWidth + 100, y: -windowHeight + 100 },
+      })
+    }
+
+    updateDimensions()
+    window.addEventListener('resize', updateDimensions)
+    return () => window.removeEventListener('resize', updateDimensions)
+  }, [])
+
+  // Track scroll position
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrollPosition(window.scrollY)
+    }
+
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
+
+  // Calculate button position based on scroll and current position
+  const calculateButtonPosition = () => {
+    // If button is in bottom position, keep it fixed
+    if (currentPosition === 'bottomRight' || currentPosition === 'bottomLeft') {
+      return position
+    }
+
+    const maxScroll = documentHeight - viewportHeight
+    const scrollProgress = Math.min(scrollPosition / maxScroll, 1)
+    
+    // Calculate the maximum y offset based on viewport height
+    const maxYOffset = viewportHeight - 100 // 100px is the button height + padding
+    
+    // Calculate the current y position based on scroll progress
+    const currentY = position.y + (scrollProgress * maxYOffset)
+    
+    // If we've scrolled enough to reach bottom position, update currentPosition
+    if (scrollProgress >= 0.95) {
+      setCurrentPosition(currentPosition.includes('Right') ? 'bottomRight' : 'bottomLeft')
+    }
+    
+    return {
+      x: position.x,
+      y: currentY
+    }
+  }
 
   // Save messages to sessionStorage whenever they change
   useEffect(() => {
@@ -23,6 +107,33 @@ export default function FloatingChatbox() {
       sessionStorage.setItem('chatMessages', JSON.stringify(messages))
     }
   }, [messages])
+
+  // Handle drag end and snap to nearest position
+  const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+    const { point } = info
+    const windowWidth = window.innerWidth
+    const windowHeight = window.innerHeight
+
+    // Calculate distances to each snap position
+    const distances = Object.entries(snapPositions).map(([key, pos]) => ({
+      key,
+      distance: Math.sqrt(
+        Math.pow(point.x - (pos.x + windowWidth - 100), 2) +
+        Math.pow(point.y - (pos.y + windowHeight - 100), 2)
+      )
+    }))
+
+    // Find the closest position
+    const closest = distances.reduce((prev, curr) => 
+      prev.distance < curr.distance ? prev : curr
+    )
+
+    // Update current position
+    setCurrentPosition(closest.key as keyof typeof snapPositions)
+    
+    // Snap to the closest position
+    setPosition(snapPositions[closest.key as keyof typeof snapPositions])
+  }
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -87,12 +198,22 @@ export default function FloatingChatbox() {
     <>
       {/* Floating Chat Button */}
       <motion.button
-        initial={{ scale: 0 }}
-        animate={{ scale: 1 }}
+        ref={buttonRef}
+        initial={{ scale: 0, ...snapPositions.bottomRight }}
+        animate={{ 
+          scale: 1, 
+          ...calculateButtonPosition()
+        }}
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.9 }}
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 z-50 bg-gradient-to-r from-red-600 to-red-500 text-white p-4 rounded-full shadow-lg hover:shadow-xl transition-shadow duration-300"
+        drag
+        dragControls={dragControls}
+        dragMomentum={false}
+        dragElastic={0.1}
+        onDragEnd={handleDragEnd}
+        transition={{ type: "spring", stiffness: 300, damping: 30 }}
+        className="fixed bottom-6 right-6 z-50 bg-gradient-to-r from-red-600 to-red-500 text-white p-4 rounded-full shadow-lg hover:shadow-xl transition-shadow duration-300 cursor-move"
       >
         <ChatBubbleLeftIcon className="h-6 w-6" />
       </motion.button>
