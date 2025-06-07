@@ -1,59 +1,31 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { MagnifyingGlassIcon, ChevronDownIcon } from '@heroicons/react/24/outline'
-import { marked } from 'marked'
 
+// FAQ data
 const faqs = [
   {
-    question: 'How do I create an account?',
-    answer: 'To create an account, click on the "Sign Up" button in the top right corner. You can sign up using your email address or through social media accounts like Google or Facebook.'
+    question: "What is MovieWorld?",
+    answer: "MovieWorld is your ultimate destination for discovering, watching, and discussing movies. Our platform combines cutting-edge AI technology with a beautiful user interface to provide an immersive movie experience."
   },
   {
-    question: 'How can I watch movies on MovieWorld?',
-    answer: 'You can watch movies by browsing our collection and clicking on any movie you\'re interested in. Some movies are available for free, while others may require a subscription or one-time purchase.'
+    question: "How do I get started?",
+    answer: "Getting started is easy! Simply create an account, browse our extensive movie collection, and start watching. You can also use our AI assistant to get personalized movie recommendations."
   },
   {
-    question: 'What payment methods do you accept?',
-    answer: 'We accept all major credit cards (Visa, MasterCard, American Express), PayPal, and various other payment methods depending on your region.'
+    question: "Is MovieWorld free to use?",
+    answer: "MovieWorld offers both free and premium subscription options. Free users can access basic features and a limited selection of movies, while premium subscribers enjoy unlimited access to our entire library and exclusive features."
   },
   {
-    question: 'Can I download movies to watch offline?',
-    answer: 'Yes, subscribers can download movies for offline viewing. Look for the download icon on the movie details page. Downloads are available for 48 hours after you start watching.'
+    question: "Can I download movies to watch offline?",
+    answer: "Yes! Premium subscribers can download movies to watch offline. Simply select the download option on any movie page, and it will be available in your offline library."
   },
   {
-    question: 'How do I cancel my subscription?',
-    answer: 'You can cancel your subscription at any time by going to your account settings and selecting "Subscription". Click on "Cancel Subscription" and follow the prompts.'
-  },
-  {
-    question: 'What video quality is available?',
-    answer: 'We offer various video qualities including 4K Ultra HD, Full HD (1080p), HD (720p), and SD (480p). The available quality depends on your internet connection and subscription plan.'
-  },
-  {
-    question: 'How do I report a problem?',
-    answer: 'You can report any issues by clicking the "Help" button in the bottom right corner or by visiting our Contact page. Our support team typically responds within 24 hours.'
-  },
-  {
-    question: 'Are there parental controls available?',
-    answer: 'Yes, we offer comprehensive parental controls. You can set up age restrictions, content filters, and viewing time limits through your account settings.'
-  },
-  {
-    question: 'Is MovieWorld available internationally?',
-    answer: 'MovieWorld is available in many countries, but the content library may vary based on regional licensing agreements.'
-  },
-  {
-    question: 'How often is new content added?',
-    answer: 'We regularly update our library with new movies and shows. Check the \'New Releases\' section for the latest additions.'
-  },
-  {
-    question: 'Can I request movies or shows?',
-    answer: 'While we can\'t guarantee all requests, we welcome suggestions! You can submit your requests through the Contact Us page.'
-  },
-  {
-    question: 'What devices can I use to watch MovieWorld?',
-    answer: 'You can watch MovieWorld on your web browser, smartphone, tablet, smart TV, and various streaming devices.'
-  },
+    question: "How does the AI recommendation system work?",
+    answer: "Our AI system analyzes your viewing history, preferences, and ratings to suggest movies you'll love. The more you use MovieWorld, the better our recommendations become."
+  }
 ]
 
 export default function FAQPage() {
@@ -64,68 +36,6 @@ export default function FAQPage() {
     faq.question.toLowerCase().includes(searchQuery.toLowerCase()) ||
     faq.answer.toLowerCase().includes(searchQuery.toLowerCase())
   )
-
-  // Chatbox state
-  const [messages, setMessages] = useState<{ role: 'user' | 'assistant', content: string }[]>(() => {
-    if (typeof window !== 'undefined') {
-      const storedMessages = sessionStorage.getItem('chatMessages')
-      return storedMessages ? JSON.parse(storedMessages) : []
-    }
-    return []
-  })
-  const [inputMessage, setInputMessage] = useState('')
-  const [isLoadingChat, setIsLoadingChat] = useState(false)
-  const messagesEndRef = useRef<HTMLDivElement>(null)
-
-  // Save messages to session storage whenever messages change
-  useEffect(() => {
-    sessionStorage.setItem('chatMessages', JSON.stringify(messages))
-  }, [messages])
-
-  // Auto-scroll to bottom
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
-
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!inputMessage.trim()) return
-
-    const newMessage: { role: "user", content: string } = { role: 'user', content: inputMessage }
-    setMessages(prev => [...prev, newMessage])
-    setInputMessage('')
-    setIsLoadingChat(true)
-
-    try {
-      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Authorization": "Bearer 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",
-          "HTTP-Referer": "https://next-js-firm.vercel.app",
-          "X-Title": "Firm",
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          "model": "deepseek/deepseek-r1-0528:free",
-          "messages": [
-            // Include previous messages for context
-            ...messages,
-            { "role": "user", "content": inputMessage }
-          ]
-        })
-      });
-
-      const data = await response.json()
-      const assistantMessage: { role: "assistant", content: string } = { role: 'assistant', content: data.choices[0].message.content }
-      setMessages(prev => [...prev, assistantMessage])
-
-    } catch (error) {
-      console.error("Error fetching from OpenRouter API:", error)
-      setMessages(prev => [...prev, { role: 'assistant', content: 'Sorry, I am unable to connect to the AI at the moment.' }])
-    } finally {
-      setIsLoadingChat(false)
-    }
-  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-900 to-black text-white pt-20">
@@ -226,75 +136,6 @@ export default function FAQPage() {
           >
             Contact Support
           </motion.a>
-        </motion.div>
-
-        {/* AI Chatbox Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6, duration: 0.5 }}
-          className="mt-12 w-full bg-gray-800/50 rounded-2xl p-0.5 sm:p-2 md:p-4 backdrop-blur-sm shadow-xl chatbox-container-shadow"
-        >
-          <h2 className="text-3xl font-bold mb-6 text-center bg-gradient-to-r from-green-400 to-blue-500 text-transparent bg-clip-text glowing-text-chatbox">
-            Chat with AI Assistant
-          </h2>
-          <div className="h-[500px] overflow-y-auto space-y-2 p-2 bg-gray-900/80 rounded-lg border border-gray-700 custom-scrollbar" style={{ scrollbarWidth: 'none' }}>
-            {/* Chat messages */}
-            {messages.length === 0 && (
-              <div className="flex flex-col items-center justify-center h-full text-gray-400">
-                <p className="text-lg mb-3">👋 Welcome to MovieWorld AI Assistant!</p>
-                <p className="text-center italic text-sm">Ask me anything about movies, our services, or how to get started.</p>
-              </div>
-            )}
-            {messages.map((msg, index) => (
-              <div
-                key={index}
-                className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-              >
-                <div
-                  className={`max-w-[85%] p-2 rounded-2xl ${
-                    msg.role === 'user'
-                      ? 'bg-gradient-to-r from-red-600 to-red-500 text-white chat-bubble-user-shadow'
-                      : 'bg-gradient-to-r from-gray-700 to-gray-600 text-gray-100 chat-bubble-ai-shadow'
-                  }`}
-                >
-                  {msg.role === 'assistant' ? (
-                    <div className="ai-response-content" dangerouslySetInnerHTML={{ __html: marked.parse(msg.content) }} />
-                  ) : (
-                    msg.content
-                  )}
-                </div>
-              </div>
-            ))}
-            {isLoadingChat && (
-              <div className="flex justify-start">
-                <div className="bg-gray-700 p-2 rounded-2xl">
-                  <div className="dot-flashing"></div>
-                </div>
-              </div>
-            )}
-            <div ref={messagesEndRef} />
-          </div>
-
-          <form onSubmit={handleSendMessage} className="mt-4 flex flex-col sm:flex-row gap-0.5 sm:gap-1 md:gap-2">
-            <input
-              type="text"
-              value={inputMessage}
-              onChange={(e) => setInputMessage(e.target.value)}
-              placeholder={isLoadingChat ? "AI is typing..." : "Ask me anything about movies..."}
-              className="flex-grow min-w-0 px-1.5 py-1.5 rounded-xl bg-gray-700/80 border border-gray-600 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all text-sm"
-              disabled={isLoadingChat}
-            />
-            <motion.button
-              type="submit"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-white font-semibold px-2 py-2 rounded-xl transition-all input-button-shadow flex-shrink-0 text-sm"
-              disabled={isLoadingChat}
-            >
-              {isLoadingChat ? 'Sending...' : 'Send'}
-            </motion.button>
-          </form>
         </motion.div>
       </div>
     </div>

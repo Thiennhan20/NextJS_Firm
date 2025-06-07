@@ -9,28 +9,28 @@ const newsItems = [
     title: 'Movie World Launches New 3D Experience Feature',
     date: 'October 26, 2023',
     summary: 'Discover how our new 3D experience is set to revolutionize movie discovery.',
-    image: `https://picsum.photos/800/400?random=${Math.random()}`,
+    image: 'https://picsum.photos/seed/movie1/800/400',
   },
   {
     id: 2,
     title: 'Top 10 Must-Watch Movies This Fall',
     date: 'October 20, 2023',
     summary: 'Our curated list of the best films to enjoy this autumn.',
-    image: `https://picsum.photos/800/400?random=${Math.random()}`,
+    image: 'https://picsum.photos/seed/movie2/800/400',
   },
   {
     id: 3,
     title: 'Interview with Director Jane Doe',
     date: 'October 15, 2023',
     summary: 'Exclusive interview discussing the making of her latest film.',
-    image: `https://picsum.photos/800/400?random=${Math.random()}`,
+    image: 'https://picsum.photos/seed/movie3/800/400',
   },
   {
     id: 4,
     title: 'Behind the Scenes: Creating the Movie World Platform',
     date: 'October 10, 2023',
     summary: 'A look into the development process and the team behind Movie World.',
-    image: `https://picsum.photos/800/400?random=${Math.random()}`,
+    image: 'https://picsum.photos/seed/movie4/800/400',
   },
 ]
 
