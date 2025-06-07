@@ -4,8 +4,9 @@ import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Share, Video, MessageCircle, User, Eye, Heart, Send, Smile, Image as LucideImage } from 'lucide-react';
 import Image from 'next/image';
+import io, { Socket } from 'socket.io-client';
 
-// Mock data
+// Mock data (keep for non-chat parts)
 const mockStream = {
   id: 'stream-1',
   title: 'Live Stream: The Future of Cinema',
@@ -17,11 +18,11 @@ const mockStream = {
 
 type Message = {
   id: string;
-  sender: 'me' | 'other';
+  sender: 'me' | 'other' | 'system';
   username: string;
   text: string;
   timestamp: Date;
-  type: 'message' | 'emoji' | 'gift' | 'image';
+  type: 'message' | 'emoji' | 'gift' | 'image' | 'system';
   avatar?: string;
   isVip?: boolean;
   imageUrl?: string;
@@ -45,152 +46,121 @@ const quickEmojis: Emoji[] = [
 
 export default function StreamingPage() {
   const [activeStream, setActiveStream] = useState(mockStream);
-  const [chatMessages, setChatMessages] = useState<Message[]>([
-    { 
-      id: '1', 
-      sender: 'other', 
-      username: 'CinemaFan2024', 
-      text: 'Wow, this discussion about AI in filmmaking is fascinating! 🎬', 
-      timestamp: new Date(Date.now() - 120000),
-      type: 'message',
-      avatar: '🎭',
-      isVip: true
-    },
-    { 
-      id: '2', 
-      sender: 'other', 
-      username: 'MovieLover', 
-      text: 'I agree! The technology is evolving so fast', 
-      timestamp: new Date(Date.now() - 90000),
-      type: 'message',
-      avatar: '🍿'
-    },
-    { 
-      id: '3', 
-      sender: 'me', 
-      username: 'You', 
-      text: 'Great insights from the panel! Looking forward to the Q&A session', 
-      timestamp: new Date(Date.now() - 60000),
-      type: 'message',
-      avatar: '👤'
-    },
-    { 
-      id: '4', 
-      sender: 'other', 
-      username: 'TechDirector', 
-      text: '🔥🔥🔥', 
-      timestamp: new Date(Date.now() - 30000),
-      type: 'emoji',
-      avatar: '🎥'
-    },
-  ]);
+  const [chatMessages, setChatMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  const [onlineUsers, setOnlineUsers] = useState(156);
+  const [onlineUsers, setOnlineUsers] = useState(0);
+  const [username, setUsername] = useState(`User${Math.floor(Math.random() * 1000)}`); // Temporary username
   const chatEndRef = useRef<HTMLDivElement | null>(null);
   const chatContainerRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const socketRef = useRef<Socket | null>(null);
+  const [isEditingUsername, setIsEditingUsername] = useState(false);
+  const [tempUsername, setTempUsername] = useState('');
+
+  // Add username change handler
+  const handleUsernameChange = () => {
+    if (tempUsername.trim()) {
+      setUsername(tempUsername.trim());
+      setIsEditingUsername(false);
+    }
+  };
+
+  // Initialize Socket.IO connection
+  // Initialize Socket.IO connection
+  useEffect(() => {
+    // Use environment variable or fallback to localhost for development
+    const socketUrl = process.env.NODE_ENV === 'development' 
+      ? 'http://localhost:3001' 
+      : 'https://server-nextjs-firm.onrender.com/';
+
+    socketRef.current = io(socketUrl, {
+      transports: ['websocket'],
+      withCredentials: true,
+    });
+
+    // Rest of the useEffect code remains unchanged
+    socketRef.current.on('connect', () => {
+      console.log('Connected to WebSocket server');
+      socketRef.current?.emit('user_join', username);
+    });
+
+    socketRef.current.on('chat_message', (message) => {
+      const newMessage: Message = {
+        id: Date.now().toString(),
+        sender: message.type === 'system' ? 'system' : message.username === username ? 'me' : 'other',
+        username: message.username || 'System',
+        text: message.content,
+        timestamp: new Date(message.timestamp),
+        type: message.type === 'image' ? 'image' : message.type === 'system' ? 'system' : message.content.length <= 2 ? 'emoji' : 'message',
+        avatar: message.username === username ? '👤' : ['🎬', '🍿', '🎭', '🎥', '🎪'][Math.floor(Math.random() * 5)],
+        imageUrl: message.type === 'image' ? message.content : undefined,
+      };
+      setChatMessages((prev) => [...prev, newMessage]);
+    });
+
+    socketRef.current.on('user_list', (users: string[]) => {
+      setOnlineUsers(users.length);
+    });
+
+    socketRef.current.on('disconnect', () => {
+      console.log('Disconnected from WebSocket server');
+    });
+
+    return () => {
+      socketRef.current?.disconnect();
+    };
+  }, [username]);
+
+  // Scroll to the latest message
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chatMessages]);
+
+  // Simulate live stream stats (keep as is)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setActiveStream((prev) => ({
+        ...prev,
+        viewers: prev.viewers + Math.floor(Math.random() * 10) - 5,
+        likes: prev.likes + Math.floor(Math.random() * 2),
+      }));
+    }, 5000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleSendMessage = () => {
-    if (newMessage.trim()) {
-      const message: Message = {
-        id: Date.now().toString(),
-        sender: 'me',
-        username: 'You',
-        text: newMessage,
-        timestamp: new Date(),
-        type: 'message',
-        avatar: '👤'
-      };
-      setChatMessages(prev => [...prev, message]);
+    if (newMessage.trim() && socketRef.current) {
+      socketRef.current.emit('chat_message', newMessage);
       setNewMessage('');
-      
-      // Simulate other users responding
-      setTimeout(() => {
-        const responses = [
-          'Interesting point!',
-          'I totally agree!',
-          'Thanks for sharing that!',
-          '👍',
-          'Great question!',
-          '🔥',
-        ];
-        const randomResponse = responses[Math.floor(Math.random() * responses.length)];
-        const botMessage: Message = {
-          id: (Date.now() + 1).toString(),
-          sender: 'other',
-          username: 'StreamViewer' + Math.floor(Math.random() * 100),
-          text: randomResponse,
-          timestamp: new Date(),
-          type: randomResponse.length <= 2 ? 'emoji' : 'message',
-          avatar: ['🎬', '🍿', '🎭', '🎥', '🎪'][Math.floor(Math.random() * 5)]
-        };
-        setChatMessages(prev => [...prev, botMessage]);
-      }, 1000 + Math.random() * 2000);
     }
   };
 
   const handleEmojiClick = (emoji: string) => {
-    const message: Message = {
-      id: Date.now().toString(),
-      sender: 'me',
-      username: 'You',
-      text: emoji,
-      timestamp: new Date(),
-      type: 'emoji',
-      avatar: '👤'
-    };
-    setChatMessages(prev => [...prev, message]);
-    setShowEmojiPicker(false);
+    if (socketRef.current) {
+      socketRef.current.emit('chat_message', emoji);
+      setShowEmojiPicker(false);
+    }
   };
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file) {
+    if (file && socketRef.current) {
       const reader = new FileReader();
       reader.onload = (e) => {
-        const imageUrl = e.target?.result as string;
-        const message: Message = {
-          id: Date.now().toString(),
-          sender: 'me',
-          username: 'You',
-          text: 'Sent an image',
-          timestamp: new Date(),
-          type: 'image',
-          avatar: '👤',
-          imageUrl
-        };
-        setChatMessages(prev => [...prev, message]);
+        const imageData = e.target?.result as string;
+        socketRef.current?.emit('image_message', imageData);
       };
       reader.readAsDataURL(file);
     }
   };
 
   const formatTime = (date: Date) => {
-    return date.toLocaleTimeString('vi-VN', { 
-      hour: '2-digit', 
-      minute: '2-digit' 
+    return date.toLocaleTimeString('vi-VN', {
+      hour: '2-digit',
+      minute: '2-digit',
     });
   };
-
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [chatMessages]);
-
-  // Simulate live updates
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setOnlineUsers(prev => prev + Math.floor(Math.random() * 3) - 1);
-      if (Math.random() > 0.7) {
-        setActiveStream(prev => ({
-          ...prev,
-          viewers: prev.viewers + Math.floor(Math.random() * 10) - 5,
-          likes: prev.likes + Math.floor(Math.random() * 2)
-        }));
-      }
-    }, 5000);
-    return () => clearInterval(interval);
-  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 text-white flex flex-col">
@@ -254,7 +224,7 @@ export default function StreamingPage() {
 
             {/* Camera & Screen Share */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.2 }}
@@ -263,7 +233,7 @@ export default function StreamingPage() {
                 <Video className="h-12 w-12 text-gray-600 group-hover:text-yellow-500 transition-colors duration-300" />
                 <span className="absolute bottom-4 text-gray-400 text-sm group-hover:text-yellow-300 transition-colors duration-300">Your Camera</span>
               </motion.div>
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.3 }}
@@ -289,20 +259,50 @@ export default function StreamingPage() {
                   <MessageCircle className="h-5 w-5" />
                   Live Chat
                 </h2>
-                <div className="flex items-center gap-2 text-sm text-gray-400">
-                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                  {chatMessages.length} messages
+                <div className="flex items-center gap-2">
+                  {isEditingUsername ? (
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={tempUsername}
+                        onChange={(e) => setTempUsername(e.target.value)}
+                        placeholder="New username"
+                        className="px-2 py-1 bg-gray-800 rounded text-sm text-white"
+                        onKeyDown={(e) => e.key === 'Enter' && handleUsernameChange()}
+                      />
+                      <button
+                        onClick={handleUsernameChange}
+                        className="px-2 py-1 bg-yellow-500 text-black rounded text-sm"
+                      >
+                        Save
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        setTempUsername(username);
+                        setIsEditingUsername(true);
+                      }}
+                      className="text-sm text-gray-400 hover:text-yellow-300"
+                    >
+                      {username}
+                    </button>
+                  )}
+                  <div className="flex items-center gap-2 text-sm text-gray-400">
+                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                    {chatMessages.length} messages
+                  </div>
                 </div>
               </div>
             </div>
 
             {/* Chat Messages */}
-            <div 
+            <div
               ref={chatContainerRef}
               className="flex-grow bg-gradient-to-b from-gray-900/70 to-gray-800/70 backdrop-blur-lg overflow-y-auto p-4 space-y-3 custom-scrollbar"
-              style={{ 
+              style={{
                 scrollbarWidth: 'thin',
-                scrollbarColor: '#fbbf24 #1f2937'
+                scrollbarColor: '#fbbf24 #1f2937',
               }}
             >
               <AnimatePresence>
@@ -314,14 +314,14 @@ export default function StreamingPage() {
                     transition={{ duration: 0.3 }}
                     className={`flex gap-3 ${msg.sender === 'me' ? 'justify-end' : 'justify-start'}`}
                   >
-                    {msg.sender !== 'me' && (
+                    {msg.sender !== 'me' && msg.sender !== 'system' && (
                       <div className="flex-shrink-0">
                         <div className="w-8 h-8 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center text-sm">
                           {msg.avatar}
                         </div>
                       </div>
                     )}
-                    
+
                     <div className={`max-w-[80%] ${msg.sender === 'me' ? 'order-2' : ''}`}>
                       {msg.sender !== 'me' && (
                         <div className="flex items-center gap-2 mb-1">
@@ -332,16 +332,20 @@ export default function StreamingPage() {
                           <span className="text-xs text-gray-500">{formatTime(msg.timestamp)}</span>
                         </div>
                       )}
-                      
-                      <div className={`rounded-2xl px-4 py-2 ${
-                        msg.sender === 'me'
-                          ? 'bg-gradient-to-r from-yellow-500 to-yellow-600 text-black shadow-lg'
-                          : msg.type === 'emoji'
-                          ? 'bg-transparent text-2xl'
-                          : 'bg-gradient-to-r from-gray-700 to-gray-600 text-white shadow-lg'
-                      } ${msg.type === 'emoji' ? 'text-center' : ''}`}>
+
+                      <div
+                        className={`rounded-2xl px-4 py-2 ${
+                          msg.sender === 'me'
+                            ? 'bg-gradient-to-r from-yellow-500 to-yellow-600 text-black shadow-lg'
+                            : msg.sender === 'system'
+                            ? 'bg-gray-500/50 text-gray-300 text-center'
+                            : msg.type === 'emoji'
+                            ? 'bg-transparent text-2xl'
+                            : 'bg-gradient-to-r from-gray-700 to-gray-600 text-white shadow-lg'
+                        } ${msg.type === 'emoji' ? 'text-center' : ''}`}
+                      >
                         {msg.type === 'image' ? (
-                          <Image 
+                          <Image
                             src={msg.imageUrl || ''}
                             alt="Shared image in chat"
                             width={200}
@@ -350,14 +354,10 @@ export default function StreamingPage() {
                             sizes="(max-width: 768px) 100vw, 33vw"
                           />
                         ) : (
-                          <p className={`${msg.type === 'emoji' ? 'text-2xl' : 'text-sm'} break-words`}>
-                            {msg.text}
-                          </p>
+                          <p className={`${msg.type === 'emoji' ? 'text-2xl' : 'text-sm'} break-words`}>{msg.text}</p>
                         )}
                         {msg.sender === 'me' && (
-                          <div className="text-right text-xs text-black/70 mt-1">
-                            {formatTime(msg.timestamp)}
-                          </div>
+                          <div className="text-right text-xs text-black/70 mt-1">{formatTime(msg.timestamp)}</div>
                         )}
                       </div>
                     </div>
@@ -410,7 +410,7 @@ export default function StreamingPage() {
                     }}
                   />
                 </div>
-                
+
                 <div className="flex gap-2">
                   <motion.button
                     whileHover={{ scale: 1.05 }}
@@ -420,7 +420,7 @@ export default function StreamingPage() {
                   >
                     <Smile className="h-4 w-4" />
                   </motion.button>
-                  
+
                   <motion.button
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
@@ -429,7 +429,7 @@ export default function StreamingPage() {
                   >
                     <LucideImage className="h-4 w-4" />
                   </motion.button>
-                  
+
                   <motion.button
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
@@ -452,26 +452,28 @@ export default function StreamingPage() {
                     className="absolute bottom-full left-0 right-0 mb-2 bg-gray-800 rounded-xl p-4 border border-gray-600 shadow-xl z-10"
                   >
                     <div className="grid grid-cols-8 gap-2">
-                      {quickEmojis.concat([
-                        { emoji: '😎', name: 'cool' },
-                        { emoji: '🤔', name: 'thinking' },
-                        { emoji: '😍', name: 'love' },
-                        { emoji: '🤯', name: 'mind blown' },
-                        { emoji: '💪', name: 'strong' },
-                        { emoji: '🙌', name: 'praise' },
-                        { emoji: '🤩', name: 'star eyes' },
-                        { emoji: '🥳', name: 'party' },
-                      ]).map((emoji) => (
-                        <motion.button
-                          key={emoji.name}
-                          whileHover={{ scale: 1.2 }}
-                          whileTap={{ scale: 0.9 }}
-                          onClick={() => handleEmojiClick(emoji.emoji)}
-                          className="w-8 h-8 rounded-lg bg-gray-700 hover:bg-gray-600 flex items-center justify-center text-lg transition-colors duration-200"
-                        >
-                          {emoji.emoji}
-                        </motion.button>
-                      ))}
+                      {quickEmojis
+                        .concat([
+                          { emoji: '😎', name: 'cool' },
+                          { emoji: '🤔', name: 'thinking' },
+                          { emoji: '😍', name: 'love' },
+                          { emoji: '🤯', name: 'mind blown' },
+                          { emoji: '💪', name: 'strong' },
+                          { emoji: '🙌', name: 'praise' },
+                          { emoji: '🤩', name: 'star eyes' },
+                          { emoji: '🥳', name: 'party' },
+                        ])
+                        .map((emoji) => (
+                          <motion.button
+                            key={emoji.name}
+                            whileHover={{ scale: 1.2 }}
+                            whileTap={{ scale: 0.9 }}
+                            onClick={() => handleEmojiClick(emoji.emoji)}
+                            className="w-8 h-8 rounded-lg bg-gray-700 hover:bg-gray-600 flex items-center justify-center text-lg transition-colors duration-200"
+                          >
+                            {emoji.emoji}
+                          </motion.button>
+                        ))}
                     </div>
                   </motion.div>
                 )}
