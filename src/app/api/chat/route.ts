@@ -6,6 +6,41 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { messages } = body
 
+    // Hardcode response for questions about the creator
+    const lastMessage = messages[messages.length - 1]?.content.toLowerCase();
+    if (lastMessage) {
+      if (
+        lastMessage.includes("ai") && 
+        (lastMessage.includes("tạo ra web") || 
+        lastMessage.includes("làm ra web") || 
+        lastMessage.includes("người tạo"))
+      ) {
+        return NextResponse.json({
+          choices: [{
+            message: {
+              content: "Tên người tạo ra web này là Nguyễn Thiện Nhân, 22 tuổi."
+            }
+          }]
+        });
+      } else if (lastMessage.includes("nguyễn thiện nhân") || lastMessage.includes("thiện nhân")) {
+        return NextResponse.json({
+          choices: [{
+            message: {
+              content: "Nguyễn Thiện Nhân là người tạo ra web này, anh ấy 22 tuổi."
+            }
+          }]
+        });
+      } else if (lastMessage.includes("tuổi") && (lastMessage.includes("nguyễn thiện nhân") || lastMessage.includes("thiện nhân") || lastMessage.includes("người tạo"))) {
+        return NextResponse.json({
+          choices: [{
+            message: {
+              content: "Nguyễn Thiện Nhân 22 tuổi."
+            }
+          }]
+        });
+      }
+    }
+
     // Validate input
     if (!messages || !Array.isArray(messages)) {
       return NextResponse.json(

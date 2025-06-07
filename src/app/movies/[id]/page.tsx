@@ -7,6 +7,9 @@ import { OrbitControls, PerspectiveCamera } from '@react-three/drei'
 import * as THREE from 'three'
 import Image from 'next/image'
 import { StarIcon, ClockIcon, CalendarIcon, PlayIcon } from '@heroicons/react/24/solid'
+import { BookmarkIcon } from '@heroicons/react/24/outline'
+import { useTemporaryWatchlistStore } from '@/store/store'
+import toast from 'react-hot-toast'
 
 // Mock data - replace with actual API call
 const mockMovie = {
@@ -60,6 +63,23 @@ export default function MovieDetail() {
     target: containerRef,
     offset: ["start start", "end start"]
   })
+
+  const { addTemporarilyToWatchlist, removeTemporarilyFromWatchlist, isTemporarilyInWatchlist } = useTemporaryWatchlistStore();
+  const isInTemporaryWatchlist = isTemporarilyInWatchlist(movie.id);
+
+  const handleToggleTemporaryWatchlist = () => {
+    if (isInTemporaryWatchlist) {
+      removeTemporarilyFromWatchlist(movie.id);
+      toast.success('Đã xóa phim khỏi danh sách xem tạm thời!');
+    } else {
+      addTemporarilyToWatchlist({
+        id: movie.id,
+        title: movie.title,
+        poster_path: movie.poster,
+      });
+      toast.success('Đã thêm phim vào danh sách xem tạm thời!');
+    }
+  };
 
   const y = useTransform(scrollYProgress, [0, 1], [0, -100])
   const opacity = useTransform(scrollYProgress, [0, 0.5], [1, 0])
@@ -174,6 +194,21 @@ export default function MovieDetail() {
                 <PlayIcon className="h-5 w-5" />
                 Watch Full Movie
               </motion.button>
+
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={handleToggleTemporaryWatchlist}
+                className={`px-6 py-3 rounded-lg font-semibold transition-colors flex items-center gap-2 ${
+                  isInTemporaryWatchlist
+                    ? 'bg-yellow-600 text-black hover:bg-yellow-700'
+                    : 'bg-gray-700 text-white hover:bg-gray-600'
+                }`}
+              >
+                <BookmarkIcon className="h-5 w-5" />
+                {isInTemporaryWatchlist ? 'Đã thêm vào danh sách tạm thời' : 'Lưu vào danh sách tạm thời'}
+              </motion.button>
+
             </div>
           </div>
         </motion.div>

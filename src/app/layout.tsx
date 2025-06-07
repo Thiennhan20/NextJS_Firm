@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import Navigation from "@/components/Navigation";
 import FloatingChatbox from '@/components/FloatingChatbox'
+import { Toaster } from 'react-hot-toast';
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -24,6 +25,27 @@ export default function RootLayout({
           {children}
         </div>
         <FloatingChatbox />
+        <Toaster
+          position="top-right"
+          toastOptions={{
+            style: {
+              background: '#1F2937',
+              color: '#fff',
+            },
+            success: {
+              iconTheme: {
+                primary: '#10B981',
+                secondary: '#fff',
+              },
+            },
+            error: {
+              iconTheme: {
+                primary: '#EF4444',
+                secondary: '#fff',
+              },
+            },
+          }}
+        />
       </body>
     </html>
   );
