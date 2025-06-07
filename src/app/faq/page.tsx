@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { MagnifyingGlassIcon, ChevronDownIcon } from '@heroicons/react/24/outline'
+import { marked } from 'marked'
 
 const faqs = [
   {
@@ -64,16 +65,67 @@ export default function FAQPage() {
     faq.answer.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
+  // Chatbox state
+  const [messages, setMessages] = useState<{ role: 'user' | 'assistant', content: string }[]>([])
+  const [inputMessage, setInputMessage] = useState('')
+  const [isLoadingChat, setIsLoadingChat] = useState(false)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  // Auto-scroll to bottom
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages])
+
+  const handleSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!inputMessage.trim()) return
+
+    const newMessage: { role: "user", content: string } = { role: 'user', content: inputMessage }
+    setMessages(prev => [...prev, newMessage])
+    setInputMessage('')
+    setIsLoadingChat(true)
+
+    try {
+      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": "Bearer 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",
+          "HTTP-Referer": "https://next-js-firm.vercel.app",
+          "X-Title": "Firm",
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          "model": "deepseek/deepseek-r1-0528:free",
+          "messages": [
+            // Include previous messages for context
+            ...messages,
+            { "role": "user", "content": inputMessage }
+          ]
+        })
+      });
+
+      const data = await response.json()
+      const assistantMessage: { role: "assistant", content: string } = { role: 'assistant', content: data.choices[0].message.content }
+      setMessages(prev => [...prev, assistantMessage])
+
+    } catch (error) {
+      console.error("Error fetching from OpenRouter API:", error)
+      setMessages(prev => [...prev, { role: 'assistant', content: 'Sorry, I am unable to connect to the AI at the moment.' }])
+    } finally {
+      setIsLoadingChat(false)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-900 to-black text-white pt-20">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <div className="w-full px-4 sm:px-6 lg:px-8 py-8">
         {/* Hero Section */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.5 }}
-          className="text-center mb-12"
+          className="text-center mb-8"
         >
           <h1 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-red-500 to-purple-500 text-transparent bg-clip-text">
             Frequently Asked Questions
@@ -102,7 +154,7 @@ export default function FAQPage() {
         </motion.div>
 
         {/* FAQ List */}
-        <div className="space-y-4">
+        <div className="space-y-3">
           {filteredFaqs.map((faq, index) => (
             <motion.div
               key={index}
@@ -114,7 +166,7 @@ export default function FAQPage() {
             >
               <button
                 onClick={() => setOpenIndex(openIndex === index ? null : index)}
-                className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-gray-700/50 transition-colors"
+                className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-gray-700/50 transition-colors"
               >
                 <span className="font-medium">{faq.question}</span>
                 <motion.div
@@ -131,7 +183,7 @@ export default function FAQPage() {
                     animate={{ height: 'auto', opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
                     transition={{ duration: 0.2 }}
-                    className="px-6 pb-4"
+                    className="px-4 pb-3"
                   >
                     <p className="text-gray-400">{faq.answer}</p>
                   </motion.div>
@@ -152,7 +204,7 @@ export default function FAQPage() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ delay: 0.4, duration: 0.5 }}
-          className="mt-12 text-center"
+          className="mt-8 text-center"
         >
           <p className="text-gray-400 mb-4">Still have questions?</p>
           <motion.a
@@ -165,6 +217,75 @@ export default function FAQPage() {
           </motion.a>
         </motion.div>
       </div>
+
+      {/* AI Chatbox Section - Moved outside the main content wrapper */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.6, duration: 0.5 }}
+        className="mt-12 w-full bg-gray-800/50 rounded-2xl p-2 sm:p-4 md:p-6 backdrop-blur-sm shadow-xl chatbox-container-shadow"
+      >
+        <h2 className="text-3xl font-bold mb-6 text-center bg-gradient-to-r from-green-400 to-blue-500 text-transparent bg-clip-text glowing-text-chatbox">
+          Chat with AI Assistant
+        </h2>
+        <div className="h-[500px] overflow-y-auto space-y-3 p-3 bg-gray-900/80 rounded-lg border border-gray-700 custom-scrollbar" style={{ scrollbarWidth: 'none' }}>
+          {/* Chat messages */}
+          {messages.length === 0 && (
+            <div className="flex flex-col items-center justify-center h-full text-gray-400">
+              <p className="text-xl mb-4">👋 Welcome to MovieWorld AI Assistant!</p>
+              <p className="text-center italic">Ask me anything about movies, our services, or how to get started.</p>
+            </div>
+          )}
+          {messages.map((msg, index) => (
+            <div
+              key={index}
+              className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+            >
+              <div
+                className={`max-w-[80%] p-4 rounded-2xl ${
+                  msg.role === 'user'
+                    ? 'bg-gradient-to-r from-red-600 to-red-500 text-white chat-bubble-user-shadow'
+                    : 'bg-gradient-to-r from-gray-700 to-gray-600 text-gray-100 chat-bubble-ai-shadow'
+                }`}
+              >
+                {msg.role === 'assistant' ? (
+                  <div className="ai-response-content" dangerouslySetInnerHTML={{ __html: marked.parse(msg.content) }} />
+                ) : (
+                  msg.content
+                )}
+              </div>
+            </div>
+          ))}
+          {isLoadingChat && (
+            <div className="flex justify-start">
+              <div className="bg-gray-700 p-4 rounded-2xl">
+                <div className="dot-flashing"></div>
+              </div>
+            </div>
+          )}
+          <div ref={messagesEndRef} />
+        </div>
+
+        <form onSubmit={handleSendMessage} className="mt-6 flex flex-col sm:flex-row gap-0.5 sm:gap-1 md:gap-2">
+          <input
+            type="text"
+            value={inputMessage}
+            onChange={(e) => setInputMessage(e.target.value)}
+            placeholder={isLoadingChat ? "AI is typing..." : "Ask me anything about movies..."}
+            className="flex-grow min-w-0 px-2 py-2 rounded-xl bg-gray-700/80 border border-gray-600 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
+            disabled={isLoadingChat}
+          />
+          <motion.button
+            type="submit"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className="bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-white font-semibold px-2 py-2 rounded-xl transition-all input-button-shadow flex-shrink-0"
+            disabled={isLoadingChat}
+          >
+            {isLoadingChat ? 'Sending...' : 'Send'}
+          </motion.button>
+        </form>
+      </motion.div>
     </div>
   )
 } 
