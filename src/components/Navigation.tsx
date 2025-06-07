@@ -17,7 +17,8 @@ import {
   EnvelopeIcon,
   BookmarkIcon,
   UserIcon,
-  QueueListIcon
+  QueueListIcon,
+  PlayCircleIcon
 } from '@heroicons/react/24/outline'
 import { useAuthStore } from '@/store/store'
 import { Menu, Transition } from '@headlessui/react'
@@ -42,6 +43,7 @@ const moreNavItems = [
   { name: 'About', href: '/about', icon: UserGroupIcon },
   { name: 'FAQ', href: '/faq', icon: QuestionMarkCircleIcon },
   { name: 'Contact', href: '/contact', icon: EnvelopeIcon },
+  { name: 'Streaming', href: '/streaming', icon: PlayCircleIcon },
 ]
 
 const allNavItems = [...mainNavItems, ...moreNavItems]; // Combine all items for mobile menu
