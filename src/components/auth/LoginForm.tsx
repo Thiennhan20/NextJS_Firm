@@ -1,28 +1,35 @@
 import { useState } from 'react';
-import { useAuthStore } from '@/store/store';
+import { useRouter } from 'next/navigation';
+import { toast } from 'react-hot-toast';
+import useAuthStore from '@/store/useAuthStore';
+import { LoginCredentials } from '@/types/auth';
 import { motion } from 'framer-motion';
-import toast from 'react-hot-toast';
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 import { FaGoogle, FaFacebook } from 'react-icons/fa';
 
 export default function LoginForm() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const router = useRouter();
+  const { login, isLoading, error, clearError } = useAuthStore();
+  const [formData, setFormData] = useState<LoginCredentials>({
+    email: '',
+    password: '',
+  });
   const [showPassword, setShowPassword] = useState(false);
-  const login = useAuthStore((state) => state.login);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    if (error) clearError();
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // For demo purposes, we'll just create a mock user
-    if (email && password) {
-      login({
-        id: '1',
-        email,
-        name: email.split('@')[0],
-      });
+    try {
+      await login(formData);
       toast.success('Đăng nhập thành công!');
-    } else {
-      toast.error('Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.');
+      router.push('/streaming');
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Đăng nhập thất bại!');
     }
   };
 
@@ -47,8 +54,9 @@ export default function LoginForm() {
           <motion.input
             type="email"
             id="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            name="email"
+            value={formData.email}
+            onChange={handleChange}
             className="mt-1 block w-full px-4 py-3 bg-black/40 border border-yellow-700 rounded-lg text-white placeholder-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 transition-all duration-200 appearance-none"
             placeholder="Enter your email"
             required
@@ -65,8 +73,9 @@ export default function LoginForm() {
             <motion.input
               type={showPassword ? 'text' : 'password'}
               id="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              name="password"
+              value={formData.password}
+              onChange={handleChange}
               className="mt-1 block w-full px-4 py-3 bg-black/40 border border-yellow-700 rounded-lg text-white placeholder-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 transition-all duration-200 pr-10 appearance-none"
               placeholder="Enter your password"
               required
@@ -93,13 +102,17 @@ export default function LoginForm() {
             </a>
           </div>
         </div>
+        {error && (
+          <div className="text-red-500 text-sm">{error}</div>
+        )}
         <motion.button
           type="submit"
-          className="w-full py-3 px-4 bg-yellow-600 hover:bg-yellow-700 text-black font-semibold rounded-lg transition duration-200 ease-in-out transform hover:scale-[1.01] shadow-lg hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 focus:ring-offset-black"
+          disabled={isLoading}
+          className="w-full py-3 px-4 bg-yellow-600 hover:bg-yellow-700 text-black font-semibold rounded-lg transition duration-200 ease-in-out transform hover:scale-[1.01] shadow-lg hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 focus:ring-offset-black disabled:opacity-50 disabled:cursor-not-allowed"
           whileHover={{ scale: 1.01, boxShadow: '0 8px 30px -5px rgba(255, 215, 0, 0.6)' }}
           whileTap={{ scale: 0.99 }}
         >
-          Sign In
+          {isLoading ? 'Đang đăng nhập...' : 'Đăng nhập'}
         </motion.button>
         <div className="relative flex items-center justify-center">
           <div className="absolute inset-0 flex items-center">

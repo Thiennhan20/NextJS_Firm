@@ -20,11 +20,12 @@ import {
   QueueListIcon,
   PlayCircleIcon
 } from '@heroicons/react/24/outline'
-import { useAuthStore } from '@/store/store'
+import useAuthStore from '@/store/useAuthStore'
 import { Menu, Transition } from '@headlessui/react'
 import { Fragment } from 'react'
 import { toast } from 'react-hot-toast'
 import { useTemporaryWatchlistStore } from '@/store/store'
+import { LogOut } from 'lucide-react';
 
 const MotionNav = dynamic(() => import('framer-motion').then(mod => mod.motion.nav), { ssr: false });
 const MotionSpan = dynamic(() => import('framer-motion').then(mod => mod.motion.span), { ssr: false });
@@ -202,7 +203,7 @@ export default function Navigation() {
                   }`}
                 >
                   <BookmarkIcon className="h-5 w-5" />
-                  <span>Watchlist {temporaryWatchlist.length > 0 && `(${temporaryWatchlist.length})`}</span>
+                  <span>Watchlist ({temporaryWatchlist.length})</span>
                 </Link>
                 <Menu as="div" className="relative inline-block text-left">
                   <div>
@@ -212,7 +213,7 @@ export default function Navigation() {
                       }`}
                     >
                       <UserIcon className="h-5 w-5" />
-                      <span>{user?.name}</span>
+                      <span>{user?.name || 'User'}</span>
                     </Menu.Button>
                   </div>
                   <Transition
@@ -224,20 +225,23 @@ export default function Navigation() {
                     leaveFrom="transform opacity-100 scale-100"
                     leaveTo="transform opacity-0 scale-95"
                   >
-                    <Menu.Items className="absolute right-0 mt-2 w-48 origin-top-right bg-white rounded-lg shadow-lg py-2 ring-1 ring-black ring-opacity-5 focus:outline-none">
+                    <Menu.Items className="absolute right-0 mt-2 w-48 origin-top-right bg-gray-900 backdrop-blur-md divide-y divide-gray-700 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
                       <div className="px-1 py-1 ">
                         <Menu.Item>
                           {({ active }) => (
                             <button
                               onClick={() => {
                                 logout();
-                                toast.success('Đăng xuất thành công!');
+                                toast.success('Đã đăng xuất!');
                               }}
-                              className={`w-full text-left px-4 py-2 text-gray-700 ${
-                                active ? 'bg-gray-100' : ''
+                              className={`w-full text-left px-4 py-2 text-gray-300 ${
+                                active ? 'bg-red-500 text-white' : 'hover:bg-gray-800 hover:text-white'
                               }`}
                             >
-                              Logout
+                              <div className="flex items-center space-x-2">
+                                <LogOut className="h-5 w-5" />
+                                <span>Logout</span>
+                              </div>
                             </button>
                           )}
                         </Menu.Item>
@@ -313,7 +317,7 @@ export default function Navigation() {
                   className="flex items-center space-x-2 px-3 py-2 rounded-lg text-gray-300 hover:bg-gray-800 hover:text-white"
                 >
                   <BookmarkIcon className="h-5 w-5" />
-                  <span>Watchlist {temporaryWatchlist.length > 0 && `(${temporaryWatchlist.length})`}</span>
+                  <span>Watchlist ({temporaryWatchlist.length})</span>
                 </Link>
               )}
               <form onSubmit={handleSearch} className="px-3 py-2">
@@ -326,24 +330,55 @@ export default function Navigation() {
                 />
               </form>
               {isAuthenticated ? (
-                <button
-                  onClick={() => {
-                    logout();
-                    toast.success('Đăng xuất thành công!');
-                  }}
-                  className="w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-gray-300 hover:bg-gray-800 hover:text-white"
-                >
-                  <UserIcon className="h-5 w-5" />
-                  <span>Logout</span>
-                </button>
+                <>
+                  <div className={`block px-3 py-2 rounded-md text-base font-medium ${isScrolled ? 'text-gray-300' : 'text-gray-700'}`}>
+                    <MotionDiv
+                      className="flex items-center space-x-2"
+                    >
+                      <UserIcon className="h-5 w-5" />
+                      <span>{user?.name || 'User'}</span>
+                    </MotionDiv>
+                  </div>
+                  <button
+                    onClick={() => {
+                      logout();
+                      toast.success('Đã đăng xuất!');
+                      setIsOpen(false); // Close mobile menu after logout
+                    }}
+                    className={`block w-full text-left px-3 py-2 rounded-md text-base font-medium transition-colors duration-200 ${
+                      isScrolled
+                        ? 'text-red-400 hover:bg-gray-700 hover:text-white'
+                        : 'text-red-600 hover:bg-gray-100 hover:text-red-700'
+                    }`}
+                  >
+                    <MotionDiv
+                      className="flex items-center space-x-2"
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      <LogOut className="h-5 w-5" />
+                      <span>Đăng xuất</span>
+                    </MotionDiv>
+                  </button>
+                </>
               ) : (
                 <Link
                   href="/login"
                   onClick={() => setIsOpen(false)}
-                  className="flex items-center space-x-2 px-3 py-2 rounded-lg text-gray-300 hover:bg-gray-800 hover:text-white"
+                  className={`block px-3 py-2 rounded-md text-base font-medium transition-colors duration-200 ${
+                    isScrolled
+                      ? 'text-gray-300 hover:bg-gray-700 hover:text-white'
+                      : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
+                  }`}
                 >
-                  <UserIcon className="h-5 w-5" />
-                  <span>Login</span>
+                  <MotionDiv
+                    className="flex items-center space-x-2"
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    <UserIcon className="h-5 w-5" />
+                    <span>Login</span>
+                  </MotionDiv>
                 </Link>
               )}
             </div>

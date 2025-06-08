@@ -1,40 +1,36 @@
 import { useState } from 'react';
-import { useAuthStore } from '@/store/store';
+import { useRouter } from 'next/navigation';
+import { toast } from 'react-hot-toast';
+import useAuthStore from '@/store/useAuthStore';
+import { RegisterCredentials } from '@/types/auth';
 import { motion } from 'framer-motion';
-import toast from 'react-hot-toast';
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 import { FaGoogle, FaFacebook } from 'react-icons/fa';
 
 export default function RegisterForm() {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const router = useRouter();
+  const { register, isLoading, error, clearError } = useAuthStore();
+  const [formData, setFormData] = useState<RegisterCredentials>({
+    name: '',
+    email: '',
+    password: '',
+  });
   const [showPassword, setShowPassword] = useState(false);
-  const [agreedToTerms, setAgreedToTerms] = useState(false);
-  const login = useAuthStore((state) => state.login);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    if (error) clearError();
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password !== confirmPassword) {
-      toast.error('Mật khẩu không khớp!');
-      return;
-    }
-    if (!agreedToTerms) {
-      toast.error('Bạn phải đồng ý với Điều khoản & Điều kiện!');
-      return;
-    }
-
-    if (email && name && password) {
-      // For demo purposes, we'll just create a mock user
-      login({
-        id: '1',
-        email,
-        name,
-      });
+    try {
+      await register(formData);
       toast.success('Đăng ký thành công!');
-    } else {
-      toast.error('Đăng ký thất bại. Vui lòng điền đầy đủ thông tin.');
+      router.push('/streaming');
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Đăng ký thất bại!');
     }
   };
 
@@ -54,13 +50,14 @@ export default function RegisterForm() {
       <form onSubmit={handleSubmit} className="space-y-6">
         <div>
           <label htmlFor="name" className="block text-sm font-medium text-yellow-200 mb-1">
-            Name
+            Tên người dùng
           </label>
           <motion.input
             type="text"
             id="name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
+            name="name"
+            value={formData.name}
+            onChange={handleChange}
             className="mt-1 block w-full px-4 py-3 bg-black/40 border border-yellow-700 rounded-lg text-white placeholder-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 transition-all duration-200 appearance-none"
             placeholder="Enter your name"
             required
@@ -76,8 +73,9 @@ export default function RegisterForm() {
           <motion.input
             type="email"
             id="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            name="email"
+            value={formData.email}
+            onChange={handleChange}
             className="mt-1 block w-full px-4 py-3 bg-black/40 border border-yellow-700 rounded-lg text-white placeholder-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 transition-all duration-200 appearance-none"
             placeholder="Enter your email"
             required
@@ -88,14 +86,15 @@ export default function RegisterForm() {
         </div>
         <div>
           <label htmlFor="password" className="block text-sm font-medium text-yellow-200 mb-1">
-            Password
+            Mật khẩu
           </label>
           <div className="relative">
             <motion.input
               type={showPassword ? 'text' : 'password'}
               id="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              name="password"
+              value={formData.password}
+              onChange={handleChange}
               className="mt-1 block w-full px-4 py-3 bg-black/40 border border-yellow-700 rounded-lg text-white placeholder-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 transition-all duration-200 pr-10 appearance-none"
               placeholder="Enter your password"
               required
@@ -117,59 +116,17 @@ export default function RegisterForm() {
             </button>
           </div>
         </div>
-        <div>
-          <label htmlFor="confirmPassword" className="block text-sm font-medium text-yellow-200 mb-1">
-            Confirm Password
-          </label>
-          <div className="relative">
-            <motion.input
-              type={showPassword ? 'text' : 'password'}
-              id="confirmPassword"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              className="mt-1 block w-full px-4 py-3 bg-black/40 border border-yellow-700 rounded-lg text-white placeholder-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 transition-all duration-200 pr-10 appearance-none"
-              placeholder="Confirm your password"
-              required
-              variants={inputVariants}
-              whileHover="hover"
-              whileFocus="focus"
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute inset-y-0 right-0 pr-3 flex items-center text-yellow-500 hover:text-yellow-300 focus:outline-none transition-colors duration-200"
-              aria-label={showPassword ? 'Hide password' : 'Show password'}
-            >
-              {showPassword ? (
-                <EyeSlashIcon className="h-5 w-5" />
-              ) : (
-                <EyeIcon className="h-5 w-5" />
-              )}
-            </button>
-          </div>
-        </div>
-        <div className="flex items-center">
-          <input
-            id="terms"
-            name="terms"
-            type="checkbox"
-            checked={agreedToTerms}
-            onChange={(e) => setAgreedToTerms(e.target.checked)}
-            className="h-4 w-4 text-yellow-600 focus:ring-yellow-500 border-gray-300 rounded"
-            required
-          />
-          <label htmlFor="terms" className="ml-2 block text-sm text-yellow-200">
-            I agree to the
-            <a href="#" className="font-medium text-yellow-300 hover:text-yellow-100 ml-1">Terms & Conditions</a>
-          </label>
-        </div>
+        {error && (
+          <div className="text-red-500 text-sm">{error}</div>
+        )}
         <motion.button
           type="submit"
-          className="w-full py-3 px-4 bg-yellow-600 hover:bg-yellow-700 text-black font-semibold rounded-lg transition duration-200 ease-in-out transform hover:scale-[1.01] shadow-lg hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 focus:ring-offset-black"
+          disabled={isLoading}
+          className="w-full py-3 px-4 bg-yellow-600 hover:bg-yellow-700 text-black font-semibold rounded-lg transition duration-200 ease-in-out transform hover:scale-[1.01] shadow-lg hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 focus:ring-offset-black disabled:opacity-50 disabled:cursor-not-allowed"
           whileHover={{ scale: 1.01, boxShadow: '0 8px 30px -5px rgba(255, 215, 0, 0.6)' }}
           whileTap={{ scale: 0.99 }}
         >
-          Register
+          {isLoading ? 'Đang đăng ký...' : 'Đăng ký'}
         </motion.button>
         <div className="relative flex items-center justify-center">
           <div className="absolute inset-0 flex items-center">
