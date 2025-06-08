@@ -6,6 +6,7 @@ import { LoginCredentials } from '@/types/auth';
 import { motion } from 'framer-motion';
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 import { FaGoogle, FaFacebook } from 'react-icons/fa';
+import axios from 'axios';
 
 export default function LoginForm() {
   const router = useRouter();
@@ -28,8 +29,12 @@ export default function LoginForm() {
       await login(formData);
       toast.success('Đăng nhập thành công!');
       router.push('/streaming');
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Đăng nhập thất bại!');
+    } catch (error: unknown) {
+      if (axios.isAxiosError(error)) {
+        toast.error(error.response?.data?.message || 'Đăng nhập thất bại!');
+      } else {
+        toast.error('An unexpected error occurred during login.');
+      }
     }
   };
 

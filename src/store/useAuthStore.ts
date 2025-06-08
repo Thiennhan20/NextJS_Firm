@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { AuthState, LoginCredentials, RegisterCredentials, User } from '@/types/auth';
 import api from '@/lib/axios';
+import { isAxiosError } from 'axios';
 
 interface AuthStore extends AuthState {
   login: (credentials: LoginCredentials) => Promise<void>;
@@ -27,16 +28,23 @@ const useAuthStore = create<AuthStore>()(
           
           localStorage.setItem('token', token);
           set({
-            user,
+            user: user as User,
             token,
             isAuthenticated: true,
             isLoading: false,
           });
-        } catch (error: any) {
-          set({
-            error: error.response?.data?.message || 'An error occurred during login',
-            isLoading: false,
-          });
+        } catch (error: unknown) {
+          if (isAxiosError(error)) {
+            set({
+              error: error.response?.data?.message || 'An error occurred during login',
+              isLoading: false,
+            });
+          } else {
+            set({
+              error: 'An unexpected error occurred during login',
+              isLoading: false,
+            });
+          }
           throw error;
         }
       },
@@ -49,16 +57,23 @@ const useAuthStore = create<AuthStore>()(
           
           localStorage.setItem('token', token);
           set({
-            user,
+            user: user as User,
             token,
             isAuthenticated: true,
             isLoading: false,
           });
-        } catch (error: any) {
-          set({
-            error: error.response?.data?.message || 'An error occurred during registration',
-            isLoading: false,
-          });
+        } catch (error: unknown) {
+          if (isAxiosError(error)) {
+            set({
+              error: error.response?.data?.message || 'An error occurred during registration',
+              isLoading: false,
+            });
+          } else {
+            set({
+              error: 'An unexpected error occurred during registration',
+              isLoading: false,
+            });
+          }
           throw error;
         }
       },
