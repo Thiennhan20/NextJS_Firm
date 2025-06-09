@@ -6,8 +6,6 @@ import MovieCard from '@/components/MovieCard'
 import TrendingMovies from '@/components/TrendingMovies'
 import MovieNews from '@/components/MovieNews'
 import QuickReviews from '@/components/QuickReviews'
-import SubscribeSection from '@/components/SubscribeSection'
-import Footer from '@/components/Footer'
 
 // Mock data
 const featuredMovies = [
@@ -169,10 +167,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Subscribe Section */}
-      <SubscribeSection />
-
-      <Footer />
     </main>
   )
 }
