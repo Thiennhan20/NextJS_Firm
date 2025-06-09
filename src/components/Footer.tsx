@@ -34,7 +34,7 @@ const socialLinks = [
 
 export default function Footer() {
   return (
-    <footer className="bg-gradient-to-b from-black to-gray-900 text-gray-300 py-12 md:py-16 border-t border-gray-800 relative overflow-hidden">
+    <footer className="bg-gradient-to-b from-black to-gray-900 text-gray-300 py-12 md:py-16 sm:landscape:py-2 border-t border-gray-800 relative overflow-hidden">
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute bottom-0 left-0 w-64 h-64 bg-red-500 opacity-10 rounded-full mix-blend-screen filter blur-xl animate-blob" />
         <div className="absolute top-0 right-0 w-64 h-64 bg-purple-500 opacity-10 rounded-full mix-blend-screen filter blur-xl animate-blob animation-delay-2000" />

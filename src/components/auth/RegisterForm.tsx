@@ -8,6 +8,16 @@ import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 import { FaGoogle, FaFacebook } from 'react-icons/fa';
 import axios from 'axios';
 
+const LoadingSpinner = () => (
+  <div className="flex items-center justify-center">
+    <motion.div
+      className="w-8 h-8 border-4 border-yellow-500 border-t-transparent rounded-full"
+      animate={{ rotate: 360 }}
+      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+    />
+  </div>
+);
+
 export default function RegisterForm() {
   const router = useRouter();
   const { register, isLoading, error, clearError } = useAuthStore();
@@ -66,6 +76,7 @@ export default function RegisterForm() {
             className="mt-1 block w-full px-4 py-3 bg-black/40 border border-yellow-700 rounded-lg text-white placeholder-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 transition-all duration-200 appearance-none"
             placeholder="Enter your name"
             required
+            disabled={isLoading}
             variants={inputVariants}
             whileHover="hover"
             whileFocus="focus"
@@ -84,6 +95,7 @@ export default function RegisterForm() {
             className="mt-1 block w-full px-4 py-3 bg-black/40 border border-yellow-700 rounded-lg text-white placeholder-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 transition-all duration-200 appearance-none"
             placeholder="Enter your email"
             required
+            disabled={isLoading}
             variants={inputVariants}
             whileHover="hover"
             whileFocus="focus"
@@ -103,6 +115,7 @@ export default function RegisterForm() {
               className="mt-1 block w-full px-4 py-3 bg-black/40 border border-yellow-700 rounded-lg text-white placeholder-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 transition-all duration-200 pr-10 appearance-none"
               placeholder="Enter your password"
               required
+              disabled={isLoading}
               variants={inputVariants}
               whileHover="hover"
               whileFocus="focus"
@@ -112,6 +125,7 @@ export default function RegisterForm() {
               onClick={() => setShowPassword(!showPassword)}
               className="absolute inset-y-0 right-0 pr-3 flex items-center text-yellow-500 hover:text-yellow-300 focus:outline-none transition-colors duration-200"
               aria-label={showPassword ? 'Hide password' : 'Show password'}
+              disabled={isLoading}
             >
               {showPassword ? (
                 <EyeSlashIcon className="h-5 w-5" />
@@ -131,7 +145,14 @@ export default function RegisterForm() {
           whileHover={{ scale: 1.01, boxShadow: '0 8px 30px -5px rgba(255, 215, 0, 0.6)' }}
           whileTap={{ scale: 0.99 }}
         >
-          {isLoading ? 'Đang đăng ký...' : 'Đăng ký'}
+          {isLoading ? (
+            <div className="flex items-center justify-center space-x-2">
+              <LoadingSpinner />
+              <span>Đang đăng ký...</span>
+            </div>
+          ) : (
+            'Đăng ký'
+          )}
         </motion.button>
         <div className="relative flex items-center justify-center">
           <div className="absolute inset-0 flex items-center">
@@ -147,6 +168,7 @@ export default function RegisterForm() {
             className="flex items-center justify-center w-full py-3 px-4 bg-gray-700 hover:bg-gray-800 text-white font-semibold rounded-lg transition duration-200 ease-in-out transform hover:scale-[1.01] shadow-md focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 focus:ring-offset-black"
             whileHover={{ scale: 1.01, boxShadow: '0 5px 15px -5px rgba(0, 0, 0, 0.4)' }}
             whileTap={{ scale: 0.99 }}
+            disabled={isLoading}
           >
             <FaGoogle className="w-5 h-5 mr-2" />
             Google
@@ -156,6 +178,7 @@ export default function RegisterForm() {
             className="flex items-center justify-center w-full py-3 px-4 bg-blue-800 hover:bg-blue-900 text-white font-semibold rounded-lg transition duration-200 ease-in-out transform hover:scale-[1.01] shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-black"
             whileHover={{ scale: 1.01, boxShadow: '0 5px 15px -5px rgba(0, 0, 255, 0.4)' }}
             whileTap={{ scale: 0.99 }}
+            disabled={isLoading}
           >
             <FaFacebook className="w-5 h-5 mr-2" />
             Facebook
