@@ -34,6 +34,11 @@ interface TemporaryWatchlistState {
   isTemporarilyInWatchlist: (movieId: number) => boolean;
 }
 
+interface UIState {
+  isNavDropdownOpen: boolean;
+  setNavDropdownOpen: (isOpen: boolean) => void;
+}
+
 export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
@@ -81,4 +86,9 @@ export const useTemporaryWatchlistStore = create<TemporaryWatchlistState>()((set
     })),
   isTemporarilyInWatchlist: (movieId) =>
     get().temporaryWatchlist.some((movie) => movie.id === movieId),
-})); 
+}));
+
+export const useUIStore = create<UIState>()((set) => ({
+  isNavDropdownOpen: false,
+  setNavDropdownOpen: (isOpen) => set({ isNavDropdownOpen: isOpen }),
+}));

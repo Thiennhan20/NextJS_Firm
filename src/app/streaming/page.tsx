@@ -7,6 +7,7 @@ import Image from 'next/image';
 import io, { Socket } from 'socket.io-client';
 import imageCompression from 'browser-image-compression';
 import useAuthStore from '@/store/useAuthStore';
+import { useUIStore } from '@/store/store';
 
 // Network Information interface
 interface NetworkInformation extends EventTarget {
@@ -223,6 +224,7 @@ const quickEmojis: Emoji[] = [
 
 export default function StreamingPage() {
   const { user } = useAuthStore();
+  const { isNavDropdownOpen } = useUIStore();
   const [activeStream, setActiveStream] = useState(mockStream);
   const [chatMessages, setChatMessages] = useState<Message[]>(() => {
     if (typeof window !== 'undefined') {
@@ -600,7 +602,7 @@ export default function StreamingPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 text-white flex flex-col">
       {/* Header Stats */}
-      {!isFullscreen && (
+      {!isFullscreen && !isNavDropdownOpen && (
         <div className="bg-black/50 backdrop-blur-sm border-b border-yellow-600/30 sticky top-0 z-50">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
             <div className="flex items-center justify-between">
@@ -763,10 +765,11 @@ export default function StreamingPage() {
                 {chatMessages.map((msg) => (
                   <motion.div
                     key={msg.id}
-                    initial={{ opacity: 0, y: 20, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
                     transition={{ duration: 0.3 }}
-                    className={`flex gap-2 ${msg.sender === 'me' ? 'justify-end' : msg.type === 'system' ? 'justify-center' : 'justify-start'}`}
+                    className={`flex items-start ${msg.sender === 'me' ? 'justify-end' : 'justify-start'} ${msg.type === 'system' ? 'text-center' : ''} ${showEmojiPicker && msg.type === 'system' ? 'hidden' : ''}`}
                   >
                     {msg.type === 'system' ? (
                       <div className="relative w-full text-center text-white text-xs py-2">

@@ -26,12 +26,11 @@ import { Fragment } from 'react'
 import { toast } from 'react-hot-toast'
 import { useTemporaryWatchlistStore } from '@/store/store'
 import { LogOut } from 'lucide-react';
+import { useUIStore } from '@/store/store';
 
 const MotionNav = dynamic(() => import('framer-motion').then(mod => mod.motion.nav), { ssr: false });
 const MotionSpan = dynamic(() => import('framer-motion').then(mod => mod.motion.span), { ssr: false });
 const MotionDiv = dynamic(() => import('framer-motion').then(mod => mod.motion.div), { ssr: false });
-const MotionButton = dynamic(() => import('framer-motion').then(mod => mod.motion.button), { ssr: false });
-const AnimatePresence = dynamic(() => import('framer-motion').then(mod => mod.AnimatePresence), { ssr: false });
 
 const mainNavItems = [
   { name: 'Home', href: '/', icon: HomeIcon },
@@ -56,6 +55,10 @@ export default function Navigation() {
   const pathname = usePathname()
   const { user, isAuthenticated, logout } = useAuthStore()
   const { temporaryWatchlist } = useTemporaryWatchlistStore();
+  const { setNavDropdownOpen } = useUIStore();
+
+  const [isMoreDropdownActive, setIsMoreDropdownActive] = useState(false);
+  const [isProfileDropdownActive, setIsProfileDropdownActive] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -64,6 +67,10 @@ export default function Navigation() {
     window.addEventListener('scroll', handleScroll)
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
+
+  useEffect(() => {
+    setNavDropdownOpen(isOpen || isMoreDropdownActive || isProfileDropdownActive);
+  }, [isOpen, isMoreDropdownActive, isProfileDropdownActive, setNavDropdownOpen]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
@@ -153,8 +160,10 @@ export default function Navigation() {
                 leave="transition ease-in duration-75"
                 leaveFrom="transform opacity-100 scale-100"
                 leaveTo="transform opacity-0 scale-95"
+                beforeEnter={() => setIsMoreDropdownActive(true)}
+                afterLeave={() => setIsMoreDropdownActive(false)}
               >
-                <Menu.Items className="absolute right-0 mt-2 w-48 origin-top-right bg-gray-900 backdrop-blur-md divide-y divide-gray-700 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+                <Menu.Items className="absolute right-0 mt-2 w-48 origin-top-right bg-gray-900 backdrop-blur-md divide-y divide-gray-700 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-60">
                   <div className="px-1 py-1 ">
                     {moreNavItems.map((item) => (
                       <Menu.Item key={item.name}>
@@ -224,8 +233,10 @@ export default function Navigation() {
                     leave="transition ease-in duration-75"
                     leaveFrom="transform opacity-100 scale-100"
                     leaveTo="transform opacity-0 scale-95"
+                    beforeEnter={() => setIsProfileDropdownActive(true)}
+                    afterLeave={() => setIsProfileDropdownActive(false)}
                   >
-                    <Menu.Items className="absolute right-0 mt-2 w-48 origin-top-right bg-gray-900 backdrop-blur-md divide-y divide-gray-700 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+                    <Menu.Items className="absolute right-0 mt-2 w-48 origin-top-right bg-gray-900 backdrop-blur-md divide-y divide-gray-700 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-60">
                       <div className="px-1 py-1 ">
                         <Menu.Item>
                           {({ active }) => (
@@ -253,122 +264,70 @@ export default function Navigation() {
             ) : (
               <Link
                 href="/login"
-                className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
-                  isScrolled ? 'text-white hover:text-red-500' : 'text-gray-700 hover:text-red-500'
+                className={`relative px-4 py-2 rounded-lg transition-colors font-medium ${
+                  isScrolled ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-red-700 text-white hover:bg-red-800'
                 }`}
               >
-                <UserIcon className="h-5 w-5" />
-                <span>Login</span>
+                Login
               </Link>
             )}
           </div>
 
           {/* Mobile menu button */}
-          <div className="lg:hidden">
-            <MotionButton
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
+          <div className="-mr-2 flex lg:hidden">
+            <button
               onClick={() => setIsOpen(!isOpen)}
-              className={`${isScrolled ? 'text-white hover:text-red-600' : 'text-gray-800 hover:text-red-600'}`}
+              className={`inline-flex items-center justify-center p-2 rounded-md focus:outline-none focus:ring-2 focus:ring-inset focus:ring-red-500 transition-colors duration-200 ${
+                isScrolled ? 'text-gray-400 hover:text-white hover:bg-gray-700' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
+              }`}
             >
+              <span className="sr-only">Open main menu</span>
               {isOpen ? (
-                <XMarkIcon className="h-6 w-6" />
+                <XMarkIcon className="block h-6 w-6" aria-hidden="true" />
               ) : (
-                <Bars3Icon className="h-6 w-6" />
+                <Bars3Icon className="block h-6 w-6" aria-hidden="true" />
               )}
-            </MotionButton>
+            </button>
           </div>
         </div>
       </div>
 
-      {/* Mobile menu */}
-      <AnimatePresence>
-        {isOpen && (
-          <MotionDiv
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.2 }}
-            className="lg:hidden bg-gray-900/95 backdrop-blur-md z-20 w-full overflow-y-auto max-h-[calc(100vh-4rem)]"
-          >
-            <div className="px-4 py-4 space-y-2">
-              {allNavItems.map((item) => {
-                const isActive = pathname === item.href
-                return (
-                  <Link
-                    key={item.name}
-                    href={item.href}
-                    onClick={() => setIsOpen(false)}
-                    className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors ${
-                      isActive
-                        ? 'bg-red-500/20 text-red-500'
-                        : 'text-gray-300 hover:bg-gray-800 hover:text-white'
-                    }`}
-                  >
-                    <item.icon className="h-5 w-5" />
-                    <span>{item.name}</span>
-                  </Link>
-                )
-              })}
-              {isAuthenticated && (
+      {/* Mobile menu, show/hide based on menu state. */}
+      <Transition
+        show={isOpen}
+        as={Fragment}
+        enter="duration-300 ease-out"
+        enterFrom="opacity-0 scale-95"
+        enterTo="opacity-100 scale-100"
+        leave="duration-200 ease-in"
+        leaveFrom="opacity-100 scale-100"
+        leaveTo="opacity-0 scale-95"
+        beforeEnter={() => setIsOpen(true)}
+        afterLeave={() => setIsOpen(false)}
+      >
+        <MotionDiv
+          className={`lg:hidden overflow-y-auto max-h-[calc(100vh-4rem)] ${
+            isScrolled ? 'bg-black/90 backdrop-blur-md' : 'bg-white'
+          }`}
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: 'auto' }}
+          exit={{ opacity: 0, height: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
+            {allNavItems.map((item) => {
+              const isActive = pathname === item.href
+              return (
                 <Link
-                  href="/watchlist"
-                  onClick={() => setIsOpen(false)}
-                  className="flex items-center space-x-2 px-3 py-2 rounded-lg text-gray-300 hover:bg-gray-800 hover:text-white"
-                >
-                  <BookmarkIcon className="h-5 w-5" />
-                  <span>Watchlist ({temporaryWatchlist.length})</span>
-                </Link>
-              )}
-              <form onSubmit={handleSearch} className="px-3 py-2">
-                <input
-                  type="text"
-                  placeholder="Search movies..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-gray-800 text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                />
-              </form>
-              {isAuthenticated ? (
-                <>
-                  <div className={`block px-3 py-2 rounded-md text-base font-medium ${isScrolled ? 'text-gray-300' : 'text-gray-700'}`}>
-                    <MotionDiv
-                      className="flex items-center space-x-2"
-                    >
-                      <UserIcon className="h-5 w-5" />
-                      <span>{user?.name || 'User'}</span>
-                    </MotionDiv>
-                  </div>
-                  <button
-                    onClick={() => {
-                      logout();
-                      toast.success('Đã đăng xuất!');
-                      setIsOpen(false); // Close mobile menu after logout
-                    }}
-                    className={`block w-full text-left px-3 py-2 rounded-md text-base font-medium transition-colors duration-200 ${
-                      isScrolled
-                        ? 'text-red-400 hover:bg-gray-700 hover:text-white'
-                        : 'text-red-600 hover:bg-gray-100 hover:text-red-700'
-                    }`}
-                  >
-                    <MotionDiv
-                      className="flex items-center space-x-2"
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                    >
-                      <LogOut className="h-5 w-5" />
-                      <span>Đăng xuất</span>
-                    </MotionDiv>
-                  </button>
-                </>
-              ) : (
-                <Link
-                  href="/login"
-                  onClick={() => setIsOpen(false)}
-                  className={`block px-3 py-2 rounded-md text-base font-medium transition-colors duration-200 ${
-                    isScrolled
-                      ? 'text-gray-300 hover:bg-gray-700 hover:text-white'
-                      : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
+                  key={item.name}
+                  href={item.href}
+                  onClick={() => setIsOpen(false)} // Close menu on click
+                  className={`block px-3 py-2 rounded-md text-base font-medium ${
+                    isActive
+                      ? 'bg-red-500 text-white'
+                      : isScrolled
+                        ? 'text-gray-300 hover:bg-gray-700 hover:text-white'
+                        : 'text-gray-700 hover:bg-gray-200 hover:text-gray-900'
                   }`}
                 >
                   <MotionDiv
@@ -376,15 +335,83 @@ export default function Navigation() {
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                   >
-                    <UserIcon className="h-5 w-5" />
-                    <span>Login</span>
+                    <item.icon className="h-5 w-5" />
+                    <span>{item.name}</span>
                   </MotionDiv>
                 </Link>
-              )}
-            </div>
-          </MotionDiv>
-        )}
-      </AnimatePresence>
+              )
+            })}
+            {/* Mobile Search Input */}
+            <form onSubmit={handleSearch} className="mt-4 px-3">
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Tìm kiếm phim..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full px-4 py-2 rounded-full focus:outline-none focus:ring-2 focus:ring-red-500 bg-gray-800/80 text-white placeholder-gray-400"
+                />
+                <button type="submit" className="absolute right-3 top-1/2 -translate-y-1/2">
+                  <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
+                </button>
+              </div>
+            </form>
+
+            {/* Mobile Watchlist, User/Login, Logout */}
+            {isAuthenticated ? (
+              <div className="px-3 mt-4 space-y-2">
+                <Link
+                  href="/watchlist"
+                  onClick={() => setIsOpen(false)}
+                  className="flex items-center space-x-2 px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:bg-gray-700 hover:text-white"
+                >
+                  <BookmarkIcon className="h-5 w-5" />
+                  <span>Watchlist ({temporaryWatchlist.length})</span>
+                </Link>
+                <div className={`block px-3 py-2 rounded-md text-base font-medium ${isScrolled ? 'text-gray-300' : 'text-gray-700'}`}>
+                  <MotionDiv
+                    className="flex items-center space-x-2"
+                  >
+                    <UserIcon className="h-5 w-5" />
+                    <span>{user?.name || 'User'}</span>
+                  </MotionDiv>
+                </div>
+                <button
+                  onClick={() => {
+                    logout();
+                    toast.success('Đã đăng xuất!');
+                    setIsOpen(false); // Close mobile menu after logout
+                  }}
+                  className={`block w-full text-left px-3 py-2 rounded-md text-base font-medium transition-colors duration-200 ${
+                    isScrolled
+                      ? 'text-red-400 hover:bg-gray-700 hover:text-white'
+                      : 'text-red-600 hover:bg-gray-100 hover:text-red-700'
+                  }`}
+                >
+                  <MotionDiv
+                    className="flex items-center space-x-2"
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    <LogOut className="h-5 w-5" />
+                    <span>Đăng xuất</span>
+                  </MotionDiv>
+                </button>
+              </div>
+            ) : (
+              <Link
+                href="/login"
+                onClick={() => setIsOpen(false)} // Close menu on click
+                className={`block w-full text-center px-4 py-2 rounded-md text-base font-medium mt-4 ${
+                  isScrolled ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-red-700 text-white hover:bg-red-800'
+                }`}
+              >
+                Login
+              </Link>
+            )}
+          </div>
+        </MotionDiv>
+      </Transition>
     </MotionNav>
   )
 } 
