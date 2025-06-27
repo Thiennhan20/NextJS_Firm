@@ -6,36 +6,52 @@ import MovieCard from '@/components/MovieCard'
 import TrendingMovies from '@/components/TrendingMovies'
 import MovieNews from '@/components/MovieNews'
 import QuickReviews from '@/components/QuickReviews'
+import { useEffect, useState } from 'react'
+import axios from 'axios'
 
-// Mock data
-const featuredMovies = [
-  {
-    id: 1,
-    title: 'The Amazing Adventure',
-    rating: 4.8,
-    year: 2024,
-    image: 'https://picsum.photos/300/450',
-    genre: ['Action', 'Adventure'],
-  },
-  {
-    id: 2,
-    title: 'Mystery in the Dark',
-    rating: 4.5,
-    year: 2024,
-    image: 'https://picsum.photos/300/450',
-    genre: ['Horror', 'Mystery'],
-  },
-  {
-    id: 3,
-    title: 'Love in Paris',
-    rating: 4.3,
-    year: 2024,
-    image: 'https://picsum.photos/300/450',
-    genre: ['Romance', 'Drama'],
-  },
-]
+// Định nghĩa kiểu Movie rõ ràng nếu cần
+interface Movie {
+  id: number;
+  title: string;
+  poster_path: string;
+  vote_average?: number;
+  release_date?: string;
+  image?: string;
+  rating?: number;
+  year?: number;
+  genre?: string;
+}
 
 export default function Home() {
+  const API_KEY = process.env.NEXT_PUBLIC_TMDB_API_KEY;
+  const [featuredMovies, setFeaturedMovies] = useState<Movie[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchMovies = async () => {
+      setLoading(true);
+      try {
+        const response = await axios.get(
+          `https://api.themoviedb.org/3/movie/popular?api_key=${API_KEY}&page=1`
+        );
+        const movies = response.data.results.map((movie: Movie) => ({
+          id: movie.id,
+          title: movie.title,
+          rating: movie.vote_average,
+          year: movie.release_date ? Number(movie.release_date.slice(0, 4)) : '',
+          image: movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : '',
+          genre: [], // Nếu muốn lấy genre chi tiết cần fetch thêm
+        }));
+        setFeaturedMovies(movies.slice(0, 9)); // Lấy 9 phim đầu tiên cho đẹp grid
+      } catch (error) {
+        console.error(error);
+        setFeaturedMovies([]);
+      }
+      setLoading(false);
+    };
+    fetchMovies();
+  }, [API_KEY]);
+
   return (
     <main className="min-h-screen flex flex-col">
       {/* Hero Section */}
@@ -112,20 +128,23 @@ export default function Home() {
               Discover our handpicked selection of amazing films
             </p>
           </motion.div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-            {featuredMovies.map((movie, index) => (
-              <motion.div
-                key={movie.id}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.1 }}
-              >
-                <MovieCard {...movie} />
-              </motion.div>
-            ))}
-          </div>
+          {loading ? (
+            <div className="text-center text-gray-400 py-8">Loading...</div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
+              {featuredMovies.map((movie, index) => (
+                <motion.div
+                  key={movie.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: index * 0.1 }}
+                >
+                  <MovieCard {...movie} image={movie.image ?? ''} rating={movie.rating ?? 0} year={movie.year ?? 0} genre={Array.isArray(movie.genre) ? movie.genre : [movie.genre ?? '']} />
+                </motion.div>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 

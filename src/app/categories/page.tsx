@@ -5,72 +5,7 @@ import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import Pagination from '@/components/Pagination'
 import Image from 'next/image'
-// Mock data - replace with actual API call
-const categories = [
-  {
-    id: 'action',
-    name: 'Action',
-    description: 'High-energy films with intense sequences and thrilling stunts',
-    count: 150,
-    image: 'https://picsum.photos/400/250',
-  },
-  {
-    id: 'comedy',
-    name: 'Comedy',
-    description: 'Light-hearted films designed to make you laugh',
-    count: 200,
-    image: 'https://picsum.photos/400/250',
-  },
-  {
-    id: 'drama',
-    name: 'Drama',
-    description: 'Character-driven stories with emotional depth',
-    count: 180,
-    image: 'https://picsum.photos/400/250',
-  },
-  {
-    id: 'sci-fi',
-    name: 'Science Fiction',
-    description: 'Futuristic and imaginative stories about technology and space',
-    count: 120,
-    image: 'https://picsum.photos/400/250',
-  },
-  {
-    id: 'horror',
-    name: 'Horror',
-    description: 'Scary and suspenseful films to keep you on edge',
-    count: 90,
-    image: 'https://picsum.photos/400/250',
-  },
-  {
-    id: 'romance',
-    name: 'Romance',
-    description: 'Stories about love and relationships',
-    count: 160,
-    image: 'https://picsum.photos/400/250',
-  },
-  {
-    id: 'animation',
-    name: 'Animation',
-    description: 'Animated films for all ages',
-    count: 110,
-    image: 'https://picsum.photos/400/250',
-  },
-  {
-    id: 'thriller',
-    name: 'Thriller',
-    description: 'Suspenseful movies that keep you on the edge of your seat',
-    count: 130,
-    image: 'https://picsum.photos/400/250',
-  },
-  {
-    id: 'family',
-    name: 'Family',
-    description: 'Movies suitable for the whole family',
-    count: 170,
-    image: 'https://picsum.photos/400/250',
-  },
-]
+import axios from 'axios'
 
 const sortOptions = [
   { value: 'name-az', label: 'Name A-Z' },
@@ -80,11 +15,39 @@ const sortOptions = [
 ]
 const PAGE_SIZE = 6 // Tăng số lượng thể loại mỗi trang
 
+interface Category {
+  id: number;
+  name: string;
+  count?: number;
+  image?: string;
+  description?: string;
+}
+
 export default function Categories() {
+  const API_KEY = process.env.NEXT_PUBLIC_TMDB_API_KEY;
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(true);
   const [sort, setSort] = useState('name-az')
   const [page, setPage] = useState(1)
-  const [loading, setLoading] = useState(false)
   const [sortedCategories, setSortedCategories] = useState(categories)
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      setLoading(true);
+      try {
+        const response = await axios.get(
+          `https://api.themoviedb.org/3/genre/movie/list?api_key=${API_KEY}&language=en-US`
+        );
+        // TMDB trả về genres: [{id, name}]
+        setCategories(response.data.genres);
+      } catch (error) {
+        console.error(error);
+        setCategories([]);
+      }
+      setLoading(false);
+    };
+    fetchCategories();
+  }, [API_KEY]);
 
   useEffect(() => {
     setLoading(true)
@@ -93,14 +56,14 @@ export default function Categories() {
       let sorted = [...categories]
       if (sort === 'name-az') sorted = sorted.sort((a, b) => a.name.localeCompare(b.name))
       if (sort === 'name-za') sorted = sorted.sort((a, b) => b.name.localeCompare(a.name))
-      if (sort === 'count-desc') sorted = sorted.sort((a, b) => b.count - a.count)
-      if (sort === 'count-asc') sorted = sorted.sort((a, b) => a.count - b.count)
+      if (sort === 'count-desc') sorted = sorted.sort((a, b) => (b.count ?? 0) - (a.count ?? 0))
+      if (sort === 'count-asc') sorted = sorted.sort((a, b) => (a.count ?? 0) - (b.count ?? 0))
       setSortedCategories(sorted)
       setPage(1) // Reset to first page on sort change
       setLoading(false)
     }, 500)
     return () => clearTimeout(timeout)
-  }, [sort])
+  }, [sort, categories])
 
   const totalPages = Math.ceil(sortedCategories.length / PAGE_SIZE)
   const pagedCategories = sortedCategories.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
@@ -185,7 +148,7 @@ export default function Categories() {
                     className="block h-full">
                     <div className="relative h-40 overflow-hidden">
                       <Image 
-                        src={category.image} 
+                        src={category.image ?? '/default-image.png'} 
                         alt={category.name} 
                         width={400}
                         height={250}
@@ -200,7 +163,7 @@ export default function Categories() {
                       <h2 className="text-2xl font-semibold mb-2 bg-gradient-to-r from-pink-400 to-blue-400 text-transparent bg-clip-text">
                         {category.name}
                       </h2>
-                      <p className="text-gray-400 mb-2 line-clamp-2">{category.description}</p>
+                      <p className="text-gray-400 mb-2 line-clamp-2">{category.description ?? ''}</p>
                     </div>
                   </Link>
                 </motion.div>

@@ -8,6 +8,7 @@ import io, { Socket } from 'socket.io-client';
 import imageCompression from 'browser-image-compression';
 import useAuthStore from '@/store/useAuthStore';
 import { useUIStore } from '@/store/store';
+import axios from 'axios';
 
 // Network Information interface
 interface NetworkInformation extends EventTarget {
@@ -23,16 +24,6 @@ declare global {
     connection?: NetworkInformation;
   }
 }
-
-// Mock data
-const mockStream = {
-  id: 'stream-1',
-  title: 'Live Stream: The Future of Cinema',
-  description: 'Join us for an exclusive live stream discussing the latest trends and innovations in the film industry.',
-  streamUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
-  viewers: 1247,
-  likes: 89,
-};
 
 type Message = {
   id: string;
@@ -222,10 +213,23 @@ const quickEmojis: Emoji[] = [
   { emoji: '🎲', name: 'game die', category: 'Symbols' },
 ];
 
+// Định nghĩa kiểu rõ ràng cho streamMovie nếu cần
+interface StreamMovie {
+  id: number;
+  title: string;
+  viewers?: number;
+  likes?: number;
+  description?: string;
+  streamUrl?: string;
+  poster?: string | null;
+}
+
 export default function StreamingPage() {
   const { user } = useAuthStore();
   const { isNavDropdownOpen } = useUIStore();
-  const [activeStream, setActiveStream] = useState(mockStream);
+  const API_KEY = process.env.NEXT_PUBLIC_TMDB_API_KEY;
+  const [streamMovie, setStreamMovie] = useState<StreamMovie | null>(null);
+  const [loading, setLoading] = useState(true);
   const [chatMessages, setChatMessages] = useState<Message[]>(() => {
     if (typeof window !== 'undefined') {
       const savedMessages = sessionStorage.getItem('chatMessages');
@@ -421,11 +425,18 @@ export default function StreamingPage() {
   // Simulate live stream stats
   useEffect(() => {
     const interval = setInterval(() => {
-      setActiveStream((prev) => ({
-        ...prev,
-        viewers: prev.viewers + Math.floor(Math.random() * 10) - 5,
-        likes: prev.likes + Math.floor(Math.random() * 2),
-      }));
+      setStreamMovie((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          id: prev.id,
+          title: prev.title,
+          viewers: Math.max(0, (prev.viewers ?? 0) + Math.floor(Math.random() * 10) - 5),
+          likes: Math.max(0, (prev.likes ?? 0) + Math.floor(Math.random() * 2)),
+          description: prev.description,
+          streamUrl: prev.streamUrl,
+        };
+      });
     }, 5000);
     return () => clearInterval(interval);
   }, []);
@@ -472,6 +483,33 @@ export default function StreamingPage() {
       setChatMessages(prev => [...prev, networkMessage]);
     }
   }, [networkStatus]);
+
+  useEffect(() => {
+    const fetchMovie = async () => {
+      setLoading(true);
+      try {
+        // Lấy một phim popular làm demo stream
+        const response = await axios.get(
+          `https://api.themoviedb.org/3/movie/popular?api_key=${API_KEY}&page=1`
+        );
+        const movie = response.data.results[0];
+        setStreamMovie({
+          id: movie.id,
+          title: movie.title,
+          description: movie.overview,
+          streamUrl: `https://vidsrc.icu/embed/movie/${movie.id}`,
+          viewers: Math.floor(Math.random() * 2000) + 100, // random viewers
+          likes: Math.floor(Math.random() * 500) + 50, // random likes
+          poster: movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : null,
+        });
+      } catch (error) {
+        console.error(error);
+        setStreamMovie(null);
+      }
+      setLoading(false);
+    };
+    fetchMovie();
+  }, [API_KEY]);
 
   const handleSendMessage = () => {
     if (newMessage.trim() && socketRef.current) {
@@ -613,11 +651,11 @@ export default function StreamingPage() {
                 </div>
                 <div className="flex items-center gap-2 text-gray-300">
                   <Eye className="h-4 w-4" />
-                  <span className="text-sm">{formatNumber(activeStream.viewers)} viewers</span>
+                  <span className="text-sm">{formatNumber(streamMovie?.viewers ?? 0)} viewers</span>
                 </div>
                 <div className="flex items-center gap-2 text-pink-400">
                   <Heart className="h-4 w-4" />
-                  <span className="text-sm">{formatNumber(activeStream.likes)} likes</span>
+                  <span className="text-sm">{formatNumber(streamMovie?.likes ?? 0)} likes</span>
                 </div>
               </div>
               <div className="flex items-center gap-2 text-green-400">
@@ -638,7 +676,7 @@ export default function StreamingPage() {
             transition={{ duration: 0.6 }}
             className="text-xl sm:text-2xl md:text-4xl font-bold text-center bg-gradient-to-r from-yellow-400 via-yellow-300 to-yellow-500 bg-clip-text text-transparent mb-6 drop-shadow-2xl"
           >
-            {activeStream.title}
+            {streamMovie?.title}
           </motion.h1>
         )}
 
@@ -653,13 +691,22 @@ export default function StreamingPage() {
               ref={videoContainerRef}
               className={`relative ${isMobileLandscape || isFullscreen ? 'h-full' : 'aspect-video'} w-full rounded-2xl overflow-hidden shadow-2xl border-2 border-yellow-600/50 bg-gray-900 hover:border-yellow-500/70 transition-all duration-300`}
             >
-              <iframe
-                src={activeStream.streamUrl}
-                title={activeStream.title}
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                allowFullScreen
-                className="absolute top-0 left-0 w-full h-full"
-              />
+              {loading ? (
+                <div className="flex-grow flex items-center justify-center">
+                  <div className="flex flex-col items-center gap-2">
+                    <div className="w-8 h-8 border-2 border-yellow-500 border-t-transparent rounded-full animate-spin" />
+                    <span className="text-xs text-gray-400">Loading...</span>
+                  </div>
+                </div>
+              ) : (
+                <iframe
+                  src={streamMovie?.streamUrl}
+                  title={streamMovie?.title}
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  allowFullScreen
+                  className="absolute top-0 left-0 w-full h-full"
+                />
+              )}
               <div className="absolute top-4 left-4 bg-red-600 text-white px-3 py-1 rounded-full text-sm font-bold animate-pulse">
                 LIVE
               </div>

@@ -56,7 +56,7 @@ export default function MovieCard({ id, title, rating, year, image, genre }: Mov
 
         {/* Movie Info */}
         <div className="p-4">
-          <h3 className="text-lg font-semibold mb-2 line-clamp-1">{title}</h3>
+          <h3 className="text-lg font-semibold mb-2 line-clamp-1 text-white">{title}</h3>
           <div className="flex items-center justify-between">
             <span className="text-gray-400 text-sm">{year}</span>
             <div className="flex space-x-2">

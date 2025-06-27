@@ -10,54 +10,35 @@ import { StarIcon, ClockIcon, CalendarIcon, PlayIcon } from '@heroicons/react/24
 import { BookmarkIcon } from '@heroicons/react/24/outline'
 import { useTemporaryWatchlistStore } from '@/store/store'
 import toast from 'react-hot-toast'
+import axios from 'axios'
+import { useParams } from 'next/navigation'
 
-// Mock data - replace with actual API call
-const mockMovie = {
-  id: 1,
-  title: 'The Last Adventure',
-  rating: 4.8,
-  duration: '2h 15m',
-  year: 2024,
-  director: 'Christopher Nolan',
-  cast: ['Tom Hardy', 'Margot Robbie', 'Cillian Murphy'],
-  genre: 'Action, Adventure',
-  description: 'An epic journey through time and space, where a group of explorers must save humanity from an impending catastrophe. With stunning visuals and mind-bending plot twists, this film will keep you on the edge of your seat.',
-  poster: `https://picsum.photos/800/1200?random=${Math.random()}`,
-  backdrop: `https://picsum.photos/1920/1080?random=${Math.random()}`,
-  trailer: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
-  // Convert Google Drive share link to embed format
-  movieUrl: 'https://drive.google.com/file/d/1wWnX06FjlkMcMIalRI_kMrc5goDxMCEm/preview',
-  scenes: [
-    `https://picsum.photos/800/450?random=${Math.random()}`,
-    `https://picsum.photos/800/450?random=${Math.random()}`,
-    `https://picsum.photos/800/450?random=${Math.random()}`,
-  ]
-}
-
-function MoviePoster3D({ posterUrl }: { posterUrl: string }) {
-  const meshRef = useRef<THREE.Mesh>(null)
-  const texture = new THREE.TextureLoader().load(posterUrl)
-
-  useEffect(() => {
-    if (meshRef.current) {
-      meshRef.current.rotation.y = Math.PI / 4
-    }
-  }, [])
-
-  return (
-    <mesh ref={meshRef} castShadow>
-      <planeGeometry args={[2, 3]} />
-      <meshStandardMaterial map={texture} />
-    </mesh>
-  )
+// Định nghĩa kiểu Movie rõ ràng
+interface Movie {
+  id: number;
+  title: string;
+  rating: number;
+  duration: string;
+  year: number | '';
+  director: string;
+  cast: string[];
+  genre: string;
+  description: string;
+  poster: string;
+  backdrop: string;
+  trailer: string;
+  movieUrl: string;
+  scenes: string[];
 }
 
 export default function MovieDetail() {
-  const [movie] = useState(mockMovie)
-  const [loading, setLoading] = useState(true)
+  const API_KEY = process.env.NEXT_PUBLIC_TMDB_API_KEY;
+  const { id } = useParams();
+  const [movie, setMovie] = useState<Movie | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
   const [activeScene, setActiveScene] = useState<number | null>(null)
-  const [showTrailer, setShowTrailer] = useState(false)
-  const [showMovie, setShowMovie] = useState(false)
+  const [showTrailer, setShowTrailer] = useState<boolean>(false)
+  const [showMovie, setShowMovie] = useState<boolean>(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const { scrollYProgress } = useScroll({
     target: containerRef,
@@ -65,9 +46,10 @@ export default function MovieDetail() {
   })
 
   const { addTemporarilyToWatchlist, removeTemporarilyFromWatchlist, isTemporarilyInWatchlist } = useTemporaryWatchlistStore();
-  const isInTemporaryWatchlist = isTemporarilyInWatchlist(movie.id);
+  const isInTemporaryWatchlist = movie ? isTemporarilyInWatchlist(movie.id) : false;
 
   const handleToggleTemporaryWatchlist = () => {
+    if (!movie) return;
     if (isInTemporaryWatchlist) {
       removeTemporarilyFromWatchlist(movie.id);
       toast.success('Đã xóa phim khỏi danh sách xem tạm thời!');
@@ -85,10 +67,65 @@ export default function MovieDetail() {
   const opacity = useTransform(scrollYProgress, [0, 0.5], [1, 0])
 
   useEffect(() => {
-    setLoading(false)
-  }, [])
+    const fetchMovie = async () => {
+      setLoading(true);
+      try {
+        const response = await axios.get(
+          `https://api.themoviedb.org/3/movie/${id}?api_key=${API_KEY}`
+        );
+        const data = response.data;
+        // Fetch images
+        let scenes: string[] = [];
+        try {
+          const imgRes = await axios.get(
+            `https://api.themoviedb.org/3/movie/${id}/images?api_key=${API_KEY}`
+          );
+          const backdrops: { file_path: string }[] = imgRes.data.backdrops || [];
+          scenes = backdrops.slice(0, 3).map((img) => `https://image.tmdb.org/t/p/w780${img.file_path}`);
+        } catch {}
+        // Fallback nếu không có đủ ảnh
+        if (scenes.length < 3) {
+          if (data.backdrop_path) scenes.push(`https://image.tmdb.org/t/p/w780${data.backdrop_path}`);
+          if (data.poster_path) scenes.push(`https://image.tmdb.org/t/p/w500${data.poster_path}`);
+        }
+        scenes = scenes.slice(0, 3);
+        // Fetch trailer
+        let trailer = '';
+        try {
+          const videoRes = await axios.get(
+            `https://api.themoviedb.org/3/movie/${id}/videos?api_key=${API_KEY}`
+          );
+          const videos: { type: string; site: string; key: string }[] = videoRes.data.results || [];
+          const ytTrailer = videos.find((v) => v.type === 'Trailer' && v.site === 'YouTube');
+          if (ytTrailer) {
+            trailer = `https://www.youtube.com/embed/${ytTrailer.key}`;
+          }
+        } catch {}
+        setMovie({
+          id: data.id,
+          title: data.title,
+          rating: data.vote_average,
+          duration: data.runtime ? `${Math.floor(data.runtime / 60)}h ${data.runtime % 60}m` : '',
+          year: data.release_date ? Number(data.release_date.slice(0, 4)) : '',
+          director: '',
+          cast: [],
+          genre: data.genres ? data.genres.map((g: { name: string }) => g.name).join(', ') : '',
+          description: data.overview,
+          poster: data.poster_path ? `https://image.tmdb.org/t/p/w500${data.poster_path}` : '',
+          backdrop: data.backdrop_path ? `https://image.tmdb.org/t/p/original${data.backdrop_path}` : '',
+          trailer,
+          movieUrl: '',
+          scenes,
+        });
+      } catch {
+        setMovie(null);
+      }
+      setLoading(false);
+    };
+    fetchMovie();
+  }, [id, API_KEY]);
 
-  if (loading) {
+  if (loading || !movie) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-gray-900 to-black">
         <motion.div 
@@ -97,7 +134,7 @@ export default function MovieDetail() {
           className="w-16 h-16 border-4 border-red-500 border-t-transparent rounded-full"
         />
       </div>
-    )
+    );
   }
 
   return (
@@ -123,13 +160,34 @@ export default function MovieDetail() {
         >
           {/* 3D Poster Column */}
           <div className="relative h-[40vh] md:h-[50vh] lg:h-[60vh] w-full flex items-center justify-center mb-8 lg:mb-0">
-            <Canvas className="w-full h-full">
-              <PerspectiveCamera makeDefault position={[0, 0, 5]} />
-              <OrbitControls enableZoom={false} />
-              <ambientLight intensity={0.5} />
-              <spotLight position={[10, 10, 10]} angle={0.15} penumbra={1} />
-              <MoviePoster3D posterUrl={movie.poster} />
-            </Canvas>
+            {movie.poster && movie.poster.startsWith('https://image.tmdb.org') ? (
+              <Canvas className="w-full h-full">
+                <PerspectiveCamera makeDefault position={[0, 0, 5]} />
+                <OrbitControls 
+                  enableZoom={false}
+                  minAzimuthAngle={-Math.PI / 4}
+                  maxAzimuthAngle={Math.PI / 4}
+                  minPolarAngle={Math.PI / 2 - 0.175}
+                  maxPolarAngle={Math.PI / 2 + 0.175}
+                />
+                <ambientLight intensity={0.5} />
+                <spotLight position={[10, 10, 10]} angle={0.15} penumbra={1} />
+                <MoviePoster3D posterUrl={`/api/proxy-image?url=${encodeURIComponent(movie.poster ?? '')}`} />
+              </Canvas>
+            ) : movie.poster ? (
+              <Image
+                src={movie.poster}
+                alt={movie.title}
+                width={300}
+                height={450}
+                className="rounded-lg shadow-lg object-cover"
+                style={{ maxHeight: '100%', maxWidth: '100%' }}
+              />
+            ) : (
+              <div className="w-[300px] h-[450px] bg-gray-700 rounded-lg flex items-center justify-center">
+                <span className="text-4xl">🎬</span>
+              </div>
+            )}
           </div>
           
           {/* Details Column */}
@@ -161,7 +219,7 @@ export default function MovieDetail() {
               <p className="text-gray-300">{movie.genre}</p>
               <p className="text-gray-300">Director: {movie.director}</p>
               <div className="flex flex-wrap gap-2">
-                {movie.cast.map((actor, index) => (
+                {movie.cast.map((actor: string, index: number) => (
                   <span key={index} className="px-3 py-1 bg-gray-800 rounded-full text-sm">
                     {actor}
                   </span>
@@ -305,7 +363,7 @@ export default function MovieDetail() {
               {/* Video Player */}
               <div className="w-full h-[calc(100%-4rem)] rounded-lg overflow-hidden">
                 <iframe
-                  src={movie.movieUrl}
+                  src={`https://vidsrc.icu/embed/movie/${id}`}
                   className="w-full h-full"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   allowFullScreen
@@ -320,7 +378,7 @@ export default function MovieDetail() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <h2 className="text-3xl font-bold text-white mb-8">Movie Scenes</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {movie.scenes.map((scene, index) => (
+          {movie.scenes.map((scene: string, index: number) => (
             <motion.div
               key={index}
               initial={{ opacity: 0, y: 20 }}
@@ -379,5 +437,23 @@ export default function MovieDetail() {
         )}
       </AnimatePresence>
     </div>
+  )
+}
+
+function MoviePoster3D({ posterUrl }: { posterUrl: string }) {
+  const meshRef = useRef<THREE.Mesh>(null)
+  const texture = new THREE.TextureLoader().load(posterUrl)
+
+  useEffect(() => {
+    if (meshRef.current) {
+      meshRef.current.rotation.y = Math.PI / 4
+    }
+  }, [])
+
+  return (
+    <mesh ref={meshRef} castShadow>
+      <planeGeometry args={[2, 3]} />
+      <meshBasicMaterial map={texture} toneMapped={false} />
+    </mesh>
   )
 }

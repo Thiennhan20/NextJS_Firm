@@ -1,41 +1,28 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useParams } from 'next/navigation'
 import { motion, useScroll, useTransform } from 'framer-motion'
 import { StarIcon, ClockIcon, CalendarIcon } from '@heroicons/react/24/solid'
 import { Canvas } from '@react-three/fiber'
-import { OrbitControls, PerspectiveCamera } from '@react-three/drei'
+import { OrbitControls, PerspectiveCamera, Float } from '@react-three/drei'
 import * as THREE from 'three'
+import axios from 'axios'
 
-// Mock data - replace with actual API call
-const mockMovies = {
-  '1': {
-    id: 1,
-    title: 'The Amazing Movie',
-    description: 'A thrilling adventure that takes you on a journey through time and space.',
-    rating: 4.5,
-    duration: '2h 15m',
-    releaseDate: '2024-03-15',
-    genre: ['Action', 'Adventure', 'Sci-Fi'],
-    director: 'John Director',  
-    cast: ['Actor One', 'Actor Two', 'Actor Three'],
-    poster: `https://picsum.photos/id/${Math.floor(Math.random() * 1000)}/300/450`,
-    trailer: `https://www.youtube.com/embed/${['dQw4w9WgXcQ', 'oHg5SJYRHA0', 'jNQXAC9IVRw'][Math.floor(Math.random() * 3)]}`,
-  },
-  '2': {
-    id: 2,
-    title: 'Action Movie 2',
-    description: 'A thrilling journey through danger and excitement.',
-    rating: 4.2,
-    duration: '1h 50m',
-    releaseDate: '2023-06-10',
-    genre: ['Action', 'Thriller'],
-    director: 'Jane Director',
-    cast: ['Actor Four', 'Actor Five'],
-    poster: `https://picsum.photos/id/${Math.floor(Math.random() * 1000)}/300/450`,
-    trailer: `https://www.youtube.com/embed/${['dQw4w9WgXcQ', 'oHg5SJYRHA0', 'jNQXAC9IVRw'][Math.floor(Math.random() * 3)]}`,
-  },
+// Định nghĩa kiểu Movie rõ ràng nếu cần
+interface Movie {
+  id: number;
+  title: string;
+  poster_path: string;
+  poster?: string;
+  rating?: number;
+  duration?: string;
+  releaseDate?: string;
+  description?: string;
+  genre?: string;
+  director?: string;
+  cast?: string[];
+  trailer?: string;
 }
 
 function MoviePoster3D({ posterUrl }: { posterUrl: string }) {
@@ -63,10 +50,10 @@ function MoviePoster3D({ posterUrl }: { posterUrl: string }) {
 }
 
 export default function MovieDetail() {
-  const searchParams = useSearchParams()
-  const id = searchParams.get('id') || '1' // Lấy id từ query string, mặc định là '1' nếu không có
-  const [movie, setMovie] = useState<{ id: number; title: string; description: string; rating: number; duration: string; releaseDate: string; genre: string[]; director: string; cast: string[]; poster: string; trailer: string } | null>(null)
-  const [loading, setLoading] = useState(true)
+  const API_KEY = process.env.NEXT_PUBLIC_TMDB_API_KEY;
+  const { id } = useParams();
+  const [movie, setMovie] = useState<Movie | null>(null);
+  const [loading, setLoading] = useState(true);
   const [isMounted, setIsMounted] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const { scrollYProgress } = useScroll({
@@ -82,32 +69,40 @@ export default function MovieDetail() {
   }, [])
 
   useEffect(() => {
-    if (isMounted) {
-      setLoading(true)
-      const timer = setTimeout(() => {
-        const fetchedMovie = mockMovies[id as keyof typeof mockMovies] || null
-        setMovie(fetchedMovie)
-        setLoading(false)
-      }, 500)
-      return () => clearTimeout(timer)
+    if (isMounted && id) {
+      const fetchMovie = async () => {
+        setLoading(true);
+        try {
+          const response = await axios.get(
+            `https://api.themoviedb.org/3/movie/${id}?api_key=${API_KEY}`
+          );
+          const data = response.data;
+          setMovie({
+            id: data.id,
+            title: data.title,
+            description: data.overview,
+            rating: data.vote_average,
+            duration: data.runtime ? `${Math.floor(data.runtime / 60)}h ${data.runtime % 60}m` : '',
+            releaseDate: data.release_date,
+            genre: data.genres ? data.genres.map((g: { name: string }) => g.name) : [],
+            director: '', // Có thể fetch thêm credits nếu muốn
+            cast: [], // Có thể fetch thêm credits nếu muốn
+            poster: data.poster_path ? `https://image.tmdb.org/t/p/w500${data.poster_path}` : '',
+            trailer: '', // Có thể fetch thêm videos nếu muốn
+            poster_path: data.poster_path,
+          });
+        } catch (error) {
+          console.error(error);
+          setMovie(null);
+        }
+        setLoading(false);
+      };
+      fetchMovie();
     }
-  }, [id, isMounted])
+  }, [id, isMounted, API_KEY]);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-gray-900 to-black">
-        <motion.div 
-          animate={{ rotate: 360 }}
-          transition={{ repeat: Infinity, duration: 1.5, ease: 'linear' }}
-          className="w-16 h-16 border-4 border-red-500 border-t-transparent rounded-full"
-        />
-        <p className="mt-4 text-gray-400 text-lg">Loading Movie Details...</p>
-      </div>
-    )
-  }
-
-  if (!movie) {
-    return <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white">Movie not found</div>
+  if (loading || !movie) {
+    return <div className="text-center text-gray-400 py-8">Loading...</div>;
   }
 
   return (
@@ -121,16 +116,23 @@ export default function MovieDetail() {
         <Canvas className="absolute inset-0">
           <PerspectiveCamera makeDefault position={[0, 0, 5]} />
           <OrbitControls enableZoom={false} enablePan={false} />
-          <ambientLight intensity={0.5} />
-          <spotLight position={[10, 10, 10]} angle={0.15} penumbra={1} intensity={1} />
-          <pointLight position={[-10, -10, -10]} intensity={0.5} />
-          <MoviePoster3D posterUrl={movie.poster} />
+          <ambientLight intensity={1.2} />
+          <spotLight position={[10, 10, 10]} angle={0.2} penumbra={1} intensity={2} castShadow />
+          <pointLight position={[-10, -10, -10]} intensity={1} />
+          <Float speed={1.2} rotationIntensity={0.25} floatIntensity={0.3}>
+            <MoviePoster3D posterUrl={movie.poster ?? ''} />
+          </Float>
+          {/* Glow effect */}
+          <mesh position={[0, 0, -0.1]}>
+            <planeGeometry args={[2.2, 3.2]} />
+            <meshBasicMaterial color={'#fff'} transparent opacity={0.12} />
+          </mesh>
         </Canvas>
         <div className="absolute bottom-0 left-0 right-0 p-8 z-20">
           <motion.h1 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-5xl font-bold text-white mb-4"
+            className="text-5xl font-bold text-white mb-4 drop-shadow-[0_2px_16px_rgba(255,255,255,0.7)]"
           >
             {movie.title}
           </motion.h1>
@@ -149,7 +151,7 @@ export default function MovieDetail() {
             <div className="flex items-center space-x-6">
               <div className="flex items-center bg-yellow-500/10 px-4 py-2 rounded-full">
                 <StarIcon className="h-5 w-5 text-yellow-500 mr-2" />
-                <span className="text-yellow-500">{movie.rating}/5</span>
+                <span className="text-yellow-500">{movie.rating ?? 0}/5</span>
               </div>
               <div className="flex items-center bg-gray-800 px-4 py-2 rounded-full">
                 <ClockIcon className="h-5 w-5 text-gray-400 mr-2" />
@@ -167,7 +169,7 @@ export default function MovieDetail() {
               <div>
                 <h3 className="text-xl font-semibold text-white mb-4">Genre</h3>
                 <div className="flex flex-wrap gap-2">
-                  {movie.genre.map((g) => (
+                  {(Array.isArray(movie.genre) ? movie.genre : [movie.genre ?? '']).map((g: string) => (
                     <motion.span
                       key={g}
                       whileHover={{ scale: 1.05 }}
@@ -187,7 +189,7 @@ export default function MovieDetail() {
               <div>
                 <h3 className="text-xl font-semibold text-white mb-4">Cast</h3>
                 <div className="flex flex-wrap gap-4">
-                  {movie.cast.map((actor) => (
+                  {(Array.isArray(movie.cast) ? movie.cast : [movie.cast ?? '']).map((actor: string) => (
                     <motion.div
                       key={actor}
                       whileHover={{ scale: 1.05 }}
