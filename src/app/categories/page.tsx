@@ -38,8 +38,25 @@ export default function Categories() {
         const response = await axios.get(
           `https://api.themoviedb.org/3/genre/movie/list?api_key=${API_KEY}&language=en-US`
         );
-        // TMDB trả về genres: [{id, name}]
-        setCategories(response.data.genres);
+        const genres = response.data.genres;
+        // Fetch 1 movie for each genre to get a poster
+        const categoriesWithImage = await Promise.all(
+          genres.map(async (genre: { id: number; name: string }) => {
+            try {
+              const movieRes = await axios.get(
+                `https://api.themoviedb.org/3/discover/movie?api_key=${API_KEY}&with_genres=${genre.id}&sort_by=popularity.desc&page=1`
+              );
+              const movie = movieRes.data.results[0];
+              return {
+                ...genre,
+                image: movie && movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : undefined,
+              };
+            } catch {
+              return { ...genre };
+            }
+          })
+        );
+        setCategories(categoriesWithImage);
       } catch (error) {
         console.error(error);
         setCategories([]);

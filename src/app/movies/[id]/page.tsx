@@ -137,6 +137,9 @@ export default function MovieDetail() {
     );
   }
 
+  // destructure movie để dùng an toàn phía dưới
+  const { title, backdrop, poster, rating, duration, year, genre, director, cast, description, scenes, trailer } = movie;
+
   return (
     <div ref={containerRef} className="min-h-screen bg-gradient-to-b from-gray-900 to-black">
       {/* Hero Section */}
@@ -144,8 +147,8 @@ export default function MovieDetail() {
         {/* Background Image */}
         <div className="absolute inset-0">
           <Image
-            src={movie.backdrop}
-            alt={movie.title}
+            src={backdrop}
+            alt={title}
             fill
             className="object-cover"
             priority
@@ -160,7 +163,7 @@ export default function MovieDetail() {
         >
           {/* 3D Poster Column */}
           <div className="relative h-[40vh] md:h-[50vh] lg:h-[60vh] w-full flex items-center justify-center mb-8 lg:mb-0">
-            {movie.poster && movie.poster.startsWith('https://image.tmdb.org') ? (
+            {poster && poster.startsWith('https://image.tmdb.org') ? (
               <Canvas className="w-full h-full">
                 <PerspectiveCamera makeDefault position={[0, 0, 5]} />
                 <OrbitControls 
@@ -172,12 +175,12 @@ export default function MovieDetail() {
                 />
                 <ambientLight intensity={0.5} />
                 <spotLight position={[10, 10, 10]} angle={0.15} penumbra={1} />
-                <MoviePoster3D posterUrl={`/api/proxy-image?url=${encodeURIComponent(movie.poster ?? '')}`} />
+                <MoviePoster3D posterUrl={`/api/proxy-image?url=${encodeURIComponent(poster ?? '')}`} />
               </Canvas>
-            ) : movie.poster ? (
+            ) : poster ? (
               <Image
-                src={movie.poster}
-                alt={movie.title}
+                src={poster}
+                alt={title}
                 width={300}
                 height={450}
                 className="rounded-lg shadow-lg object-cover"
@@ -197,29 +200,29 @@ export default function MovieDetail() {
               animate={{ opacity: 1, y: 0 }}
               className="text-4xl md:text-5xl font-bold"
             >
-              {movie.title}
+              {title}
             </motion.h1>
             
             <div className="flex flex-wrap gap-4">
               <div className="flex items-center space-x-2">
                 <StarIcon className="h-6 w-6 text-yellow-500" />
-                <span className="text-yellow-500">{movie.rating}</span>
+                <span className="text-yellow-500">{rating}</span>
               </div>
               <div className="flex items-center space-x-2">
                 <ClockIcon className="h-6 w-6 text-gray-400" />
-                <span className="text-gray-400">{movie.duration}</span>
+                <span className="text-gray-400">{duration}</span>
               </div>
               <div className="flex items-center space-x-2">
                 <CalendarIcon className="h-6 w-6 text-gray-400" />
-                <span className="text-gray-400">{movie.year}</span>
+                <span className="text-gray-400">{year}</span>
               </div>
             </div>
 
             <div className="space-y-2">
-              <p className="text-gray-300">{movie.genre}</p>
-              <p className="text-gray-300">Director: {movie.director}</p>
+              <p className="text-gray-300">{genre}</p>
+              <p className="text-gray-300">Director: {director}</p>
               <div className="flex flex-wrap gap-2">
-                {movie.cast.map((actor: string, index: number) => (
+                {cast.map((actor: string, index: number) => (
                   <span key={index} className="px-3 py-1 bg-gray-800 rounded-full text-sm">
                     {actor}
                   </span>
@@ -228,7 +231,7 @@ export default function MovieDetail() {
             </div>
 
             <p className="text-gray-300 leading-relaxed">
-              {movie.description}
+              {description}
             </p>
 
             {/* Action Buttons */}
@@ -312,7 +315,7 @@ export default function MovieDetail() {
               onClick={e => e.stopPropagation()}
             >
               <iframe
-                src={movie.trailer}
+                src={trailer}
                 className="w-full h-full rounded-lg"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen
@@ -332,7 +335,7 @@ export default function MovieDetail() {
 
       {/* Movie Player Modal */}
       <AnimatePresence>
-        {showMovie && (
+        {showMovie && movie && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -349,7 +352,7 @@ export default function MovieDetail() {
             >
               {/* Header with close button */}
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-white text-xl font-semibold">{movie.title}</h3>
+                <h3 className="text-white text-xl font-semibold">{title}</h3>
                 <button
                   className="text-white bg-black/50 rounded-full p-2 hover:bg-black/80 transition-colors"
                   onClick={() => setShowMovie(false)}
@@ -359,14 +362,19 @@ export default function MovieDetail() {
                   </svg>
                 </button>
               </div>
-              
               {/* Video Player */}
+              {/*
+                Chú ý: Nếu chỉ dùng link embed (iframe như vidsrc.icu),
+                KHÔNG thể truyền phụ đề tự động vào player.
+                Chỉ có thể truyền phụ đề nếu có link file video thực sự (.mp4, .mkv, ...)
+              */}
               <div className="w-full h-[calc(100%-4rem)] rounded-lg overflow-hidden">
                 <iframe
                   src={`https://vidsrc.icu/embed/movie/${id}`}
                   className="w-full h-full"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   allowFullScreen
+                  title={title}
                 />
               </div>
             </motion.div>
@@ -378,7 +386,7 @@ export default function MovieDetail() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <h2 className="text-3xl font-bold text-white mb-8">Movie Scenes</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {movie.scenes.map((scene: string, index: number) => (
+          {scenes.map((scene: string, index: number) => (
             <motion.div
               key={index}
               initial={{ opacity: 0, y: 20 }}
@@ -419,7 +427,7 @@ export default function MovieDetail() {
               onClick={e => e.stopPropagation()}
             >
               <Image
-                src={movie.scenes[activeScene]}
+                src={scenes[activeScene]}
                 alt={`Scene ${activeScene + 1}`}
                 fill
                 className="object-contain"

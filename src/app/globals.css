@@ -166,6 +166,47 @@ body {
   background-color: #3b82f6; /* darker blue on hover */
 }
 
+/* Horizontal Scroll Container Styles */
+.horizontal-scroll-container {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+
+.horizontal-scroll-container::-webkit-scrollbar {
+  display: none;
+}
+
+.horizontal-scroll-container {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Prevent text selection during drag */
+.horizontal-scroll-container * {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+/* Smooth scroll behavior */
+.horizontal-scroll-container {
+  scroll-behavior: smooth;
+}
+
+/* Hover effect for scroll container */
+.horizontal-scroll-container:hover {
+  cursor: grab;
+}
+
+.horizontal-scroll-container:active {
+  cursor: grabbing;
+}
+
 /* Custom shadows and glow effects */
 .chatbox-container-shadow {
   box-shadow: 0 15px 40px rgba(0,0,0,0.6), 0 0 50px rgba(239, 68, 68, 0.3), 0 0 80px rgba(96, 165, 250, 0.2);

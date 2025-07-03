@@ -36,6 +36,12 @@ export default function TrendingMovies() {
   const [loading, setLoading] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null)
 
+  // Drag scroll state
+  const isDraggingRef = useRef(false);
+  const startXRef = useRef(0);
+  const scrollLeftRef = useRef(0);
+  const animationFrameRef = useRef<number | null>(null);
+
   useEffect(() => {
     const fetchTrending = async () => {
       setLoading(true);
@@ -60,6 +66,59 @@ export default function TrendingMovies() {
     fetchTrending();
   }, [API_KEY]);
 
+  // Mouse event handlers
+  useEffect(() => {
+    const container = scrollRef.current;
+    if (!container) return;
+
+    const onMouseDown = (e: MouseEvent) => {
+      isDraggingRef.current = true;
+      startXRef.current = e.pageX - container.offsetLeft;
+      scrollLeftRef.current = container.scrollLeft;
+      container.classList.add('dragging');
+    };
+
+    const onMouseMove = (e: MouseEvent) => {
+      if (!isDraggingRef.current) return;
+      e.preventDefault();
+      if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = requestAnimationFrame(() => {
+        const x = e.pageX - container.offsetLeft;
+        const walk = (x - startXRef.current) * 1.2;
+        container.scrollLeft = scrollLeftRef.current - walk;
+      });
+    };
+
+    const onMouseUp = () => {
+      isDraggingRef.current = false;
+      container.classList.remove('dragging');
+    };
+
+    container.addEventListener('mousedown', onMouseDown);
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+
+    return () => {
+      container.removeEventListener('mousedown', onMouseDown);
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+      if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+    };
+  }, []);
+
+  // Add wheel event handler for horizontal scrolling (no preventDefault)
+  useEffect(() => {
+    const container = scrollRef.current;
+    if (!container) return;
+    const handleWheel = (e: WheelEvent) => {
+      if (Math.abs(e.deltaX) < Math.abs(e.deltaY)) {
+        container.scrollLeft += e.deltaY;
+      }
+    };
+    container.addEventListener('wheel', handleWheel, { passive: true });
+    return () => container.removeEventListener('wheel', handleWheel);
+  }, []);
+
   return (
     <section className="py-16 px-2 sm:px-4 bg-gradient-to-b from-gray-900 to-black">
       <div className="max-w-7xl mx-auto">
@@ -71,10 +130,25 @@ export default function TrendingMovies() {
           <div className="pointer-events-none absolute left-0 top-0 h-full w-8 z-10 bg-gradient-to-r from-black/90 to-transparent" />
           {/* Fade right */}
           <div className="pointer-events-none absolute right-0 top-0 h-full w-8 z-10 bg-gradient-to-l from-black/90 to-transparent" />
+          
+          {/* Scroll indicator */}
+          <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 z-20">
+            <div className="flex space-x-1">
+              <div className="w-2 h-2 bg-white/30 rounded-full animate-pulse"></div>
+              <div className="w-2 h-2 bg-white/30 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+              <div className="w-2 h-2 bg-white/30 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
+            </div>
+          </div>
+          
           <div
             ref={scrollRef}
-            className="flex gap-6 overflow-x-auto pb-4 scrollbar-none snap-x snap-mandatory relative"
-            style={{ WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+            className="flex gap-6 overflow-x-auto pb-4 scrollbar-none snap-x snap-mandatory relative cursor-grab active:cursor-grabbing horizontal-scroll-container"
+            style={{ 
+              WebkitOverflowScrolling: 'touch', 
+              scrollbarWidth: 'none', 
+              msOverflowStyle: 'none',
+              scrollBehavior: 'smooth'
+            }}
           >
             {loading ? (
               <div className="text-gray-400 text-center py-8">Loading...</div>

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
-import { useSearchParams } from 'next/navigation'
+import { useParams } from 'next/navigation'
 import { motion, useScroll, useTransform, AnimatePresence } from 'framer-motion'
 import { StarIcon, FilmIcon } from '@heroicons/react/24/solid'
 import { Canvas } from '@react-three/fiber'
@@ -10,6 +10,7 @@ import { OrbitControls, PerspectiveCamera } from '@react-three/drei'
 import * as THREE from 'three'
 import Image from 'next/image'
 import axios from 'axios'
+import Pagination from '@/components/Pagination'
 
 interface Movie {
   id: number;
@@ -48,12 +49,15 @@ function MovieCard3D({ posterUrl }: { posterUrl: string }) {
 
 export default function CategoryMovies() {
   const API_KEY = process.env.NEXT_PUBLIC_TMDB_API_KEY;
-  const params = useSearchParams();
-  const category = params.get('category');
+  const params = useParams();
+  const category = params.category;
   const [movies, setMovies] = useState<Movie[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedMovie, setSelectedMovie] = useState<number | null>(null)
   const [sortBy, setSortBy] = useState<'rating' | 'year'>('rating')
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalResults, setTotalResults] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null)
   const { scrollYProgress } = useScroll({
     target: containerRef,
@@ -69,7 +73,7 @@ export default function CategoryMovies() {
       setLoading(true);
       try {
         const response = await axios.get(
-          `https://api.themoviedb.org/3/discover/movie?api_key=${API_KEY}&with_genres=${category}`
+          `https://api.themoviedb.org/3/discover/movie?api_key=${API_KEY}&with_genres=${category}&page=${page}`
         );
         const movies = response.data.results.map((movie: Movie) => ({
           id: movie.id,
@@ -80,14 +84,18 @@ export default function CategoryMovies() {
           description: movie.overview,
         }));
         setMovies(movies);
+        setTotalPages(response.data.total_pages || 1);
+        setTotalResults(response.data.total_results || 0);
       } catch (error) {
         console.error(error);
         setMovies([]);
+        setTotalPages(1);
+        setTotalResults(0);
       }
       setLoading(false);
     };
     fetchMovies();
-  }, [category, API_KEY]);
+  }, [category, API_KEY, page]);
 
   const sortedMovies = [...movies].sort((a, b) => {
     if (sortBy === 'rating') {
@@ -104,6 +112,20 @@ export default function CategoryMovies() {
           transition={{ repeat: Infinity, duration: 1.5, ease: 'linear' }}
           className="w-16 h-16 border-4 border-red-500 border-t-transparent rounded-full"
         />
+      </div>
+    )
+  }
+
+  if (!loading && movies.length === 0) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-gray-900 to-black">
+        <h1 className="text-3xl font-bold text-white mb-4">No movies found for this page.</h1>
+        <button
+          className="px-6 py-2 rounded-full bg-red-600 text-white font-semibold mt-4"
+          onClick={() => setPage(1)}
+        >
+          Go Back
+        </button>
       </div>
     )
   }
@@ -133,7 +155,7 @@ export default function CategoryMovies() {
             animate={{ opacity: 1, y: 0 }}
             className="text-5xl font-bold text-white mb-4 capitalize"
           >
-            {category} Movies
+            {totalResults} Movies
           </motion.h1>
         </div>
       </motion.div>
@@ -227,6 +249,15 @@ export default function CategoryMovies() {
           )}
         </div>
       </div>
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="max-w-7xl mx-auto px-4 pb-12">
+          <Pagination page={page} totalPages={totalPages} onPageChange={p => {
+            if (movies.length === 0 && p > page) return;
+            setPage(p); window.scrollTo({ top: 0, behavior: 'smooth' })
+          }} />
+        </div>
+      )}
     </div>
   )
 }

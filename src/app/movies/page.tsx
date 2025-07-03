@@ -10,7 +10,6 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { Suspense } from 'react'
 
-const genres = ['All', 'Action', 'Adventure', 'Animation', 'Comedy', 'Drama', 'History', 'Horror', 'Mystery', 'Romance', 'Sci-Fi', 'Thriller', 'Family']
 const ratings = ['All', 5, 4, 3, 2, 1]
 const sortOptions = [
   { value: 'latest', label: 'Latest' },
@@ -48,7 +47,6 @@ function MoviesPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const initialPage = Number(searchParams.get('page')) || 1;
-  const [selectedGenre, setSelectedGenre] = useState('All')
   const [search, setSearch] = useState('')
   const [selectedYear, setSelectedYear] = useState<string | number>('All')
   const [selectedRating, setSelectedRating] = useState<string | number>('All')
@@ -77,7 +75,7 @@ function MoviesPageContent() {
       setLoading(true)
       try {
         const response = await axios.get(
-          `https://api.themoviedb.org/3/movie/popular?api_key=${API_KEY}&page=${page}`
+          `https://api.themoviedb.org/3/movie/now_playing?api_key=${API_KEY}&page=${page}`
         )
         let fetchedMovies = response.data.results
         // Map the data to match the UI
@@ -102,7 +100,6 @@ function MoviesPageContent() {
 
   // Filter, sort, search (client-side)
   const filteredMovies = movies.filter((movie: Movie) =>
-    (selectedGenre === 'All' || (movie.genre ?? '').includes(selectedGenre)) &&
     (selectedYear === 'All' || movie.year === selectedYear) &&
     (selectedRating === 'All' || (typeof selectedRating === 'number' && Math.floor(movie.rating ?? 0) >= selectedRating)) &&
     movie.title.toLowerCase().includes(search.toLowerCase())
@@ -137,23 +134,6 @@ function MoviesPageContent() {
 
         {/* Filter, Sort & Search Container */}
         <div className="flex flex-col gap-4 mb-10">
-          {/* Genre Filters */}
-          <div className="flex flex-wrap gap-2">
-            {genres.map((g) => (
-              <motion.button
-                key={g}
-                onClick={() => setSelectedGenre(g)}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className={`px-4 py-2 rounded-full text-sm font-semibold transition-colors duration-300 ${
-                  selectedGenre === g ? 'bg-gradient-to-r from-red-600 to-pink-600 text-white shadow-md' : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-                }`}
-              >
-                {g}
-              </motion.button>
-            ))}
-          </div>
-
           <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
             {/* Year, Rating, Sort Selects */}
             <div className="flex flex-wrap gap-4">
