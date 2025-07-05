@@ -55,15 +55,32 @@ export default function Navigation() {
   const [isMoreDropdownActive, setIsMoreDropdownActive] = useState(false);
   const [isProfileDropdownActive, setIsProfileDropdownActive] = useState(false);
   const [showMobileSearch, setShowMobileSearch] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
 
   useEffect(() => {
     setNavDropdownOpen(isOpen || isMoreDropdownActive || isProfileDropdownActive);
   }, [isOpen, isMoreDropdownActive, isProfileDropdownActive, setNavDropdownOpen]);
 
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 20) {
+        setIsScrolled(true);
+      } else {
+        setIsScrolled(false);
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, []);
+
   return (
     <nav
       className={`fixed w-full z-50 transition-all duration-300 ${
-        'bg-white shadow-lg'
+        isScrolled ? 'bg-black/90 backdrop-blur-md' : 'bg-white shadow-lg'
       }`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -71,14 +88,14 @@ export default function Navigation() {
           {/* Logo */}
           <Link href="/" className="relative group">
             <motion.span 
-              className={`text-2xl font-bold text-red-700`}
+              className={`text-2xl font-bold ${isScrolled ? 'text-red-600' : 'text-red-700'}`}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
             >
               MovieWorld
             </motion.span>
             <motion.div
-              className={`absolute -bottom-1 left-0 w-0 h-0.5 bg-red-700 group-hover:w-full transition-all duration-300`}
+              className={`absolute -bottom-1 left-0 w-0 h-0.5 ${isScrolled ? 'bg-red-600' : 'bg-red-700'} group-hover:w-full transition-all duration-300`}
               initial={{ width: 0 }}
               whileHover={{ width: '100%' }}
             />
@@ -95,7 +112,9 @@ export default function Navigation() {
                   className={`relative px-4 py-2 rounded-lg transition-colors ${
                     isActive 
                       ? 'text-red-500' 
-                      : 'text-gray-700 hover:text-red-500'
+                      : isScrolled 
+                        ? 'text-white hover:text-red-500' 
+                        : 'text-gray-700 hover:text-red-500'
                   }`}
                 >
                   <motion.div
@@ -123,7 +142,7 @@ export default function Navigation() {
               <div>
                 <Menu.Button
                   className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
-                    'text-gray-700 hover:text-red-500'
+                    isScrolled ? 'text-white hover:text-red-500' : 'text-gray-700 hover:text-red-500'
                   }`}
                 >
                   <QueueListIcon className="h-5 w-5" />
@@ -175,7 +194,7 @@ export default function Navigation() {
                 <Link
                   href="/watchlist"
                   className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
-                    'text-gray-700 hover:text-red-500'
+                    isScrolled ? 'text-white hover:text-red-500' : 'text-gray-700 hover:text-red-500'
                   }`}
                 >
                   <BookmarkIcon className="h-5 w-5" />
@@ -185,7 +204,7 @@ export default function Navigation() {
                   <div>
                     <Menu.Button
                       className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
-                        'text-gray-700 hover:text-red-500'
+                        isScrolled ? 'text-white hover:text-red-500' : 'text-gray-700 hover:text-red-500'
                       }`}
                     >
                       <UserIcon className="h-5 w-5" />
@@ -232,7 +251,7 @@ export default function Navigation() {
               <Link
                 href="/login"
                 className={`relative px-4 py-2 rounded-lg transition-colors font-medium ${
-                  'bg-red-700 text-white hover:bg-red-800'
+                  isScrolled ? 'bg-red-700 text-white hover:bg-red-800' : 'bg-red-700 text-white hover:bg-red-800'
                 }`}
               >
                 Login
