@@ -17,6 +17,24 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  experimental: {
+    // Enable optimizations for better performance
+    optimizePackageImports: ['@react-three/fiber', '@react-three/drei', 'three'],
+  },
+  // Add headers for better font loading
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          {
+            key: 'X-Font-Loading',
+            value: 'swap',
+          },
+        ],
+      },
+    ];
+  },
 };
 
 export default nextConfig;

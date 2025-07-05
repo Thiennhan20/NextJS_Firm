@@ -39,6 +39,9 @@ export default function MovieDetail() {
   const [activeScene, setActiveScene] = useState<number | null>(null)
   const [showTrailer, setShowTrailer] = useState<boolean>(false)
   const [showMovie, setShowMovie] = useState<boolean>(false)
+  const [showSubtitleWarning, setShowSubtitleWarning] = useState<boolean>(false)
+  const [subtitleStatus, setSubtitleStatus] = useState<'checking' | 'available' | 'unavailable' | 'error'>('checking')
+  const [subtitleUrl, setSubtitleUrl] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null)
   const { scrollYProgress } = useScroll({
     target: containerRef,
@@ -63,8 +66,50 @@ export default function MovieDetail() {
     }
   };
 
+  // Kiểm tra phụ đề tiếng Việt
+  const checkVietnameseSubtitles = async (movieTitle: string, year: number | '') => {
+    try {
+      setSubtitleStatus('checking');
+      setSubtitleUrl(null); // reset trước
+      const response = await axios.get(`/api/subtitles?query=${encodeURIComponent(movieTitle)}&year=${year}`);
+      if (response.data && response.data.data && response.data.data.length > 0) {
+        setSubtitleStatus('available');
+        // Lưu link file phụ đề đầu tiên (nếu có)
+        const firstSubtitle = response.data.data[0];
+        if (firstSubtitle && firstSubtitle.attributes && firstSubtitle.attributes.files && firstSubtitle.attributes.files.length > 0) {
+          setSubtitleUrl(firstSubtitle.attributes.files[0].file_url);
+        }
+        return true;
+      } else {
+        setSubtitleStatus('unavailable');
+        return false;
+      }
+    } catch (error) {
+      console.error('Error checking subtitles:', error);
+      setSubtitleStatus('error');
+      setSubtitleUrl(null);
+      return false;
+    }
+  };
+
+  const handleWatchMovie = async () => {
+    if (!movie) return;
+    
+    // Kiểm tra phụ đề trước khi mở player
+    const hasVietnameseSubtitles = await checkVietnameseSubtitles(movie.title, movie.year);
+    
+    if (!hasVietnameseSubtitles) {
+      setShowSubtitleWarning(true);
+    } else {
+      setShowMovie(true);
+    }
+  };
+
   const y = useTransform(scrollYProgress, [0, 1], [0, -100])
   const opacity = useTransform(scrollYProgress, [0, 0.5], [1, 0])
+
+  const [subtitles, setSubtitles] = useState([]);
+  const [subtitleLoading, setSubtitleLoading] = useState(false);
 
   useEffect(() => {
     const fetchMovie = async () => {
@@ -101,12 +146,12 @@ export default function MovieDetail() {
             trailer = `https://www.youtube.com/embed/${ytTrailer.key}`;
           }
         } catch {}
-        setMovie({
+        const movieData = {
           id: data.id,
           title: data.title,
           rating: data.vote_average,
           duration: data.runtime ? `${Math.floor(data.runtime / 60)}h ${data.runtime % 60}m` : '',
-          year: data.release_date ? Number(data.release_date.slice(0, 4)) : '',
+          year: data.release_date ? Number(data.release_date.slice(0, 4)) : '' as number | '',
           director: '',
           cast: [],
           genre: data.genres ? data.genres.map((g: { name: string }) => g.name).join(', ') : '',
@@ -116,7 +161,13 @@ export default function MovieDetail() {
           trailer,
           movieUrl: '',
           scenes,
-        });
+        };
+        setMovie(movieData);
+        
+        // Tự động kiểm tra phụ đề sau khi load movie
+        if (movieData.title && movieData.year) {
+          checkVietnameseSubtitles(movieData.title, movieData.year);
+        }
       } catch {
         setMovie(null);
       }
@@ -124,6 +175,19 @@ export default function MovieDetail() {
     };
     fetchMovie();
   }, [id, API_KEY]);
+
+  useEffect(() => {
+    if (movie?.title && movie?.year) {
+      setSubtitleLoading(true);
+      fetch(`/api/subtitles?query=${encodeURIComponent(movie.title)}&year=${movie.year.toString()}`)
+        .then(res => res.json())
+        .then(data => {
+          setSubtitles(data.data || []);
+        })
+        .catch(() => setSubtitles([]))
+        .finally(() => setSubtitleLoading(false));
+    }
+  }, [movie?.title, movie?.year]);
 
   if (loading || !movie) {
     return (
@@ -168,10 +232,11 @@ export default function MovieDetail() {
                 <PerspectiveCamera makeDefault position={[0, 0, 5]} />
                 <OrbitControls 
                   enableZoom={false}
-                  minAzimuthAngle={-Math.PI / 4}
-                  maxAzimuthAngle={Math.PI / 4}
+                  minAzimuthAngle={-0.35}
+                  maxAzimuthAngle={0.35}
                   minPolarAngle={Math.PI / 2 - 0.175}
                   maxPolarAngle={Math.PI / 2 + 0.175}
+                  rotateSpeed={0.5}
                 />
                 <ambientLight intensity={0.5} />
                 <spotLight position={[10, 10, 10]} angle={0.15} penumbra={1} />
@@ -246,15 +311,37 @@ export default function MovieDetail() {
                 Watch Trailer
               </motion.button>
               
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setShowMovie(true)}
-                className="px-6 py-3 bg-red-500 text-white rounded-lg font-semibold hover:bg-red-600 transition-colors flex items-center gap-2"
-              >
-                <PlayIcon className="h-5 w-5" />
-                Watch Full Movie
-              </motion.button>
+              <div className="flex items-center gap-2">
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={handleWatchMovie}
+                  className="px-6 py-3 bg-red-500 text-white rounded-lg font-semibold hover:bg-red-600 transition-colors flex items-center gap-2"
+                >
+                  <PlayIcon className="h-5 w-5" />
+                  Watch Full Movie
+                </motion.button>
+                
+                {/* Subtitle Status Indicator */}
+                <div style={{
+                  display: 'inline-block',
+                  padding: '8px 12px',
+                  borderRadius: '4px',
+                  backgroundColor: subtitleLoading ? '#f0f0f0' : subtitles.length > 0 ? '#e6ffed' : '#ffe6e6',
+                  boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+                  fontWeight: 'bold',
+                  fontSize: '16px',
+                  color: subtitleLoading ? '#333' : subtitles.length > 0 ? '#28a745' : '#dc3545',
+                }}>
+                  {subtitleLoading ? (
+                    <span>Đang kiểm tra phụ đề...</span>
+                  ) : subtitles.length > 0 ? (
+                    <span>✔ Có phụ đề Tiếng Việt</span>
+                  ) : (
+                    <span>✖ Không có phụ đề Tiếng Việt</span>
+                  )}
+                </div>
+              </div>
 
               <motion.button
                 whileHover={{ scale: 1.05 }}
@@ -333,6 +420,56 @@ export default function MovieDetail() {
         )}
       </AnimatePresence>
 
+      {/* Subtitle Warning Modal */}
+      <AnimatePresence>
+        {showSubtitleWarning && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4"
+            onClick={() => setShowSubtitleWarning(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.9 }}
+              className="relative w-full max-w-md bg-gray-800 rounded-lg p-6"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="text-center">
+                <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-yellow-100 mb-4">
+                  <svg className="h-6 w-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-medium text-white mb-2">Thông báo về phụ đề</h3>
+                <p className="text-gray-300 mb-6">
+                  Phim này hiện chưa có phụ đề Tiếng Việt. Bạn có muốn tiếp tục xem phim không?
+                </p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => {
+                      setShowSubtitleWarning(false);
+                      setShowMovie(true);
+                    }}
+                    className="flex-1 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+                  >
+                    Vẫn xem
+                  </button>
+                  <button
+                    onClick={() => setShowSubtitleWarning(false)}
+                    className="flex-1 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                  >
+                    Hủy
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Movie Player Modal */}
       <AnimatePresence>
         {showMovie && movie && (
@@ -370,7 +507,7 @@ export default function MovieDetail() {
               */}
               <div className="w-full h-[calc(100%-4rem)] rounded-lg overflow-hidden">
                 <iframe
-                  src={`https://vidsrc.icu/embed/movie/${id}`}
+                  src={`https://vidsrc.icu/embed/movie/${id}?ds_lang=vi`}
                   className="w-full h-full"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   allowFullScreen
@@ -444,6 +581,20 @@ export default function MovieDetail() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Subtitle Download Link */}
+      {subtitleStatus === 'available' && subtitleUrl && (
+        <div className="fixed bottom-0 left-0 right-0 bg-black/50 p-4">
+          <a
+            href={subtitleUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-green-400 underline"
+          >
+            Tải phụ đề tiếng Việt
+          </a>
+        </div>
+      )}
     </div>
   )
 }
@@ -453,10 +604,22 @@ function MoviePoster3D({ posterUrl }: { posterUrl: string }) {
   const texture = new THREE.TextureLoader().load(posterUrl)
 
   useEffect(() => {
-    if (meshRef.current) {
-      meshRef.current.rotation.y = Math.PI / 4
-    }
-  }, [])
+    let frameId: number;
+    const start = Date.now();
+    const maxY = 0.35; // ~20 độ, đổi thành Math.PI/2 * 0.98 nếu muốn gần 89 độ
+    const maxX = 0.1;  // lắc lên xuống nhẹ, có thể để 0 nếu chỉ muốn lắc trái phải
+
+    const animate = () => {
+      if (meshRef.current) {
+        const t = (Date.now() - start) / 1000;
+        meshRef.current.rotation.y = Math.sin(t) * maxY;
+        meshRef.current.rotation.x = Math.sin(t * 0.7) * maxX;
+      }
+      frameId = requestAnimationFrame(animate);
+    };
+    animate();
+    return () => cancelAnimationFrame(frameId);
+  }, []);
 
   return (
     <mesh ref={meshRef} castShadow>
