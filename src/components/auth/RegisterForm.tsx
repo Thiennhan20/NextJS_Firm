@@ -38,15 +38,15 @@ export default function RegisterForm() {
     e.preventDefault();
     try {
       await register(formData);
-      toast.success('Đăng ký thành công!');
+      toast.success('Registration successful!');
       router.push('/');
     } catch (error: unknown) {
       if (axios.isAxiosError(error)) {
-        toast.error(error.response?.data?.message || 'Đăng ký thất bại!');
+        toast.error(error.response?.data?.message || 'Registration failed!');
       } else {
         toast.error('An unexpected error occurred during registration.');
       }
-    }
+    }    
   };
 
   const inputVariants = {
@@ -65,7 +65,7 @@ export default function RegisterForm() {
       <form onSubmit={handleSubmit} className="space-y-6">
         <div>
           <label htmlFor="name" className="block text-sm font-medium text-yellow-200 mb-1">
-            Tên người dùng
+            Username
           </label>
           <motion.input
             type="text"
@@ -148,10 +148,10 @@ export default function RegisterForm() {
           {isLoading ? (
             <div className="flex items-center justify-center space-x-2">
               <LoadingSpinner />
-              <span>Đang đăng ký...</span>
+              <span>Registering...</span>
             </div>
           ) : (
-            'Đăng ký'
+            'Register'
           )}
         </motion.button>
         <div className="relative flex items-center justify-center">

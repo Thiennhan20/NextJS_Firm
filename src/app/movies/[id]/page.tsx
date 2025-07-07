@@ -8,10 +8,12 @@ import * as THREE from 'three'
 import Image from 'next/image'
 import { StarIcon, ClockIcon, CalendarIcon, PlayIcon } from '@heroicons/react/24/solid'
 import { BookmarkIcon } from '@heroicons/react/24/outline'
-import { useTemporaryWatchlistStore } from '@/store/store'
+import { useWatchlistStore } from '@/store/store'
 import toast from 'react-hot-toast'
 import axios from 'axios'
 import { useParams } from 'next/navigation'
+import useAuthStore from '@/store/useAuthStore'
+import api from '@/lib/axios'
 
 // Định nghĩa kiểu Movie rõ ràng
 interface Movie {
@@ -48,21 +50,46 @@ export default function MovieDetail() {
     offset: ["start start", "end start"]
   })
 
-  const { addTemporarilyToWatchlist, removeTemporarilyFromWatchlist, isTemporarilyInWatchlist } = useTemporaryWatchlistStore();
-  const isInTemporaryWatchlist = movie ? isTemporarilyInWatchlist(movie.id) : false;
+  const { addToWatchlist, removeFromWatchlist, isInWatchlist, fetchWatchlistFromServer } = useWatchlistStore();
+  const { isAuthenticated, token } = useAuthStore();
+  const isBookmarked = movie ? isInWatchlist(movie.id) : false;
 
-  const handleToggleTemporaryWatchlist = () => {
+  const handleToggleWatchlist = async () => {
     if (!movie) return;
-    if (isInTemporaryWatchlist) {
-      removeTemporarilyFromWatchlist(movie.id);
-      toast.success('Đã xóa phim khỏi danh sách xem tạm thời!');
-    } else {
-      addTemporarilyToWatchlist({
-        id: movie.id,
-        title: movie.title,
-        poster_path: movie.poster,
-      });
-      toast.success('Đã thêm phim vào danh sách xem tạm thời!');
+    if (!isAuthenticated || !token) {
+      toast.error('You need to log in to save movies!');
+      return;
+    }
+    try {
+      if (isBookmarked) {
+        await api.delete('/auth/watchlist', {
+          headers: { Authorization: `Bearer ${token}` },
+          data: { id: movie.id },
+        });
+        removeFromWatchlist(movie.id);
+        toast.success('Removed movie from watchlist!');
+      } else {
+        await api.post('/auth/watchlist', {
+          id: movie.id,
+          title: movie.title,
+          poster_path: movie.poster,
+        }, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        addToWatchlist({
+          id: movie.id,
+          title: movie.title,
+          poster_path: movie.poster,
+        });
+        toast.success('Added movie to watchlist!');
+      }
+      await fetchWatchlistFromServer(token);
+    } catch (err: unknown) {
+      if (err && typeof err === 'object' && 'response' in err) {
+        toast.error((err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'An error occurred');
+      } else {
+        toast.error('An error occurred');
+      }
     }
   };
 
@@ -188,6 +215,12 @@ export default function MovieDetail() {
         .finally(() => setSubtitleLoading(false));
     }
   }, [movie?.title, movie?.year]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      (window as { isWatchingFullMovie?: boolean }).isWatchingFullMovie = showMovie;
+    }
+  }, [showMovie]);
 
   if (loading || !movie) {
     return (
@@ -334,11 +367,11 @@ export default function MovieDetail() {
                   color: subtitleLoading ? '#333' : subtitles.length > 0 ? '#28a745' : '#dc3545',
                 }}>
                   {subtitleLoading ? (
-                    <span>Đang kiểm tra phụ đề...</span>
+                    <span>Checking subtitles...</span>
                   ) : subtitles.length > 0 ? (
-                    <span>✔ Có phụ đề Tiếng Việt</span>
+                    <span>✔ Vietnamese subtitles available</span>
                   ) : (
-                    <span>✖ Không có phụ đề Tiếng Việt</span>
+                    <span>✖ No Vietnamese subtitles available</span>
                   )}
                 </div>
               </div>
@@ -346,15 +379,15 @@ export default function MovieDetail() {
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                onClick={handleToggleTemporaryWatchlist}
+                onClick={handleToggleWatchlist}
                 className={`px-6 py-3 rounded-lg font-semibold transition-colors flex items-center gap-2 ${
-                  isInTemporaryWatchlist
+                  isBookmarked
                     ? 'bg-yellow-600 text-black hover:bg-yellow-700'
                     : 'bg-gray-700 text-white hover:bg-gray-600'
                 }`}
               >
                 <BookmarkIcon className="h-5 w-5" />
-                {isInTemporaryWatchlist ? 'Đã thêm vào danh sách tạm thời' : 'Lưu vào danh sách tạm thời'}
+                {isBookmarked ? 'Added to list' : 'Save to list'}
               </motion.button>
 
             </div>
@@ -443,9 +476,9 @@ export default function MovieDetail() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
                   </svg>
                 </div>
-                <h3 className="text-lg font-medium text-white mb-2">Thông báo về phụ đề</h3>
+                <h3 className="text-lg font-medium text-white mb-2">Subtitle Notification</h3>
                 <p className="text-gray-300 mb-6">
-                  Phim này hiện chưa có phụ đề Tiếng Việt. Bạn có muốn tiếp tục xem phim không?
+                  This movie currently does not have Vietnamese subtitles. Do you want to continue watching?
                 </p>
                 <div className="flex gap-3">
                   <button
@@ -455,13 +488,13 @@ export default function MovieDetail() {
                     }}
                     className="flex-1 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
                   >
-                    Vẫn xem
+                    Continue watching
                   </button>
                   <button
                     onClick={() => setShowSubtitleWarning(false)}
                     className="flex-1 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
                   >
-                    Hủy
+                    Cancel
                   </button>
                 </div>
               </div>
@@ -591,7 +624,7 @@ export default function MovieDetail() {
             rel="noopener noreferrer"
             className="text-green-400 underline"
           >
-            Tải phụ đề tiếng Việt
+            Download Vietnamese subtitles
           </a>
         </div>
       )}

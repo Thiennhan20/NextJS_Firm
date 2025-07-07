@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import api from '@/lib/axios';
 
 interface User {
   id: string;
@@ -27,13 +28,6 @@ interface WatchlistState {
   isInWatchlist: (movieId: number) => boolean;
 }
 
-interface TemporaryWatchlistState {
-  temporaryWatchlist: Movie[];
-  addTemporarilyToWatchlist: (movie: Movie) => void;
-  removeTemporarilyFromWatchlist: (movieId: number) => void;
-  isTemporarilyInWatchlist: (movieId: number) => boolean;
-}
-
 interface UIState {
   isNavDropdownOpen: boolean;
   setNavDropdownOpen: (isOpen: boolean) => void;
@@ -53,7 +47,9 @@ export const useAuthStore = create<AuthState>()(
   )
 );
 
-export const useWatchlistStore = create<WatchlistState>()(
+export const useWatchlistStore = create<WatchlistState & {
+  fetchWatchlistFromServer: (token: string) => Promise<void>;
+}>()(
   persist(
     (set, get) => ({
       watchlist: [],
@@ -67,26 +63,22 @@ export const useWatchlistStore = create<WatchlistState>()(
         })),
       isInWatchlist: (movieId) =>
         get().watchlist.some((movie) => movie.id === movieId),
+      fetchWatchlistFromServer: async (token) => {
+        try {
+          const response = await api.get('/auth/watchlist', {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          set({ watchlist: response.data.watchlist || [] });
+        } catch {
+          set({ watchlist: [] });
+        }
+      },
     }),
     {
       name: 'watchlist-storage',
     }
   )
 );
-
-export const useTemporaryWatchlistStore = create<TemporaryWatchlistState>()((set, get) => ({
-  temporaryWatchlist: [],
-  addTemporarilyToWatchlist: (movie) =>
-    set((state) => ({
-      temporaryWatchlist: [...state.temporaryWatchlist, movie],
-    })),
-  removeTemporarilyFromWatchlist: (movieId) =>
-    set((state) => ({
-      temporaryWatchlist: state.temporaryWatchlist.filter((movie) => movie.id !== movieId),
-    })),
-  isTemporarilyInWatchlist: (movieId) =>
-    get().temporaryWatchlist.some((movie) => movie.id === movieId),
-}));
 
 export const useUIStore = create<UIState>()((set) => ({
   isNavDropdownOpen: false,

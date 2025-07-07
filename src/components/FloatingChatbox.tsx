@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence, useDragControls, PanInfo } from 'framer-motion'
 import { ChatBubbleLeftIcon, XMarkIcon } from '@heroicons/react/24/outline'
+import { ChevronUpIcon } from '@heroicons/react/24/solid'
 import { marked } from 'marked'
 
 export default function FloatingChatbox() {
@@ -31,6 +32,10 @@ export default function FloatingChatbox() {
   const [inputMessage, setInputMessage] = useState('')
   const [isLoadingChat, setIsLoadingChat] = useState(false)
   const dragControls = useDragControls()
+  const [showScrollTop, setShowScrollTop] = useState(false)
+
+  // Add a check for a global variable to hide the scroll-to-top arrow when watching full movie
+  const isWatchingFullMovie = typeof window !== 'undefined' && (window as { isWatchingFullMovie?: boolean }).isWatchingFullMovie;
 
   // Calculate snap positions and update viewport dimensions
   useEffect(() => {
@@ -64,10 +69,11 @@ export default function FloatingChatbox() {
     return () => window.removeEventListener('resize', updateDimensions)
   }, [])
 
-  // Track scroll position
+  // Track scroll position and show/hide scroll-to-top arrow
   useEffect(() => {
     const handleScroll = () => {
       setScrollPosition(window.scrollY)
+      setShowScrollTop(window.scrollY > 20)
     }
 
     window.addEventListener('scroll', handleScroll)
@@ -196,6 +202,45 @@ export default function FloatingChatbox() {
 
   return (
     <>
+      {/* Scroll to Top Arrow */}
+      {showScrollTop && !isWatchingFullMovie && !isOpen && (
+        <motion.button
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 20 }}
+          whileHover={{ scale: 1.15 }}
+          transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          style={{
+            position: 'fixed',
+            right: position.x + 24 + 'px',
+            bottom: position.y + 104 + 'px',
+            zIndex: 1001,
+            background: 'linear-gradient(135deg, #f59e42 0%, #f43f5e 100%)',
+            border: 'none',
+            borderRadius: '50%',
+            width: 52,
+            height: 52,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 0 16px 4px #f43f5e55, 0 2px 16px rgba(0,0,0,0.18)',
+            cursor: 'pointer',
+            transition: 'background 0.2s, box-shadow 0.2s',
+            outline: 'none',
+            borderWidth: 0,
+          }}
+          aria-label="Lên đầu trang"
+        >
+          <motion.span
+            animate={{ y: [0, -8, 0] }}
+            transition={{ repeat: Infinity, duration: 1.2, ease: 'easeInOut' }}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          >
+            <ChevronUpIcon className="w-7 h-7 text-white drop-shadow-lg" />
+          </motion.span>
+        </motion.button>
+      )}
       {/* Floating Chat Button */}
       <motion.button
         ref={buttonRef}

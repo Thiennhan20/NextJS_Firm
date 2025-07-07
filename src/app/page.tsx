@@ -60,14 +60,29 @@ export default function Home() {
   }, [API_KEY]);
 
   useEffect(() => {
-    let timer: NodeJS.Timeout;
+    let timer: NodeJS.Timeout | null = null;
     if (showIntro && countdown > 0) {
-      timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+      timer = setTimeout(() => setCountdown((prev) => Math.max(prev - 1, 0)), 1000);
     } else if (showIntro && countdown === 0) {
+      setShowIntro(false); // Hide modal before redirect for safety
       router.push('/movies');
     }
-    return () => clearTimeout(timer);
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
   }, [showIntro, countdown, router]);
+
+  // Reload home if resizing while intro modal is open
+  useEffect(() => {
+    if (!showIntro) return;
+    const handleResize = () => {
+      setShowIntro(false);
+      setCountdown(5);
+      window.location.reload();
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [showIntro]);
 
   const handleExploreClick = () => {
     if (typeof window !== 'undefined' && window.innerWidth >= 1024) {
@@ -147,10 +162,14 @@ export default function Home() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3 }}
-                  className="relative z-10 bg-black/90 text-white px-10 py-8 rounded-2xl shadow-2xl max-w-xl w-full mx-4 flex flex-col items-center border border-white/10"
+                  className="relative z-10 bg-black/90 text-white px-6 sm:px-10 py-8 rounded-2xl shadow-2xl w-full max-w-3xl mx-2 sm:mx-4 flex flex-col items-center border border-white/10"
                 >
-                  <div className="text-3xl font-extrabold mb-3 text-center">Khám phá kho phim 3D cực chất!</div>
-                  <div className="mb-5 text-lg text-gray-200 text-center">Bạn sẽ được chuyển sang trang danh sách phim sau <span className="font-mono text-yellow-400">{countdown}</span> giây...</div>
+                  <div className="text-2xl sm:text-3xl md:text-4xl font-extrabold mb-3 text-center whitespace-normal sm:whitespace-nowrap w-full">
+                    Discover an epic 3D movie collection!
+                  </div>
+                  <div className="mb-5 text-lg text-gray-200 text-center">
+                    You will be redirected to the movie list in <span className="font-mono text-yellow-400">{countdown}</span> seconds...
+                  </div>
                   <div className="w-full bg-gray-700 rounded-full h-2 overflow-hidden mb-2">
                     <div
                       className="bg-red-500 h-2 rounded-full transition-all duration-1000"

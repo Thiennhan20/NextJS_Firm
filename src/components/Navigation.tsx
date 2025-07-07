@@ -24,10 +24,10 @@ import useAuthStore from '@/store/useAuthStore'
 import { Menu, Transition } from '@headlessui/react'
 import { Fragment } from 'react'
 import { toast } from 'react-hot-toast'
-import { useTemporaryWatchlistStore } from '@/store/store'
 import { LogOut, Settings } from 'lucide-react';
 import { useUIStore } from '@/store/store';
 import AutocompleteSearch from '@/components/common/AutocompleteSearch';
+import { useWatchlistStore } from '@/store/store';
 
 const mainNavItems = [
   { name: 'Home', href: '/', icon: HomeIcon },
@@ -47,8 +47,8 @@ export default function Navigation() {
   const [isOpen, setIsOpen] = useState(false)
   const pathname = usePathname()
   const { user, isAuthenticated, logout } = useAuthStore()
-  const { temporaryWatchlist } = useTemporaryWatchlistStore();
   const { setNavDropdownOpen } = useUIStore();
+  const { watchlist } = useWatchlistStore();
 
   const [isMoreDropdownActive, setIsMoreDropdownActive] = useState(false);
   const [isProfileDropdownActive, setIsProfileDropdownActive] = useState(false);
@@ -237,7 +237,7 @@ export default function Navigation() {
                               }`}
                             >
                               <BookmarkIcon className="h-5 w-5" />
-                              <span>Watchlist ({temporaryWatchlist.length})</span>
+                              <span>Watchlist ({watchlist.length})</span>
                             </Link>
                           )}
                         </Menu.Item>
@@ -439,7 +439,7 @@ export default function Navigation() {
                       className="flex items-center space-x-2 px-3 py-2 rounded-t-md text-base font-medium text-gray-700 hover:bg-gray-200 hover:text-gray-900"
                     >
                       <BookmarkIcon className="h-5 w-5" />
-                      <span>Watchlist ({temporaryWatchlist.length})</span>
+                      <span>Watchlist ({watchlist.length})</span>
                     </Link>
                     <Link
                       href="/profile"

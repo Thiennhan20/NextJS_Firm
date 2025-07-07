@@ -2,6 +2,8 @@ import { useWatchlistStore } from '@/store/store';
 import { motion } from 'framer-motion';
 import { FaBookmark } from 'react-icons/fa';
 import toast from 'react-hot-toast';
+import useAuthStore from '@/store/useAuthStore';
+import api from '@/lib/axios';
 
 interface WatchlistButtonProps {
   movie: {
@@ -12,16 +14,42 @@ interface WatchlistButtonProps {
 }
 
 export default function WatchlistButton({ movie }: WatchlistButtonProps) {
-  const { addToWatchlist, removeFromWatchlist, isInWatchlist } = useWatchlistStore();
+  const { addToWatchlist, removeFromWatchlist, isInWatchlist, fetchWatchlistFromServer } = useWatchlistStore();
+  const { isAuthenticated, token } = useAuthStore();
   const isBookmarked = isInWatchlist(movie.id);
 
-  const handleClick = () => {
-    if (isBookmarked) {
-      removeFromWatchlist(movie.id);
-      toast.success('Removed from watchlist');
-    } else {
-      addToWatchlist(movie);
-      toast.success('Added to watchlist');
+  const handleClick = async () => {
+    if (!isAuthenticated || !token) {
+      toast.error('You need to log in to save movies');
+      return;
+    }
+    try {
+      if (isBookmarked) {
+        await api.delete('/auth/watchlist', {
+          headers: { Authorization: `Bearer ${token}` },
+          data: { id: movie.id },
+        });
+        removeFromWatchlist(movie.id);
+        toast.success('Removed from watchlist');
+      } else {
+        await api.post('/auth/watchlist', {
+          id: movie.id,
+          title: movie.title,
+          poster_path: movie.poster_path,
+        }, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        addToWatchlist(movie);
+        toast.success('Added to watchlist');
+      }
+      // Đồng bộ lại watchlist từ server
+      await fetchWatchlistFromServer(token);
+    } catch (err: unknown) {
+      if (err && typeof err === 'object' && 'response' in err) {
+        toast.error((err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'An error occurred');
+      } else {
+        toast.error('An error occurred');
+      }
     }
   };
 

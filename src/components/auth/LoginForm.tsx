@@ -7,6 +7,7 @@ import { motion } from 'framer-motion';
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 import { FaGoogle, FaFacebook } from 'react-icons/fa';
 import axios from 'axios';
+import { useWatchlistStore } from '@/store/store';
 
 const LoadingSpinner = () => (
   <div className="flex items-center justify-center">
@@ -20,7 +21,8 @@ const LoadingSpinner = () => (
 
 export default function LoginForm() {
   const router = useRouter();
-  const { login, isLoading, error, clearError } = useAuthStore();
+  const { login, isLoading, error, clearError, token } = useAuthStore();
+  const { fetchWatchlistFromServer } = useWatchlistStore();
   const [formData, setFormData] = useState<LoginCredentials>({
     email: '',
     password: '',
@@ -37,15 +39,18 @@ export default function LoginForm() {
     e.preventDefault();
     try {
       await login(formData);
-      toast.success('Đăng nhập thành công!');
+      if (token) {
+        await fetchWatchlistFromServer(token);
+      }
+      toast.success('Login successful!');
       router.push('/');
     } catch (error: unknown) {
       if (axios.isAxiosError(error)) {
-        toast.error(error.response?.data?.message || 'Đăng nhập thất bại!');
+        toast.error(error.response?.data?.message || 'Login failed!');
       } else {
         toast.error('An unexpected error occurred during login.');
       }
-    }
+    }    
   };
 
   const inputVariants = {
@@ -133,10 +138,10 @@ export default function LoginForm() {
           {isLoading ? (
             <div className="flex items-center justify-center space-x-2">
               <LoadingSpinner />
-              <span>Đang đăng nhập...</span>
+              <span>Logging in...</span>
             </div>
           ) : (
-            'Đăng nhập'
+            'Log in'
           )}
         </motion.button>
         <div className="relative flex items-center justify-center">
