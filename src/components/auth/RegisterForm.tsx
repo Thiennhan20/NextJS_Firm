@@ -39,7 +39,7 @@ export default function RegisterForm() {
     try {
       await register(formData);
       toast.success('Đăng ký thành công!');
-      router.push('/streaming');
+      router.push('/');
     } catch (error: unknown) {
       if (axios.isAxiosError(error)) {
         toast.error(error.response?.data?.message || 'Đăng ký thất bại!');

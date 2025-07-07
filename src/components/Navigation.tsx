@@ -25,7 +25,7 @@ import { Menu, Transition } from '@headlessui/react'
 import { Fragment } from 'react'
 import { toast } from 'react-hot-toast'
 import { useTemporaryWatchlistStore } from '@/store/store'
-import { LogOut } from 'lucide-react';
+import { LogOut, Settings } from 'lucide-react';
 import { useUIStore } from '@/store/store';
 import AutocompleteSearch from '@/components/common/AutocompleteSearch';
 
@@ -43,8 +43,6 @@ const moreNavItems = [
   { name: 'Streaming', href: '/streaming', icon: PlayCircleIcon },
 ]
 
-const allNavItems = [...mainNavItems, ...moreNavItems]; // Combine all items for mobile menu
-
 export default function Navigation() {
   const [isOpen, setIsOpen] = useState(false)
   const pathname = usePathname()
@@ -56,6 +54,8 @@ export default function Navigation() {
   const [isProfileDropdownActive, setIsProfileDropdownActive] = useState(false);
   const [showMobileSearch, setShowMobileSearch] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [isMobileUserDropdownOpen, setIsMobileUserDropdownOpen] = useState(false);
+  const [isMobileMoreDropdownOpen, setIsMobileMoreDropdownOpen] = useState(false);
 
   useEffect(() => {
     setNavDropdownOpen(isOpen || isMoreDropdownActive || isProfileDropdownActive);
@@ -191,15 +191,6 @@ export default function Navigation() {
 
             {isAuthenticated ? (
               <div className="flex items-center space-x-4">
-                <Link
-                  href="/watchlist"
-                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
-                    isScrolled ? 'text-white hover:text-red-500' : 'text-gray-700 hover:text-red-500'
-                  }`}
-                >
-                  <BookmarkIcon className="h-5 w-5" />
-                  <span>Watchlist ({temporaryWatchlist.length})</span>
-                </Link>
                 <Menu as="div" className="relative inline-block text-left">
                   <div>
                     <Menu.Button
@@ -226,6 +217,45 @@ export default function Navigation() {
                       <div className="px-1 py-1 ">
                         <Menu.Item>
                           {({ active }) => (
+                            <Link
+                              href="/profile"
+                              className={`w-full flex items-center space-x-2 text-left px-4 py-2 text-gray-300 ${
+                                active ? 'bg-gray-700 text-white' : 'hover:bg-gray-800 hover:text-white'
+                              }`}
+                            >
+                              <UserIcon className="h-5 w-5" />
+                              <span>Profile</span>
+                            </Link>
+                          )}
+                        </Menu.Item>
+                        <Menu.Item>
+                          {({ active }) => (
+                            <Link
+                              href="/watchlist"
+                              className={`w-full flex items-center space-x-2 text-left px-4 py-2 text-gray-300 ${
+                                active ? 'bg-gray-700 text-white' : 'hover:bg-gray-800 hover:text-white'
+                              }`}
+                            >
+                              <BookmarkIcon className="h-5 w-5" />
+                              <span>Watchlist ({temporaryWatchlist.length})</span>
+                            </Link>
+                          )}
+                        </Menu.Item>
+                        <Menu.Item>
+                          {({ active }) => (
+                            <Link
+                              href="/settings"
+                              className={`w-full flex items-center space-x-2 text-left px-4 py-2 text-gray-300 ${
+                                active ? 'bg-gray-700 text-white' : 'hover:bg-gray-800 hover:text-white'
+                              }`}
+                            >
+                              <Settings className="h-5 w-5" />
+                              <span>Settings</span>
+                            </Link>
+                          )}
+                        </Menu.Item>
+                        <Menu.Item>
+                          {({ active }) => (
                             <button
                               onClick={() => {
                                 logout();
@@ -242,6 +272,7 @@ export default function Navigation() {
                             </button>
                           )}
                         </Menu.Item>
+
                       </div>
                     </Menu.Items>
                   </Transition>
@@ -326,68 +357,122 @@ export default function Navigation() {
           transition={{ duration: 0.3 }}
         >
           <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
-            {allNavItems.map((item) => {
-              const isActive = pathname === item.href
+            {mainNavItems.map((item) => {
+              const isActive = pathname === item.href;
               return (
                 <Link
                   key={item.name}
                   href={item.href}
-                  onClick={() => setIsOpen(false)} // Close menu on click
+                  onClick={() => setIsOpen(false)}
                   className={`block px-3 py-2 rounded-md text-base font-medium ${
                     isActive
                       ? 'bg-red-500 text-white'
                       : 'text-gray-700 hover:bg-gray-200 hover:text-gray-900'
                   }`}
                 >
-                  <motion.div
-                    className="flex items-center space-x-2"
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
+                  <motion.div className="flex items-center space-x-2" whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                     <item.icon className="h-5 w-5" />
                     <span>{item.name}</span>
                   </motion.div>
                 </Link>
-              )
+              );
             })}
+            {/* More dropdown for mobile */}
+            <button
+              className="flex items-center w-full px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-200 hover:text-gray-900 focus:outline-none"
+              onClick={() => {
+                setIsMobileMoreDropdownOpen((prev) => {
+                  if (!prev) setIsMobileUserDropdownOpen(false);
+                  return !prev;
+                });
+              }}
+              aria-expanded={isMobileMoreDropdownOpen}
+            >
+              <QueueListIcon className="h-5 w-5" />
+              <span>More</span>
+              <svg className={`ml-auto h-4 w-4 transition-transform ${isMobileMoreDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+            </button>
+            {isMobileMoreDropdownOpen && (
+              <div className="pl-6 space-y-1 animate-fadeIn">
+                {moreNavItems.map((item) => {
+                  const isActive = pathname === item.href;
+                  return (
+                    <Link
+                      key={item.name}
+                      href={item.href}
+                      onClick={() => { setIsOpen(false); setIsMobileMoreDropdownOpen(false); }}
+                      className={`flex items-center space-x-2 px-3 py-2 rounded-md text-base font-medium ${
+                        isActive
+                          ? 'bg-red-500 text-white'
+                          : 'text-gray-700 hover:bg-gray-200 hover:text-gray-900'
+                      }`}
+                    >
+                      <item.icon className="h-5 w-5" />
+                      <span>{item.name}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
             {/* Mobile Watchlist, User/Login, Logout */}
             {isAuthenticated ? (
               <div className="px-3 mt-4 space-y-2">
-                <Link
-                  href="/watchlist"
-                  onClick={() => setIsOpen(false)}
-                  className="flex items-center space-x-2 px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-200 hover:text-gray-900"
-                >
-                  <BookmarkIcon className="h-5 w-5" />
-                  <span>Watchlist ({temporaryWatchlist.length})</span>
-                </Link>
-                <div className={`block px-3 py-2 rounded-md text-base font-medium text-gray-700`}>
-                  <motion.div
-                    className="flex items-center space-x-2"
-                  >
-                    <UserIcon className="h-5 w-5" />
-                    <span>{user?.name || 'User'}</span>
-                  </motion.div>
-                </div>
                 <button
+                  className="block w-full px-3 py-2 rounded-md text-base font-medium text-gray-700 mb-1 bg-gray-100 flex items-center space-x-2 focus:outline-none"
                   onClick={() => {
-                    logout();
-                    toast.success('Đã đăng xuất!');
-                    setIsOpen(false); // Close mobile menu after logout
+                    setIsMobileUserDropdownOpen((prev) => {
+                      if (!prev) setIsMobileMoreDropdownOpen(false);
+                      return !prev;
+                    });
                   }}
-                  className={`block w-full text-left px-3 py-2 rounded-md text-base font-medium transition-colors duration-200 ${
-                    'text-red-600 hover:bg-gray-100 hover:text-red-700'
-                  }`}
+                  aria-expanded={isMobileUserDropdownOpen}
                 >
-                  <motion.div
-                    className="flex items-center space-x-2"
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    <LogOut className="h-5 w-5" />
-                    <span>Đăng xuất</span>
-                  </motion.div>
+                  <UserIcon className="h-5 w-5" />
+                  <span className="truncate">{user?.name || 'User'}</span>
+                  <svg className={`ml-auto h-4 w-4 transition-transform ${isMobileUserDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
                 </button>
+                {isMobileUserDropdownOpen && (
+                  <div className="bg-gray-50 rounded-md divide-y divide-gray-200 shadow-sm animate-fadeIn">
+                    <Link
+                      href="/watchlist"
+                      onClick={() => { setIsOpen(false); setIsMobileUserDropdownOpen(false); }}
+                      className="flex items-center space-x-2 px-3 py-2 rounded-t-md text-base font-medium text-gray-700 hover:bg-gray-200 hover:text-gray-900"
+                    >
+                      <BookmarkIcon className="h-5 w-5" />
+                      <span>Watchlist ({temporaryWatchlist.length})</span>
+                    </Link>
+                    <Link
+                      href="/profile"
+                      onClick={() => { setIsOpen(false); setIsMobileUserDropdownOpen(false); }}
+                      className="flex items-center space-x-2 px-3 py-2 text-base font-medium text-gray-700 hover:bg-gray-200 hover:text-gray-900"
+                    >
+                      <UserIcon className="h-5 w-5" />
+                      <span>Profile</span>
+                    </Link>
+                    <Link
+                      href="/settings"
+                      onClick={() => { setIsOpen(false); setIsMobileUserDropdownOpen(false); }}
+                      className="flex items-center space-x-2 px-3 py-2 rounded-b-md text-base font-medium text-gray-700 hover:bg-gray-200 hover:text-gray-900"
+                    >
+                      <Settings className="h-5 w-5" />
+                      <span>Settings</span>
+                    </Link>
+                    <button
+                      onClick={() => {
+                        logout();
+                        toast.success('Đã đăng xuất!');
+                        setIsOpen(false);
+                        setIsMobileUserDropdownOpen(false);
+                      }}
+                      className="block w-full text-left px-3 py-2 rounded-md text-base font-medium transition-colors duration-200 mt-2 text-red-600 hover:bg-gray-100 hover:text-red-700 border-t border-gray-200"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <LogOut className="h-5 w-5" />
+                        <span>Đăng xuất</span>
+                      </div>
+                    </button>
+                  </div>
+                )}
               </div>
             ) : (
               <Link

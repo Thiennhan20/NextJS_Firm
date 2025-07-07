@@ -11,7 +11,6 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "MovieWorld - Your Ultimate Movie Destination",
   description: "Discover, watch, and discuss movies with our AI-powered platform",
-  themeColor: "#2196f3",
 };
 
 export const viewport: Viewport = {
@@ -27,7 +26,6 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        <meta name="theme-color" content="#2196f3" />
         <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
       </head>
       <body className={`${inter.className} bg-black text-white min-h-screen flex flex-col`}>

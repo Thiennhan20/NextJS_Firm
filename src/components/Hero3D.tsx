@@ -106,7 +106,7 @@ export default function Hero3D() {
         <Scene />
       </Canvas>
       
-      <div className="relative z-10 flex flex-col items-center justify-center h-full text-center px-4">
+      <div className="relative z-20 flex flex-col items-center justify-center h-full text-center px-4">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}

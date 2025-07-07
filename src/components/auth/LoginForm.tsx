@@ -38,7 +38,7 @@ export default function LoginForm() {
     try {
       await login(formData);
       toast.success('Đăng nhập thành công!');
-      router.push('/streaming');
+      router.push('/');
     } catch (error: unknown) {
       if (axios.isAxiosError(error)) {
         toast.error(error.response?.data?.message || 'Đăng nhập thất bại!');
