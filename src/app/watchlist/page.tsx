@@ -2,6 +2,7 @@
 
 import { useWatchlistStore } from '@/store/store';
 import useAuthStore from '@/store/useAuthStore';
+import useAuthHydrated from '@/store/useAuthHydrated';
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -12,8 +13,13 @@ import toast from 'react-hot-toast';
 const MotionDiv = dynamic(() => import('framer-motion').then(mod => mod.motion.div), { ssr: false });
 
 export default function WatchlistPage() {
+  const hydrated = useAuthHydrated();
   const { watchlist, removeFromWatchlist, fetchWatchlistFromServer } = useWatchlistStore();
   const { isAuthenticated, token } = useAuthStore();
+
+  if (!hydrated) {
+    return null; // hoặc spinner nếu muốn
+  }
 
   if (!isAuthenticated) {
     return (
@@ -63,7 +69,7 @@ export default function WatchlistPage() {
           <p className="text-sm text-gray-300 mt-2">Add movies from the movie detail page!</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
           {watchlist.map((movie) => (
             <MotionDiv
               key={movie.id}
@@ -78,10 +84,14 @@ export default function WatchlistPage() {
                   fill
                   className="object-cover transition-transform duration-300 group-hover:scale-110"
                 />
-                <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center p-4 gap-2">
+                <div
+                  className="absolute inset-0 flex flex-col items-center justify-center p-4 gap-2
+                    bg-transparent md:bg-black/70
+                    opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
+                >
                   <a
                     href={`/movies/${movie.id}`}
-                    className="bg-yellow-500 text-black px-4 py-2 rounded-lg font-semibold hover:bg-yellow-600 transition-colors transform hover:scale-105 shadow-md mb-2"
+                    className="bg-yellow-500 text-black w-full text-center px-2 py-2 rounded-md font-semibold hover:bg-yellow-600 transition-colors transform hover:scale-105 shadow-md mb-2 text-sm sm:text-base"
                     style={{ textDecoration: 'none' }}
                   >
                     Watch again

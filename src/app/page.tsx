@@ -190,25 +190,25 @@ export default function Home() {
       <MovieNews />
 
       {/* Featured Movies Section */}
-      <section className="py-16 sm:py-24 px-2 sm:px-4 bg-gradient-to-b from-black to-gray-900 relative z-10">
+      <section className="py-8 sm:py-24 px-1 sm:px-4 bg-gradient-to-b from-black to-gray-900 relative z-10">
         <div className="max-w-7xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="text-center mb-8 sm:mb-12"
+            className="text-center mb-4 sm:mb-12"
           >
-            <h2 className="text-2xl sm:text-4xl md:text-5xl font-bold mb-2 sm:mb-4 bg-gradient-to-r from-red-500 to-purple-500 text-transparent bg-clip-text">
+            <h2 className="text-xl sm:text-4xl md:text-5xl font-bold mb-1 sm:mb-4 bg-gradient-to-r from-red-500 to-purple-500 text-transparent bg-clip-text">
               Featured Movies
             </h2>
-            <p className="text-gray-400 text-sm sm:text-lg">
+            <p className="text-gray-400 text-xs sm:text-lg">
               Discover our handpicked selection of amazing films
             </p>
           </motion.div>
           {loading ? (
             <div className="text-center text-gray-400 py-8">Loading...</div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-8">
               {featuredMovies.map((movie, index) => (
                 <motion.div
                   key={movie.id}

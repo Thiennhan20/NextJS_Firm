@@ -140,7 +140,7 @@ export default function Categories() {
               initial="hidden"
               animate="show"
               exit="hidden"
-              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
+              className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-8"
             >
               {pagedCategories.length === 0 && (
                  <motion.div 
@@ -177,7 +177,7 @@ export default function Categories() {
                       </div>
                     </div>
                     <div className="p-6">
-                      <h2 className="text-2xl font-semibold mb-2 bg-gradient-to-r from-pink-400 to-blue-400 text-transparent bg-clip-text">
+                      <h2 className="font-semibold mb-2 bg-gradient-to-r from-pink-400 to-blue-400 text-transparent bg-clip-text text-base md:text-xl lg:text-2xl">
                         {category.name}
                       </h2>
                       <p className="text-gray-400 mb-2 line-clamp-2">{category.description ?? ''}</p>

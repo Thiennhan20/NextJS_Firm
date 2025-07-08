@@ -237,7 +237,7 @@ function MoviesPageContent() {
               initial="hidden"
               animate="show"
               exit="hidden"
-              className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"
+              className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-6"
             >
               {pagedMovies.length === 0 && (
                 <motion.div

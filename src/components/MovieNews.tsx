@@ -52,12 +52,12 @@ export default function MovieNews() {
   }, [API_KEY]);
 
   return (
-    <section className="py-16 px-2 sm:px-4 bg-gradient-to-b from-black to-gray-900">
+    <section className="py-8 sm:py-16 px-1 sm:px-4 bg-gradient-to-b from-black to-gray-900">
       <div className="max-w-7xl mx-auto">
-        <h2 className="text-2xl sm:text-4xl font-bold mb-8 bg-gradient-to-r from-blue-400 to-pink-500 text-transparent bg-clip-text text-center">
+        <h2 className="text-xl sm:text-4xl font-bold mb-4 sm:mb-8 bg-gradient-to-r from-blue-400 to-pink-500 text-transparent bg-clip-text text-center">
           Movie News
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-6">
           {loading ? (
             <div className="text-gray-400 text-center py-8">Loading...</div>
           ) : (
@@ -73,17 +73,17 @@ export default function MovieNews() {
                       src={item.image} 
                       alt={item.title} 
                       width={400}
-                      height={250}
-                      className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300" 
+                      height={180}
+                      className="w-full h-32 sm:h-48 object-cover group-hover:scale-105 transition-transform duration-300" 
                     />
                   ) : (
-                    <div className="w-full h-48 flex items-center justify-center bg-gray-700 text-4xl">🎬</div>
+                    <div className="w-full h-32 sm:h-48 flex items-center justify-center bg-gray-700 text-3xl sm:text-4xl">🎬</div>
                   )}
                   <div className="absolute top-2 left-2 bg-black/70 text-xs text-white px-2 py-1 rounded-full">{item.date}</div>
                 </div>
-                <div className="p-4">
-                  <div className="font-semibold text-lg text-white mb-2 line-clamp-2">{item.title}</div>
-                  <div className="text-gray-400 text-sm line-clamp-3">{item.summary}</div>
+                <div className="p-3 sm:p-4">
+                  <div className="font-semibold text-base sm:text-lg text-white mb-1 sm:mb-2 line-clamp-2">{item.title}</div>
+                  <div className="text-gray-400 text-xs sm:text-sm line-clamp-3">{item.summary}</div>
                 </div>
               </motion.div>
             ))

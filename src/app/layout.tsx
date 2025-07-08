@@ -5,6 +5,7 @@ import Navigation from "@/components/Navigation";
 import FloatingChatbox from '@/components/FloatingChatbox'
 import { Toaster } from 'react-hot-toast';
 import Footer from '@/components/Footer';
+import WatchlistSyncer from '@/components/WatchlistSyncer';
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -30,6 +31,7 @@ export default function RootLayout({
       </head>
       <body className={`${inter.className} bg-black text-white min-h-screen flex flex-col`}>
         <Navigation />
+        <WatchlistSyncer />
         <div className="pt-16 flex-grow">
           {children}
         </div>
