@@ -4,6 +4,7 @@ import { motion } from 'framer-motion'
 import Image from 'next/image'
 import { useEffect, useState } from 'react'
 import axios from 'axios'
+import Pagination from '@/components/Pagination'
 
 interface MovieNews {
   id: number;
@@ -106,22 +107,15 @@ export default function NewsPage() {
         </div>
         {/* Pagination */}
         {!loading && totalPages > 1 && (
-          <div className="flex justify-center items-center gap-2 mt-8">
-            <button
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page === 1}
-              className="px-3 py-1 rounded bg-gray-700 text-white disabled:opacity-50"
-            >
-              Previous
-            </button>
-            <span className="text-sm text-gray-300">Page {page} / {totalPages}</span>
-            <button
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page === totalPages}
-              className="px-3 py-1 rounded bg-gray-700 text-white disabled:opacity-50"
-            >
-              Next
-            </button>
+          <div className="max-w-7xl mx-auto px-4 pb-12">
+            <Pagination
+              page={page}
+              totalPages={totalPages}
+              onPageChange={(p) => {
+                setPage(p)
+                window.scrollTo({ top: 0, behavior: 'smooth' })
+              }}
+            />
           </div>
         )}
       </div>

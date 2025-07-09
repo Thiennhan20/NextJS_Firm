@@ -14,6 +14,7 @@ import axios from 'axios'
 import { useParams } from 'next/navigation'
 import useAuthStore from '@/store/useAuthStore'
 import api from '@/lib/axios'
+import MoviePlayer from '@/components/common/MoviePlayer';
 
 // Định nghĩa kiểu Movie rõ ràng
 interface Movie {
@@ -119,6 +120,10 @@ export default function MovieDetail() {
     }
   };
 
+  // Thêm state quản lý server và modal chọn server
+  const [showServerModal, setShowServerModal] = useState(false);
+  const [selectedServer, setSelectedServer] = useState<string | null>(null);
+
   const handleWatchMovie = async () => {
     if (!movie) return;
     
@@ -127,8 +132,9 @@ export default function MovieDetail() {
     
     if (!hasVietnameseSubtitles) {
       setShowSubtitleWarning(true);
+      // Không mở modal chọn server ngay, chờ người dùng xác nhận
     } else {
-      setShowMovie(true);
+      setShowServerModal(true); // Hiện modal chọn server luôn nếu có vietsub
     }
   };
 
@@ -137,6 +143,39 @@ export default function MovieDetail() {
 
   const [subtitles, setSubtitles] = useState([]);
   const [subtitleLoading, setSubtitleLoading] = useState(false);
+
+  // Thêm state movieLinks để demo, sau này thay bằng data thực tế lấy từ API chi tiết phim
+  const [movieLinks, setMovieLinks] = useState({
+    embed: '',
+    m3u8: '',
+  });
+  const [movieLinksLoading, setMovieLinksLoading] = useState(false);
+
+  // Thêm state quản lý lỗi server
+  const [showServerError, setShowServerError] = useState(false);
+  // Reset lỗi khi đổi server
+  useEffect(() => { setShowServerError(false); }, [selectedServer]);
+
+  // Hàm tìm phim theo tmdb.id qua nhiều trang
+  interface PhimApiItem {
+    tmdb?: { id: string | number };
+    slug?: string;
+    [key: string]: unknown;
+  }
+  async function findMovieByTmdbId(targetId: string, maxPages = 1000) {
+    for (let page = 1; page <= maxPages; page++) {
+      const res = await fetch(`https://phimapi.com/danh-sach/phim-moi-cap-nhat-v3?page=${page}`);
+      const data = await res.json();
+      const found = (data.items as PhimApiItem[]).find((item) => item.tmdb && String(item.tmdb.id) === String(targetId));
+      if (found) {
+        console.log('Tìm thấy phim ở trang:', page, found);
+        return found;
+      }
+      // Nếu hết phim (ít hơn 24 phim/trang) thì dừng luôn
+      if (!data.items || data.items.length < 24) break;
+    }
+    return null;
+  }
 
   useEffect(() => {
     const fetchMovie = async () => {
@@ -221,6 +260,70 @@ export default function MovieDetail() {
       (window as { isWatchingFullMovie?: boolean }).isWatchingFullMovie = showMovie;
     }
   }, [showMovie]);
+
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+    async function fetchPhimApiEmbed() {
+      setMovieLinksLoading(true);
+      setShowServerError(false);
+      timeoutId = setTimeout(() => {
+        setMovieLinksLoading(false);
+        setShowServerError(true);
+      }, 60000); // 1 phút
+      try {
+        // Tìm phim qua nhiều trang
+        if (typeof id !== 'string') {
+          console.log('ID không hợp lệ!');
+          setMovieLinksLoading(false);
+          clearTimeout(timeoutId);
+          return;
+        }
+        const found = await findMovieByTmdbId(id, 1000);
+        if (!found) {
+          console.log('Không tìm thấy phim!');
+          setMovieLinksLoading(false);
+          clearTimeout(timeoutId);
+          setShowServerError(true);
+          return;
+        }
+        const slug = found.slug;
+        console.log('Slug lấy được:', slug);
+        // Lấy chi tiết phim theo slug
+        const detailRes = await fetch(`https://phimapi.com/phim/${slug}`);
+        const detailData = await detailRes.json();
+        console.log('Chi tiết phim:', detailData);
+        let embed = '';
+        // Kiểm tra link_embed
+        if (detailData.link_embed) {
+          embed = detailData.link_embed;
+          // Nếu link là dạng player.phimapi.com/player/?url=xxx thì lấy phần xxx
+          if (embed.includes('?url=')) {
+            embed = embed.split('?url=')[1];
+          }
+          if (embed.endsWith('.m3u8')) {
+            console.log('Link embed trực tiếp:', embed);
+          }
+        } else if (detailData.episodes && detailData.episodes[0]?.server_data[0]?.link_embed) {
+          embed = detailData.episodes[0].server_data[0].link_embed;
+          if (embed.includes('?url=')) {
+            embed = embed.split('?url=')[1];
+          }
+          if (embed.endsWith('.m3u8')) {
+            console.log('Link embed từ episodes:', embed);
+          }
+        } else {
+          console.log('Không tìm thấy link_embed hợp lệ.');
+        }
+        setMovieLinks(links => ({ ...links, m3u8: embed }));
+      } catch (e) {
+        console.error('Lỗi khi fetch phimapi:', e);
+      } finally {
+        setMovieLinksLoading(false);
+        clearTimeout(timeoutId);
+      }
+    }
+    fetchPhimApiEmbed();
+  }, [id]);
 
   if (loading || !movie) {
     return (
@@ -456,12 +559,43 @@ export default function MovieDetail() {
       {/* Subtitle Warning Modal */}
       <AnimatePresence>
         {showSubtitleWarning && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+            <div className="bg-gray-800 rounded-lg p-8 max-w-md w-full flex flex-col items-center">
+              <div className="bg-yellow-100 rounded-full p-3 mb-4">
+                <svg className="w-8 h-8 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <h2 className="text-xl font-bold text-white mb-2 text-center">Subtitle Notification</h2>
+              <p className="text-gray-200 mb-6 text-center">This movie currently does not have Vietnamese subtitles. Do you want to continue watching?</p>
+              <div className="flex gap-4 w-full">
+                <button
+                  className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-semibold"
+                  onClick={() => { setShowServerModal(true); setShowSubtitleWarning(false); }}
+                >
+                  Continue watching
+                </button>
+                <button
+                  className="flex-1 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 font-semibold"
+                  onClick={() => setShowSubtitleWarning(false)}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Server Selection Modal */}
+      <AnimatePresence>
+        {showServerModal && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4"
-            onClick={() => setShowSubtitleWarning(false)}
+            className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
+            onClick={() => setShowServerModal(false)}
           >
             <motion.div
               initial={{ scale: 0.9 }}
@@ -470,33 +604,32 @@ export default function MovieDetail() {
               className="relative w-full max-w-md bg-gray-800 rounded-lg p-6"
               onClick={e => e.stopPropagation()}
             >
-              <div className="text-center">
-                <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-yellow-100 mb-4">
-                  <svg className="h-6 w-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                  </svg>
-                </div>
-                <h3 className="text-lg font-medium text-white mb-2">Subtitle Notification</h3>
-                <p className="text-gray-300 mb-6">
-                  This movie currently does not have Vietnamese subtitles. Do you want to continue watching?
-                </p>
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => {
-                      setShowSubtitleWarning(false);
-                      setShowMovie(true);
-                    }}
-                    className="flex-1 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
-                  >
-                    Continue watching
-                  </button>
-                  <button
-                    onClick={() => setShowSubtitleWarning(false)}
-                    className="flex-1 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                </div>
+              <h3 className="text-lg font-medium text-white mb-4 text-center">Chọn server phát video</h3>
+              <div className="flex flex-col gap-4">
+                <button
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  onClick={() => { setSelectedServer('server1'); setShowServerModal(false); setShowMovie(true); }}
+                >
+                  Server 1 (player.phimapi.com)
+                </button>
+                <button
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors relative flex flex-col items-center"
+                  onClick={() => { setSelectedServer('server2'); setShowServerModal(false); setShowMovie(true); }}
+                >
+                  Server 2 (vidsrc.icu)
+                  <span className="mt-2 flex items-center gap-1 text-yellow-900 bg-yellow-200 rounded px-2 py-1 text-xs font-semibold">
+                    <svg className="w-4 h-4 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Lưu ý: Server này có nhiều quảng cáo, hãy tắt quảng cáo để xem phim
+                  </span>
+                </button>
+                <button
+                  className="mt-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                  onClick={() => setShowServerModal(false)}
+                >
+                  Hủy
+                </button>
               </div>
             </motion.div>
           </motion.div>
@@ -511,7 +644,7 @@ export default function MovieDetail() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black z-50 flex items-center justify-center"
-            onClick={() => setShowMovie(false)}
+            onClick={() => { setShowMovie(false); setSelectedServer(null); }}
           >
             <motion.div
               initial={{ scale: 0.9 }}
@@ -525,7 +658,7 @@ export default function MovieDetail() {
                 <h3 className="text-white text-xl font-semibold">{title}</h3>
                 <button
                   className="text-white bg-black/50 rounded-full p-2 hover:bg-black/80 transition-colors"
-                  onClick={() => setShowMovie(false)}
+                  onClick={() => { setShowMovie(false); setSelectedServer(null); }}
                 >
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -533,19 +666,55 @@ export default function MovieDetail() {
                 </button>
               </div>
               {/* Video Player */}
-              {/*
-                Chú ý: Nếu chỉ dùng link embed (iframe như vidsrc.icu),
-                KHÔNG thể truyền phụ đề tự động vào player.
-                Chỉ có thể truyền phụ đề nếu có link file video thực sự (.mp4, .mkv, ...)
-              */}
               <div className="w-full h-[calc(100%-4rem)] rounded-lg overflow-hidden">
-                <iframe
-                  src={`https://vidsrc.icu/embed/movie/${id}?ds_lang=vi`}
-                  className="w-full h-full"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                  title={title}
-                />
+                {selectedServer === 'server1' && (
+                  movieLinksLoading ? (
+                    <div className="flex items-center justify-center h-full text-white text-lg font-semibold">
+                      Đang tải link phát phim...
+                    </div>
+                  ) : movieLinks.m3u8 ? (
+                    <MoviePlayer
+                      src={movieLinks.m3u8}
+                      poster={poster}
+                      onError={() => setShowServerError(true)}
+                    />
+                  ) : (
+                    <div className="flex flex-col items-center justify-center h-full text-white text-lg font-semibold gap-2">
+                      Không tìm thấy link phát phim cho server này.<br/>
+                      <span className="text-yellow-400">Vui lòng thử đổi server khác!</span>
+                    </div>
+                  )
+                )}
+                {selectedServer === 'server2' && (
+                  <>
+                    <iframe
+                      src={`https://vidsrc.icu/embed/movie/${id}?ds_lang=vi`}
+                      className="w-full h-full"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                      title={title + ' - Server 2'}
+                      onError={() => setShowServerError(true)}
+                      onLoad={e => {
+                        // Nếu iframe không load được nội dung, hiện thông báo đổi server
+                        const iframe = e.target as HTMLIFrameElement;
+                        setTimeout(() => {
+                          if (iframe && (!iframe.contentDocument || iframe.contentDocument.body.innerHTML.trim() === '')) {
+                            setShowServerError(true);
+                          }
+                        }, 2000);
+                      }}
+                    />
+                    {showServerError && (
+                      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/80 rounded-lg px-6 py-4 flex flex-col items-center justify-center text-white text-base font-medium z-10 max-w-[90%] w-auto shadow-lg border border-yellow-400">
+                        <span className="mb-1">Không phát được video trên server này.</span>
+                        <span className="text-yellow-400">Vui lòng thử đổi server khác!</span>
+                      </div>
+                    )}
+                  </>
+                )}
+                {!selectedServer && (
+                  <div className="flex items-center justify-center h-full text-white">Vui lòng chọn server để xem phim.</div>
+                )}
               </div>
             </motion.div>
           </motion.div>

@@ -275,14 +275,16 @@ function MoviesPageContent() {
           </AnimatePresence>
         )}
         {!loading && movies.length > 0 && totalPages > 1 && (
-          <Pagination
-            page={page}
-            totalPages={totalPages}
-            onPageChange={(p) => {
-              setPage(p)
-              window.scrollTo({ top: 0, behavior: 'smooth' })
-            }}
-          />
+          <div className="max-w-7xl mx-auto px-4 pb-12">
+            <Pagination
+              page={page}
+              totalPages={totalPages}
+              onPageChange={(p) => {
+                setPage(p)
+                window.scrollTo({ top: 0, behavior: 'smooth' })
+              }}
+            />
+          </div>
         )}
       </div>
     </div>
