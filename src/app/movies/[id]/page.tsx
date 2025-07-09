@@ -604,7 +604,7 @@ export default function MovieDetail() {
               className="relative w-full max-w-md bg-gray-800 rounded-lg p-6"
               onClick={e => e.stopPropagation()}
             >
-              <h3 className="text-lg font-medium text-white mb-4 text-center">Chọn server phát video</h3>
+              <h3 className="text-lg font-medium text-white mb-4 text-center">Select a video server</h3>
               <div className="flex flex-col gap-4">
                 <button
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
@@ -621,14 +621,14 @@ export default function MovieDetail() {
                     <svg className="w-4 h-4 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
-                    Lưu ý: Server này có nhiều quảng cáo, hãy tắt quảng cáo để xem phim
+                    Note: This server has many ads, please close ads to watch the movie.
                   </span>
                 </button>
                 <button
                   className="mt-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
                   onClick={() => setShowServerModal(false)}
                 >
-                  Hủy
+                  Cancel
                 </button>
               </div>
             </motion.div>
@@ -670,7 +670,7 @@ export default function MovieDetail() {
                 {selectedServer === 'server1' && (
                   movieLinksLoading ? (
                     <div className="flex items-center justify-center h-full text-white text-lg font-semibold">
-                      Đang tải link phát phim...
+                      Loading video link...
                     </div>
                   ) : movieLinks.m3u8 ? (
                     <MoviePlayer
@@ -680,8 +680,8 @@ export default function MovieDetail() {
                     />
                   ) : (
                     <div className="flex flex-col items-center justify-center h-full text-white text-lg font-semibold gap-2">
-                      Không tìm thấy link phát phim cho server này.<br/>
-                      <span className="text-yellow-400">Vui lòng thử đổi server khác!</span>
+                      Cannot find a playable video link for this server.<br/>
+                      <span className="text-yellow-400">Please try switching to another server!</span>
                     </div>
                   )
                 )}
@@ -694,26 +694,17 @@ export default function MovieDetail() {
                       allowFullScreen
                       title={title + ' - Server 2'}
                       onError={() => setShowServerError(true)}
-                      onLoad={e => {
-                        // Nếu iframe không load được nội dung, hiện thông báo đổi server
-                        const iframe = e.target as HTMLIFrameElement;
-                        setTimeout(() => {
-                          if (iframe && (!iframe.contentDocument || iframe.contentDocument.body.innerHTML.trim() === '')) {
-                            setShowServerError(true);
-                          }
-                        }, 2000);
-                      }}
                     />
                     {showServerError && (
                       <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/80 rounded-lg px-6 py-4 flex flex-col items-center justify-center text-white text-base font-medium z-10 max-w-[90%] w-auto shadow-lg border border-yellow-400">
-                        <span className="mb-1">Không phát được video trên server này.</span>
-                        <span className="text-yellow-400">Vui lòng thử đổi server khác!</span>
+                        <span className="mb-1">Cannot play video on this server.</span>
+                        <span className="text-yellow-400">Please try switching to another server!</span>
                       </div>
                     )}
                   </>
                 )}
                 {!selectedServer && (
-                  <div className="flex items-center justify-center h-full text-white">Vui lòng chọn server để xem phim.</div>
+                  <div className="flex items-center justify-center h-full text-white">Please select a server to watch the movie.</div>
                 )}
               </div>
             </motion.div>

@@ -13,7 +13,8 @@ import {
   MapPinIcon,
   PhoneIcon
 } from '@heroicons/react/24/outline'
-import { FaFacebook, FaTwitter, FaInstagram, FaYoutube } from 'react-icons/fa'
+import { FaFacebook, FaInstagram, FaYoutube } from 'react-icons/fa'
+import { TbBrandX } from 'react-icons/tb'
 
 const footerNavItems = [
   { name: 'Home', href: '/', icon: HomeIcon },
@@ -26,9 +27,9 @@ const footerNavItems = [
 ]
 
 const socialLinks = [
-  { name: 'Facebook', href: '#', icon: FaFacebook },
-  { name: 'Twitter', href: '#', icon: FaTwitter },
-  { name: 'Instagram', href: '#', icon: FaInstagram },
+  { name: 'Facebook', href: 'https://www.facebook.com/ntnnhan203', icon: FaFacebook },
+  { name: 'X', href: 'https://x.com/Nhanntn2203', icon: TbBrandX },
+  { name: 'Instagram', href: 'https://www.instagram.com/t.nhan_03/', icon: FaInstagram },
   { name: 'YouTube', href: '#', icon: FaYoutube },
 ]
 
@@ -60,12 +61,20 @@ export default function Footer() {
                 <motion.a
                   key={link.name}
                   href={link.href}
-                  whileHover={{ scale: 1.2, color: '#ef4444' }}
+                  whileHover={{ scale: 1.2 }}
                   whileTap={{ scale: 0.9 }}
                   aria-label={link.name}
-                  className="text-gray-400 hover:text-red-500 transition-colors"
+                  className={
+                    `text-gray-400 cursor-pointer transition-colors ` +
+                    (link.name === 'Facebook' ? 'hover:text-[#1877F3] focus:text-[#1877F3] active:text-blue-800 ' : '') +
+                    (link.name === 'X' ? 'hover:text-black focus:text-black active:text-gray-800 ' : '') +
+                    (link.name === 'Instagram' ? 'hover:text-[#E4405F] focus:text-[#E4405F] active:text-pink-700 ' : '') +
+                    (link.name === 'YouTube' ? 'hover:text-[#FF0000] focus:text-[#FF0000] active:text-red-700 ' : '')
+                  }
                 >
-                  <link.icon className="h-6 w-6" />
+                  <span className="inline-flex items-center justify-center rounded-full ring-2 ring-white bg-white p-1">
+                    <link.icon className="h-6 w-6" />
+                  </span>
                 </motion.a>
               ))}
             </div>
@@ -88,12 +97,12 @@ export default function Footer() {
             <h3 className="text-lg font-semibold text-white">Contact Us</h3>
             <div className="space-y-2">
               <div className="flex items-center space-x-2">
-                <EnvelopeIcon className="h-5 w-5 text-gray-400" />
-                <p className="text-gray-400">support@movieworld.com</p>
+                <EnvelopeIcon className="h-5 w-5 text-red-500" />
+                <p className="text-gray-400 hover:text-red-500 focus:text-red-500 active:text-red-600 cursor-pointer transition-colors">nhanntn2203@gmail.com</p>
               </div>
               <div className="flex items-center space-x-2">
-                <PhoneIcon className="h-5 w-5 text-gray-400" />
-                <p className="text-gray-400">+1 (555) 123-4567</p>
+                <PhoneIcon className="h-5 w-5 text-blue-500" />
+                <p className="text-gray-400 hover:text-blue-500 focus:text-blue-500 active:text-blue-600 cursor-pointer transition-colors">+84 388 875 120</p>
               </div>
               <div className="flex items-start space-x-2">
                 <MapPinIcon className="h-5 w-5 text-gray-400 flex-shrink-0" />
@@ -124,7 +133,7 @@ export default function Footer() {
         </div>
 
         <div className="mt-12 border-t border-gray-800 pt-8 text-center text-sm text-gray-500">
-          © {new Date().getFullYear()} MovieWorld. All rights reserved.
+          © {new Date().getFullYear()} MovieWorld. By NTN
         </div>
       </div>
     </footer>

@@ -60,7 +60,7 @@ export default function ContactPage() {
                 </div>
                 <div>
                   <h3 className="text-lg font-semibold text-white mb-1">Email</h3>
-                  <p className="text-gray-300">support@movie3d.com</p>
+                  <p className="text-gray-300 hover:text-red-500 focus:text-red-500 active:text-red-600 cursor-pointer transition-colors">nhanntn2203@gmail.com</p>
                   <p className="text-gray-400 text-sm">We&apos;ll respond within 24 hours</p>
                 </div>
               </div>
@@ -71,7 +71,7 @@ export default function ContactPage() {
                 </div>
                 <div>
                   <h3 className="text-lg font-semibold text-white mb-1">Phone</h3>
-                  <p className="text-gray-300">+1 (555) 123-4567</p>
+                  <p className="text-gray-300 hover:text-blue-500 focus:text-blue-500 active:text-blue-600 cursor-pointer transition-colors">+84 388 875 120</p>
                   <p className="text-gray-400 text-sm">Mon-Fri from 8am to 6pm</p>
                 </div>
               </div>
