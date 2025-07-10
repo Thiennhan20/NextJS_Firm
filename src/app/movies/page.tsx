@@ -3,24 +3,11 @@
 import { useState, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Pagination from '@/components/Pagination'
-import { MagnifyingGlassIcon } from '@heroicons/react/24/outline'
 import axios from 'axios'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Suspense } from 'react'
-
-const ratings = ['All', 5, 4, 3, 2, 1]
-const sortOptions = [
-  { value: 'latest', label: 'Latest' },
-  { value: 'oldest', label: 'Oldest' },
-  { value: 'rating-desc', label: 'Rating High-Low' },
-  { value: 'rating-asc', label: 'Rating Low-High' },
-  { value: 'title-az', label: 'Title A-Z' },
-  { value: 'title-za', label: 'Title Z-A' },
-]
-
-const PAGE_SIZE = 8 // Number of movies per page
 
 // Định nghĩa kiểu Movie rõ ràng
 interface Movie {
@@ -47,14 +34,13 @@ function MoviesPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const initialPage = Number(searchParams.get('page')) || 1;
-  const [search, setSearch] = useState('')
   const [selectedYear, setSelectedYear] = useState<string | number>('All')
-  const [selectedRating, setSelectedRating] = useState<string | number>('All')
-  const [sort, setSort] = useState('latest')
   const [page, setPage] = useState(initialPage)
   const [loading, setLoading] = useState(false)
-  const [movies, setMovies] = useState<Movie[]>([])
-  const [totalPages, setTotalPages] = useState(1)
+  // Cache các trang đã load: { [page]: Movie[] }
+  const [pagesCache, setPagesCache] = useState<{ [page: number]: Movie[] }>({})
+  // Lưu các trang đã load
+  const [loadedPages, setLoadedPages] = useState<number[]>([initialPage])
 
   // Khi page thay đổi, update URL
   useEffect(() => {
@@ -64,61 +50,131 @@ function MoviesPageContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page]);
 
-  // Compute years dynamically from movies
-  const years = useMemo(() => {
-    const uniqueYears = Array.from(new Set(movies.map((m) => m.year ?? 0))).sort((a, b) => (b ?? 0) - (a ?? 0))
-    return ['All', ...uniqueYears]
-  }, [movies])
-
   useEffect(() => {
-    const fetchMovies = async () => {
-      setLoading(true)
+    setPage(1);
+    setPagesCache({});
+    setLoadedPages([1]);
+    // Fetch trang 1 ngay lập tức
+    const fetchFirstPage = async () => {
+      setLoading(true);
       try {
-        const response = await axios.get(
-          `https://api.themoviedb.org/3/movie/now_playing?api_key=${API_KEY}&page=${page}`
-        )
-        let fetchedMovies = response.data.results
-        // Map the data to match the UI
-        fetchedMovies = fetchedMovies.map((movie: TMDBMovie) => ({
-          id: movie.id,
-          title: movie.title,
-          rating: movie.vote_average,
-          year: movie.release_date ? Number(movie.release_date.slice(0, 4)) : '',
-          image: movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : '',
-          genre: [], // Will filter later if needed
-        }))
-        setMovies(fetchedMovies)
-        setTotalPages(response.data.total_pages)
-      } catch (error) {
-        console.error(error);
-        setMovies([])
+        const movies = await fetchMoviesPage(1);
+        setPagesCache({ 1: movies });
+        setLoadedPages([1]);
+      } catch {
+        setPagesCache({ 1: [] });
+        setLoadedPages([1]);
       }
-      setLoading(false)
+      setLoading(false);
+      // Prefetch các trang tiếp theo
+      loadNext10Pages(2);
+    };
+    fetchFirstPage();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedYear]);
+
+  // Compute years dynamically from movies
+  const currentYear = new Date().getFullYear();
+  const years = useMemo(() => {
+    const yearArr = [];
+    for (let y = currentYear; y >= 2020; y--) {
+      yearArr.push(y);
     }
-    fetchMovies()
-  }, [page, API_KEY]);
+    return ['All', ...yearArr];
+  }, [currentYear]);
 
-  // Filter, sort, search (client-side)
-  const filteredMovies = movies.filter((movie: Movie) =>
-    (selectedYear === 'All' || movie.year === selectedYear) &&
-    (selectedRating === 'All' || (typeof selectedRating === 'number' && Math.floor(movie.rating ?? 0) >= selectedRating)) &&
-    movie.title.toLowerCase().includes(search.toLowerCase())
-  )
+  // Hàm fetch 1 trang phim
+  const fetchMoviesPage = async (pageToFetch: number) => {
+    let url = `https://api.themoviedb.org/3/discover/movie?api_key=${API_KEY}&sort_by=popularity.desc&page=${pageToFetch}`;
+    if (selectedYear !== 'All') {
+      url += `&primary_release_year=${selectedYear}`;
+    }
+    const response = await axios.get(url);
+    let fetchedMovies = response.data.results
+    fetchedMovies = fetchedMovies.map((movie: TMDBMovie) => ({
+      id: movie.id,
+      title: movie.title,
+      rating: movie.vote_average,
+      year: movie.release_date ? Number(movie.release_date.slice(0, 4)) : '',
+      image: movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : '',
+      genre: [],
+    }))
+    return fetchedMovies
+  }
 
-  let sortedMovies = [...filteredMovies]
-  if (sort === 'latest') sortedMovies = sortedMovies.sort((a: Movie, b: Movie) => (b.year ?? 0) - (a.year ?? 0))
-  if (sort === 'oldest') sortedMovies = sortedMovies.sort((a: Movie, b: Movie) => (a.year ?? 0) - (b.year ?? 0))
-  if (sort === 'rating-desc') sortedMovies = sortedMovies.sort((a: Movie, b: Movie) => (b.rating ?? 0) - (a.rating ?? 0))
-  if (sort === 'rating-asc') sortedMovies = sortedMovies.sort((a: Movie, b: Movie) => (a.rating ?? 0) - (b.rating ?? 0))
-  if (sort === 'title-az') sortedMovies = sortedMovies.sort((a: Movie, b: Movie) => a.title.localeCompare(b.title))
-  if (sort === 'title-za') sortedMovies = sortedMovies.sort((a: Movie, b: Movie) => b.title.localeCompare(a.title))
+  // Khi page thay đổi, nếu chưa có trong cache thì fetch
+  useEffect(() => {
+    let ignore = false;
+    const loadPage = async () => {
+      if (pagesCache[page]) return;
+      setLoading(true);
+      try {
+        const movies = await fetchMoviesPage(page);
+        if (!ignore) {
+          setPagesCache(prev => ({ ...prev, [page]: movies }));
+          setLoadedPages(prev => prev.includes(page) ? prev : [...prev, page].sort((a, b) => a - b));
+        }
+      } catch {
+        if (!ignore) setPagesCache(prev => ({ ...prev, [page]: [] }));
+      }
+      if (!ignore) setLoading(false);
+    }
+    loadPage();
+    return () => { ignore = true; }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, API_KEY, selectedYear]);
 
-  const pagedMovies = sortedMovies.slice(0, PAGE_SIZE)
+  // Hàm load thêm 10 trang tiếp theo (khi bấm vào 1 trong 2 trang kế tiếp)
+  const loadNext10Pages = async (startPage: number) => {
+    setLoading(true);
+    const promises = [];
+    for (let p = startPage; p < startPage + 10; p++) {
+      if (!pagesCache[p]) {
+        promises.push(fetchMoviesPage(p).then(movies => ({ p, movies })));
+      }
+    }
+    const results = await Promise.all(promises);
+    setPagesCache(prev => {
+      const newCache = { ...prev };
+      results.forEach(({ p, movies }) => {
+        newCache[p] = movies;
+      });
+      return newCache;
+    });
+    setLoadedPages(prev => {
+      const newPages = [...prev];
+      for (let p = startPage; p < startPage + 10; p++) {
+        if (!newPages.includes(p)) newPages.push(p);
+      }
+      return newPages.sort((a, b) => a - b);
+    });
+    setLoading(false);
+  }
+
+  // Lấy phim của trang hiện tại
+  const pagedMovies = pagesCache[page] || [];
 
   // Animation variants for grid items
   const itemVariants = {
     hidden: { opacity: 0, y: 20 },
     show: { opacity: 1, y: 0 },
+  }
+
+  // Xác định maxLoadedPage
+  const maxLoadedPage = loadedPages.length > 0 ? Math.max(...loadedPages) : 1;
+
+  // Xử lý khi đổi trang
+  const handlePageChange = (p: number) => {
+    if (p < 1) return;
+    // Nếu bấm vào trang cuối cùng đã load, tự động load tiếp 10 trang mới
+    if (p === maxLoadedPage) {
+      loadNext10Pages(maxLoadedPage + 1).then(() => setPage(p));
+    } else if (p === maxLoadedPage + 1 || p === maxLoadedPage + 2) {
+      loadNext10Pages(maxLoadedPage + 1).then(() => setPage(p));
+    } else {
+      setPage(p);
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   return (
@@ -131,11 +187,9 @@ function MoviesPageContent() {
         >
           All Movies
         </motion.h1>
-
-        {/* Filter, Sort & Search Container */}
+        {/* Filter chỉ còn Year */}
         <div className="flex flex-col gap-4 mb-10">
           <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
-            {/* Year, Rating, Sort Selects */}
             <div className="flex flex-wrap gap-4">
               <div className="relative">
                 <select
@@ -156,62 +210,9 @@ function MoviesPageContent() {
                   </svg>
                 </div>
               </div>
-
-              <div className="relative">
-                <select
-                  value={selectedRating}
-                  onChange={(e) => setSelectedRating(e.target.value === 'All' ? 'All' : Number(e.target.value))}
-                  className="appearance-none px-4 py-2 rounded-full bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer pr-8"
-                >
-                  {ratings.map((r) => (
-                    <option key={r} value={r}>
-                      {r === 'All' ? 'All Ratings' : `${r}★`}
-                    </option>
-                  ))}
-                </select>
-                {/* Custom dropdown arrow */}
-                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-400">
-                  <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                    <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
-                  </svg>
-                </div>
-              </div>
-
-              <div className="relative">
-                <select
-                  value={sort}
-                  onChange={(e) => setSort(e.target.value)}
-                  className="appearance-none px-4 py-2 rounded-full bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer pr-8"
-                >
-                  {sortOptions.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-                {/* Custom dropdown arrow */}
-                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-400">
-                  <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                    <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
-                  </svg>
-                </div>
-              </div>
-            </div>
-
-            {/* Search Input */}
-            <div className="relative w-full sm:w-auto sm:min-w-[250px]">
-              <input
-                type="text"
-                placeholder="Search movies..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full px-4 py-2 rounded-full bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 pr-10"
-              />
-              <MagnifyingGlassIcon className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none" />
             </div>
           </div>
         </div>
-
         {/* Movie Grid + Loading + Pagination */}
         {loading ? (
           <div className="flex flex-col items-center justify-center py-24">
@@ -225,7 +226,7 @@ function MoviesPageContent() {
         ) : (
           <AnimatePresence mode="wait">
             <motion.div
-              key={page} // Key change triggers exit/enter animation
+              key={page}
               variants={{
                 hidden: { opacity: 0, y: 30 },
                 show: {
@@ -239,7 +240,8 @@ function MoviesPageContent() {
               exit="hidden"
               className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-6"
             >
-              {pagedMovies.length === 0 && (
+              {/* Sửa điều kiện: chỉ hiện No movies found khi !loading, cache đã có key cho page hiện tại và không có phim */}
+              {!loading && pagesCache.hasOwnProperty(page) && pagedMovies.length === 0 && (
                 <motion.div
                   key="no-movies"
                   initial={{ opacity: 0 }}
@@ -253,7 +255,7 @@ function MoviesPageContent() {
               {pagedMovies.map((movie: Movie) => (
                 <motion.div
                   key={movie.id}
-                  variants={itemVariants} // Apply item animation variants
+                  variants={itemVariants}
                   whileHover={{ scale: 1.05 }}
                   transition={{ type: 'spring', stiffness: 200, damping: 20 }}
                 >
@@ -274,15 +276,12 @@ function MoviesPageContent() {
             </motion.div>
           </AnimatePresence>
         )}
-        {!loading && movies.length > 0 && totalPages > 1 && (
+        {!loading && loadedPages.length > 0 && (
           <div className="max-w-7xl mx-auto px-4 pb-12">
             <Pagination
-              page={page}
-              totalPages={totalPages}
-              onPageChange={(p) => {
-                setPage(p)
-                window.scrollTo({ top: 0, behavior: 'smooth' })
-              }}
+              currentPage={page}
+              loadedPages={loadedPages}
+              onPageChange={handlePageChange}
             />
           </div>
         )}

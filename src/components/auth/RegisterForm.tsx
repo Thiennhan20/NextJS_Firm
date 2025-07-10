@@ -103,8 +103,8 @@ export default function RegisterForm() {
         </div>
         <div>
           <label htmlFor="password" className="block text-sm font-medium text-yellow-200 mb-1">
-            Mật khẩu
-          </label>
+            Password
+          </label>  
           <div className="relative">
             <motion.input
               type={showPassword ? 'text' : 'password'}

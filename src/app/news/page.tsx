@@ -109,8 +109,8 @@ export default function NewsPage() {
         {!loading && totalPages > 1 && (
           <div className="max-w-7xl mx-auto px-4 pb-12">
             <Pagination
-              page={page}
-              totalPages={totalPages}
+              currentPage={page}
+              loadedPages={Array.from({ length: totalPages }, (_, i) => i + 1)}
               onPageChange={(p) => {
                 setPage(p)
                 window.scrollTo({ top: 0, behavior: 'smooth' })

@@ -42,9 +42,6 @@ export default function MovieDetail() {
   const [activeScene, setActiveScene] = useState<number | null>(null)
   const [showTrailer, setShowTrailer] = useState<boolean>(false)
   const [showMovie, setShowMovie] = useState<boolean>(false)
-  const [showSubtitleWarning, setShowSubtitleWarning] = useState<boolean>(false)
-  const [subtitleStatus, setSubtitleStatus] = useState<'checking' | 'available' | 'unavailable' | 'error'>('checking')
-  const [subtitleUrl, setSubtitleUrl] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null)
   const { scrollYProgress } = useScroll({
     target: containerRef,
@@ -94,55 +91,17 @@ export default function MovieDetail() {
     }
   };
 
-  // Kiểm tra phụ đề tiếng Việt
-  const checkVietnameseSubtitles = async (movieTitle: string, year: number | '') => {
-    try {
-      setSubtitleStatus('checking');
-      setSubtitleUrl(null); // reset trước
-      const response = await axios.get(`/api/subtitles?query=${encodeURIComponent(movieTitle)}&year=${year}`);
-      if (response.data && response.data.data && response.data.data.length > 0) {
-        setSubtitleStatus('available');
-        // Lưu link file phụ đề đầu tiên (nếu có)
-        const firstSubtitle = response.data.data[0];
-        if (firstSubtitle && firstSubtitle.attributes && firstSubtitle.attributes.files && firstSubtitle.attributes.files.length > 0) {
-          setSubtitleUrl(firstSubtitle.attributes.files[0].file_url);
-        }
-        return true;
-      } else {
-        setSubtitleStatus('unavailable');
-        return false;
-      }
-    } catch (error) {
-      console.error('Error checking subtitles:', error);
-      setSubtitleStatus('error');
-      setSubtitleUrl(null);
-      return false;
-    }
-  };
-
   // Thêm state quản lý server và modal chọn server
   const [showServerModal, setShowServerModal] = useState(false);
   const [selectedServer, setSelectedServer] = useState<string | null>(null);
 
   const handleWatchMovie = async () => {
     if (!movie) return;
-    
-    // Kiểm tra phụ đề trước khi mở player
-    const hasVietnameseSubtitles = await checkVietnameseSubtitles(movie.title, movie.year);
-    
-    if (!hasVietnameseSubtitles) {
-      setShowSubtitleWarning(true);
-      // Không mở modal chọn server ngay, chờ người dùng xác nhận
-    } else {
-      setShowServerModal(true); // Hiện modal chọn server luôn nếu có vietsub
-    }
+    setShowServerModal(true); // BỎ kiểm tra subtitle, luôn hiện modal chọn server
   };
 
   const y = useTransform(scrollYProgress, [0, 1], [0, -100])
   const opacity = useTransform(scrollYProgress, [0, 0.5], [1, 0])
-
-  const [subtitles, setSubtitles] = useState([]);
-  const [subtitleLoading, setSubtitleLoading] = useState(false);
 
   // Thêm state movieLinks để demo, sau này thay bằng data thực tế lấy từ API chi tiết phim
   const [movieLinks, setMovieLinks] = useState({
@@ -151,31 +110,10 @@ export default function MovieDetail() {
   });
   const [movieLinksLoading, setMovieLinksLoading] = useState(false);
 
-  // Thêm state quản lý lỗi server
-  const [showServerError, setShowServerError] = useState(false);
+  // Bỏ state và UI lỗi server
+  // const [showServerError, setShowServerError] = useState(false);
   // Reset lỗi khi đổi server
-  useEffect(() => { setShowServerError(false); }, [selectedServer]);
-
-  // Hàm tìm phim theo tmdb.id qua nhiều trang
-  interface PhimApiItem {
-    tmdb?: { id: string | number };
-    slug?: string;
-    [key: string]: unknown;
-  }
-  async function findMovieByTmdbId(targetId: string, maxPages = 1000) {
-    for (let page = 1; page <= maxPages; page++) {
-      const res = await fetch(`https://phimapi.com/danh-sach/phim-moi-cap-nhat-v3?page=${page}`);
-      const data = await res.json();
-      const found = (data.items as PhimApiItem[]).find((item) => item.tmdb && String(item.tmdb.id) === String(targetId));
-      if (found) {
-        console.log('Tìm thấy phim ở trang:', page, found);
-        return found;
-      }
-      // Nếu hết phim (ít hơn 24 phim/trang) thì dừng luôn
-      if (!data.items || data.items.length < 24) break;
-    }
-    return null;
-  }
+  // useEffect(() => { setShowServerError(false); }, [selectedServer]);
 
   useEffect(() => {
     const fetchMovie = async () => {
@@ -230,10 +168,6 @@ export default function MovieDetail() {
         };
         setMovie(movieData);
         
-        // Tự động kiểm tra phụ đề sau khi load movie
-        if (movieData.title && movieData.year) {
-          checkVietnameseSubtitles(movieData.title, movieData.year);
-        }
       } catch {
         setMovie(null);
       }
@@ -244,14 +178,16 @@ export default function MovieDetail() {
 
   useEffect(() => {
     if (movie?.title && movie?.year) {
-      setSubtitleLoading(true);
+      setMovieLinksLoading(true);
       fetch(`/api/subtitles?query=${encodeURIComponent(movie.title)}&year=${movie.year.toString()}`)
         .then(res => res.json())
-        .then(data => {
-          setSubtitles(data.data || []);
+        .then(() => {
+          // setSubtitles(data.data || []); // Removed as per edit hint
         })
-        .catch(() => setSubtitles([]))
-        .finally(() => setSubtitleLoading(false));
+        .catch(() => {
+          // setSubtitles([]); // Removed as per edit hint
+        })
+        .finally(() => setMovieLinksLoading(false));
     }
   }, [movie?.title, movie?.year]);
 
@@ -262,41 +198,69 @@ export default function MovieDetail() {
   }, [showMovie]);
 
   useEffect(() => {
+    console.log('Vào trang chi tiết phim với id:', id); // Chỉ log 1 lần khi vào trang
     let timeoutId: NodeJS.Timeout;
     async function fetchPhimApiEmbed() {
+      if (movieLinks.m3u8) return; // Nếu đã có link thì không fetch nữa
       setMovieLinksLoading(true);
-      setShowServerError(false);
       timeoutId = setTimeout(() => {
-        setMovieLinksLoading(false);
-        setShowServerError(true);
+        // Không tắt loading nếu chưa có link
       }, 60000); // 1 phút
       try {
-        // Tìm phim qua nhiều trang
         if (typeof id !== 'string') {
           console.log('ID không hợp lệ!');
-          setMovieLinksLoading(false);
           clearTimeout(timeoutId);
           return;
         }
-        const found = await findMovieByTmdbId(id, 1000);
-        if (!found) {
-          console.log('Không tìm thấy phim!');
-          setMovieLinksLoading(false);
+        let slug = null;
+        let logged = false;
+        if (movie?.title) {
+          // Chuẩn bị các biến thể keyword
+          const keywords = [
+            movie.title,
+          ].filter(Boolean);
+          // Thử tìm kiếm với nhiều keyword
+          outer: for (const keyword of keywords) {
+            for (const y of [movie.year as number, undefined]) {
+              let url = `https://phimapi.com/v1/api/tim-kiem?keyword=${encodeURIComponent(keyword)}`;
+              if (y) url += `&year=${y}`;
+              if (!logged) {
+                console.log('[PhimAPI] Gọi API:', url);
+              }
+              const res = await fetch(url);
+              const data = await res.json();
+              if (!logged) {
+                console.log('[PhimAPI] Dữ liệu trả về:', data);
+                logged = true;
+              }
+              // Sửa: kiểm tra data.data.items thay vì data.items
+              if (
+                data.status === 'success' &&
+                data.data &&
+                Array.isArray(data.data.items) &&
+                data.data.items.length > 0 &&
+                data.data.items[0].slug
+              ) {
+                console.log('Phim đầu tiên trong data.items:', data.data.items[0]);
+                slug = data.data.items[0].slug;
+                console.log('Slug lấy được từ data.items[0]:', slug);
+                break outer;
+              }
+            }
+          }
+        }
+        if (!slug) {
+          console.log('Không tìm thấy phim qua tìm kiếm keyword, dừng lại.');
           clearTimeout(timeoutId);
-          setShowServerError(true);
           return;
         }
-        const slug = found.slug;
-        console.log('Slug lấy được:', slug);
-        // Lấy chi tiết phim theo slug
+        // Lấy chi tiết phim theo slug để lấy link_embed
         const detailRes = await fetch(`https://phimapi.com/phim/${slug}`);
         const detailData = await detailRes.json();
         console.log('Chi tiết phim:', detailData);
         let embed = '';
-        // Kiểm tra link_embed
         if (detailData.link_embed) {
           embed = detailData.link_embed;
-          // Nếu link là dạng player.phimapi.com/player/?url=xxx thì lấy phần xxx
           if (embed.includes('?url=')) {
             embed = embed.split('?url=')[1];
           }
@@ -314,16 +278,18 @@ export default function MovieDetail() {
         } else {
           console.log('Không tìm thấy link_embed hợp lệ.');
         }
-        setMovieLinks(links => ({ ...links, m3u8: embed }));
+        if (embed) {
+          setMovieLinks(links => ({ ...links, m3u8: embed }));
+          setMovieLinksLoading(false); // Tắt loading khi đã có link
+        }
       } catch (e) {
         console.error('Lỗi khi fetch phimapi:', e);
       } finally {
-        setMovieLinksLoading(false);
         clearTimeout(timeoutId);
       }
     }
     fetchPhimApiEmbed();
-  }, [id]);
+  }, [id, movie?.title, movie?.year, movieLinks.m3u8]);
 
   if (loading || !movie) {
     return (
@@ -458,25 +424,6 @@ export default function MovieDetail() {
                   Watch Full Movie
                 </motion.button>
                 
-                {/* Subtitle Status Indicator */}
-                <div style={{
-                  display: 'inline-block',
-                  padding: '8px 12px',
-                  borderRadius: '4px',
-                  backgroundColor: subtitleLoading ? '#f0f0f0' : subtitles.length > 0 ? '#e6ffed' : '#ffe6e6',
-                  boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-                  fontWeight: 'bold',
-                  fontSize: '16px',
-                  color: subtitleLoading ? '#333' : subtitles.length > 0 ? '#28a745' : '#dc3545',
-                }}>
-                  {subtitleLoading ? (
-                    <span>Checking subtitles...</span>
-                  ) : subtitles.length > 0 ? (
-                    <span>✔ Vietnamese subtitles available</span>
-                  ) : (
-                    <span>✖ No Vietnamese subtitles available</span>
-                  )}
-                </div>
               </div>
 
               <motion.button
@@ -553,37 +500,6 @@ export default function MovieDetail() {
               </button>
             </motion.div>
           </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Subtitle Warning Modal */}
-      <AnimatePresence>
-        {showSubtitleWarning && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-            <div className="bg-gray-800 rounded-lg p-8 max-w-md w-full flex flex-col items-center">
-              <div className="bg-yellow-100 rounded-full p-3 mb-4">
-                <svg className="w-8 h-8 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <h2 className="text-xl font-bold text-white mb-2 text-center">Subtitle Notification</h2>
-              <p className="text-gray-200 mb-6 text-center">This movie currently does not have Vietnamese subtitles. Do you want to continue watching?</p>
-              <div className="flex gap-4 w-full">
-                <button
-                  className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-semibold"
-                  onClick={() => { setShowServerModal(true); setShowSubtitleWarning(false); }}
-                >
-                  Continue watching
-                </button>
-                <button
-                  className="flex-1 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 font-semibold"
-                  onClick={() => setShowSubtitleWarning(false)}
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </div>
         )}
       </AnimatePresence>
 
@@ -676,13 +592,10 @@ export default function MovieDetail() {
                     <MoviePlayer
                       src={movieLinks.m3u8}
                       poster={poster}
-                      onError={() => setShowServerError(true)}
                     />
                   ) : (
-                    <div className="flex flex-col items-center justify-center h-full text-white text-lg font-semibold gap-2">
-                      Cannot find a playable video link for this server.<br/>
-                      <span className="text-yellow-400">Please try switching to another server!</span>
-                    </div>
+                    // Không hiển thị gì nếu không có link, không show thông báo lỗi
+                    null
                   )
                 )}
                 {selectedServer === 'server2' && (
@@ -693,14 +606,7 @@ export default function MovieDetail() {
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                       allowFullScreen
                       title={title + ' - Server 2'}
-                      onError={() => setShowServerError(true)}
                     />
-                    {showServerError && (
-                      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/80 rounded-lg px-6 py-4 flex flex-col items-center justify-center text-white text-base font-medium z-10 max-w-[90%] w-auto shadow-lg border border-yellow-400">
-                        <span className="mb-1">Cannot play video on this server.</span>
-                        <span className="text-yellow-400">Please try switching to another server!</span>
-                      </div>
-                    )}
                   </>
                 )}
                 {!selectedServer && (
@@ -775,19 +681,6 @@ export default function MovieDetail() {
         )}
       </AnimatePresence>
 
-      {/* Subtitle Download Link */}
-      {subtitleStatus === 'available' && subtitleUrl && (
-        <div className="fixed bottom-0 left-0 right-0 bg-black/50 p-4">
-          <a
-            href={subtitleUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-green-400 underline"
-          >
-            Download Vietnamese subtitles
-          </a>
-        </div>
-      )}
     </div>
   )
 }

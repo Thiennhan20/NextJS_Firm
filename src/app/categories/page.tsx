@@ -190,7 +190,11 @@ export default function Categories() {
         )}
         {!loading && sortedCategories.length > 0 && totalPages > 1 && (
            <div className="mt-10">
-             <Pagination page={page} totalPages={totalPages} onPageChange={p => { setPage(p); window.scrollTo({ top: 0, behavior: 'smooth' }) }} />
+             <Pagination 
+               currentPage={page}
+               loadedPages={Array.from({ length: totalPages }, (_, i) => i + 1)}
+               onPageChange={p => { setPage(p); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
+             />
             </div>
         )}
 

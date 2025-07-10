@@ -252,10 +252,14 @@ export default function CategoryMovies() {
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="max-w-7xl mx-auto px-4 pb-12">
-          <Pagination page={page} totalPages={totalPages} onPageChange={p => {
-            if (movies.length === 0 && p > page) return;
-            setPage(p); window.scrollTo({ top: 0, behavior: 'smooth' })
-          }} />
+          <Pagination 
+            currentPage={page}
+            loadedPages={Array.from({ length: totalPages }, (_, i) => i + 1)}
+            onPageChange={p => {
+              if (movies.length === 0 && p > page) return;
+              setPage(p); window.scrollTo({ top: 0, behavior: 'smooth' })
+            }}
+          />
         </div>
       )}
     </div>
