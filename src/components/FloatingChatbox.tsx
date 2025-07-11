@@ -166,7 +166,6 @@ export default function FloatingChatbox() {
       }
 
       const data = await response.json()
-      console.log("API Response (from /api/chat):", data)
 
       let assistantMessageContent = 'Sorry, I did not receive a valid response from the AI at the moment.'
 

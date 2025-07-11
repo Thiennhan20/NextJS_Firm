@@ -49,9 +49,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Log for debugging
-    console.log("Received messages:", messages)
-
     const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -74,7 +71,6 @@ export async function POST(request: NextRequest) {
     }
 
     const data = await response.json()
-    console.log("Groq API Response:", data) // Debug log
     
     return NextResponse.json(data)
 

@@ -25,7 +25,6 @@ const useAuthStore = create<AuthStore>()(
           set({ isLoading: true, error: null });
           const response = await api.post('/auth/login', credentials);
           const { token, user } = response.data;
-          console.log('LOGIN RESPONSE USER:', user);
           localStorage.setItem('token', token);
           set({
             user: user as User,
@@ -52,24 +51,9 @@ const useAuthStore = create<AuthStore>()(
       register: async (credentials) => {
         try {
           set({ isLoading: true, error: null });
-          const response = await api.post('/auth/register', credentials);
-          console.log('REGISTER RESPONSE DATA:', response.data);
-          if (response.data.token && response.data.user) {
-            set({
-              user: response.data.user as User,
-              token: response.data.token,
-              isAuthenticated: true,
-              isLoading: false,
-            });
-            localStorage.setItem('token', response.data.token);
-          } else {
-            const loginFn = useAuthStore.getState().login;
-            await loginFn({
-              email: credentials.email,
-              password: credentials.password,
-            });
-            set({ isLoading: false });
-          }
+          await api.post('/auth/register', credentials);
+          // Chỉ hiển thị thông báo, không tự đăng nhập
+          set({ isLoading: false });
         } catch (error: unknown) {
           if (isAxiosError(error)) {
             set({

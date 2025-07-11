@@ -198,7 +198,6 @@ export default function MovieDetail() {
   }, [showMovie]);
 
   useEffect(() => {
-    console.log('Vào trang chi tiết phim với id:', id); // Chỉ log 1 lần khi vào trang
     let timeoutId: NodeJS.Timeout;
     async function fetchPhimApiEmbed() {
       if (movieLinks.m3u8) return; // Nếu đã có link thì không fetch nữa
@@ -208,8 +207,6 @@ export default function MovieDetail() {
       }, 60000); // 1 phút
       try {
         if (typeof id !== 'string') {
-          console.log('ID không hợp lệ!');
-          clearTimeout(timeoutId);
           return;
         }
         let slug = null;
@@ -225,12 +222,11 @@ export default function MovieDetail() {
               let url = `https://phimapi.com/v1/api/tim-kiem?keyword=${encodeURIComponent(keyword)}`;
               if (y) url += `&year=${y}`;
               if (!logged) {
-                console.log('[PhimAPI] Gọi API:', url);
+                logged = true;
               }
               const res = await fetch(url);
               const data = await res.json();
               if (!logged) {
-                console.log('[PhimAPI] Dữ liệu trả về:', data);
                 logged = true;
               }
               // Sửa: kiểm tra data.data.items thay vì data.items
@@ -241,23 +237,18 @@ export default function MovieDetail() {
                 data.data.items.length > 0 &&
                 data.data.items[0].slug
               ) {
-                console.log('Phim đầu tiên trong data.items:', data.data.items[0]);
                 slug = data.data.items[0].slug;
-                console.log('Slug lấy được từ data.items[0]:', slug);
                 break outer;
               }
             }
           }
         }
         if (!slug) {
-          console.log('Không tìm thấy phim qua tìm kiếm keyword, dừng lại.');
-          clearTimeout(timeoutId);
           return;
         }
         // Lấy chi tiết phim theo slug để lấy link_embed
         const detailRes = await fetch(`https://phimapi.com/phim/${slug}`);
         const detailData = await detailRes.json();
-        console.log('Chi tiết phim:', detailData);
         let embed = '';
         if (detailData.link_embed) {
           embed = detailData.link_embed;
@@ -265,7 +256,6 @@ export default function MovieDetail() {
             embed = embed.split('?url=')[1];
           }
           if (embed.endsWith('.m3u8')) {
-            console.log('Link embed trực tiếp:', embed);
           }
         } else if (detailData.episodes && detailData.episodes[0]?.server_data[0]?.link_embed) {
           embed = detailData.episodes[0].server_data[0].link_embed;
@@ -273,10 +263,8 @@ export default function MovieDetail() {
             embed = embed.split('?url=')[1];
           }
           if (embed.endsWith('.m3u8')) {
-            console.log('Link embed từ episodes:', embed);
           }
         } else {
-          console.log('Không tìm thấy link_embed hợp lệ.');
         }
         if (embed) {
           setMovieLinks(links => ({ ...links, m3u8: embed }));

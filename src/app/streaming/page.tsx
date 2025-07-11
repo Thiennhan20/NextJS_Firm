@@ -317,7 +317,6 @@ export default function StreamingPage() {
     });
 
     socketRef.current.on('connect', () => {
-      console.log('Connected to WebSocket server');
       socketRef.current?.emit('user_join', username);
     });
 
@@ -393,7 +392,6 @@ export default function StreamingPage() {
     });
 
     socketRef.current.on('disconnect', () => {
-      console.log('Disconnected from WebSocket server');
     });
 
     return () => {
@@ -573,7 +571,6 @@ export default function StreamingPage() {
           ));
 
           socketRef.current?.emit('image_message', imageData, (response: { success: boolean }) => {
-            console.log('Server acknowledgment for image_message (not final state update):', response);
             if (!response.success) { // Only handle explicit failure from server
               setChatMessages(prev => prev.map(msg =>
                 msg.id === tempMessageId
