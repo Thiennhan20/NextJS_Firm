@@ -1,7 +1,9 @@
 "use client";
+import useAuthStore from "@/store/useAuthStore";
 import useSyncWatchlistWithToken from "@/store/useSyncWatchlistWithToken";
 
 export default function WatchlistSyncer() {
-  useSyncWatchlistWithToken();
+  const { token } = useAuthStore();
+  useSyncWatchlistWithToken(token);
   return null;
 } 
