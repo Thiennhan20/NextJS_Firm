@@ -78,6 +78,14 @@ const useAuthStore = create<AuthStore>()(
           isAuthenticated: false,
           error: null,
         });
+        // Xóa toàn bộ thông tin user trong localStorage
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('auth-storage'); // key persist của Zustand
+          localStorage.removeItem('user'); // nếu có
+          localStorage.removeItem('token'); // nếu có
+          localStorage.removeItem('accessToken'); // nếu có
+          localStorage.removeItem('refreshToken'); // nếu có
+        }
       },
 
       clearError: () => set({ error: null }),
