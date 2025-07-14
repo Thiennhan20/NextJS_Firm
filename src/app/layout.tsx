@@ -6,6 +6,7 @@ import FloatingChatbox from '@/components/FloatingChatbox'
 import { Toaster } from 'react-hot-toast';
 import Footer from '@/components/Footer';
 import WatchlistSyncer from '@/components/WatchlistSyncer';
+import ClearLegacyToken from "@/components/ClearLegacyToken";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -30,6 +31,7 @@ export default function RootLayout({
         <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
       </head>
       <body className={`${inter.className} bg-black text-white min-h-screen flex flex-col`}>
+        <ClearLegacyToken />
         <Navigation />
         <WatchlistSyncer />
         <div className="pt-16 flex-grow">
