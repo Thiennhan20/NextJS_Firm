@@ -15,6 +15,7 @@ const useAuthStore = create<AuthStore>()(
   persist(
     (set) => ({
       user: null,
+      token: null,
       isAuthenticated: false,
       isLoading: false,
       error: null,
@@ -23,9 +24,11 @@ const useAuthStore = create<AuthStore>()(
         try {
           set({ isLoading: true, error: null });
           const response = await api.post('/auth/login', credentials);
-          const { user } = response.data;
+          const { token, user } = response.data;
+          localStorage.setItem('token', token);
           set({
             user: user as User,
+            token,
             isAuthenticated: true,
             isLoading: false,
           });
@@ -48,13 +51,9 @@ const useAuthStore = create<AuthStore>()(
       register: async (credentials) => {
         try {
           set({ isLoading: true, error: null });
-          const response = await api.post('/auth/register', credentials);
-          const { user } = response.data;
-          set({
-            user: user as User,
-            isAuthenticated: true,
-            isLoading: false,
-          });
+          await api.post('/auth/register', credentials);
+          // Chỉ hiển thị thông báo, không tự đăng nhập
+          set({ isLoading: false });
         } catch (error: unknown) {
           if (isAxiosError(error)) {
             set({
@@ -71,21 +70,14 @@ const useAuthStore = create<AuthStore>()(
         }
       },
 
-      logout: async () => {
-        await api.post('/auth/logout');
+      logout: () => {
+        localStorage.removeItem('token');
         set({
           user: null,
+          token: null,
           isAuthenticated: false,
           error: null,
         });
-        // Xóa toàn bộ thông tin user trong localStorage
-        if (typeof window !== 'undefined') {
-          localStorage.removeItem('auth-storage'); // key persist của Zustand
-          localStorage.removeItem('user'); // nếu có
-          localStorage.removeItem('token'); // nếu có
-          localStorage.removeItem('accessToken'); // nếu có
-          localStorage.removeItem('refreshToken'); // nếu có
-        }
       },
 
       clearError: () => set({ error: null }),
@@ -94,6 +86,7 @@ const useAuthStore = create<AuthStore>()(
       name: 'auth-storage',
       partialize: (state) => ({
         user: state.user,
+        token: state.token,
         isAuthenticated: state.isAuthenticated,
       }),
     }

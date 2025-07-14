@@ -21,7 +21,7 @@ const LoadingSpinner = () => (
 
 export default function LoginForm() {
   const router = useRouter();
-  const { login, isLoading, error, clearError } = useAuthStore();
+  const { login, isLoading, error, clearError, token } = useAuthStore();
   const { fetchWatchlistFromServer } = useWatchlistStore();
   const [formData, setFormData] = useState<LoginCredentials>({
     email: '',
@@ -39,7 +39,9 @@ export default function LoginForm() {
     e.preventDefault();
     try {
       await login(formData);
-      await fetchWatchlistFromServer();
+      if (token) {
+        await fetchWatchlistFromServer(token);
+      }
       toast.success('Login successful!');
       router.push('/');
     } catch (error: unknown) {

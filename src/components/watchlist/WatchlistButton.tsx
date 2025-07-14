@@ -15,17 +15,18 @@ interface WatchlistButtonProps {
 
 export default function WatchlistButton({ movie }: WatchlistButtonProps) {
   const { addToWatchlist, removeFromWatchlist, isInWatchlist, fetchWatchlistFromServer } = useWatchlistStore();
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, token } = useAuthStore();
   const isBookmarked = isInWatchlist(movie.id);
 
   const handleClick = async () => {
-    if (!isAuthenticated) {
+    if (!isAuthenticated || !token) {
       toast.error('You need to log in to save movies');
       return;
     }
     try {
       if (isBookmarked) {
         await api.delete('/auth/watchlist', {
+          headers: { Authorization: `Bearer ${token}` },
           data: { id: movie.id },
         });
         removeFromWatchlist(movie.id);
@@ -35,12 +36,14 @@ export default function WatchlistButton({ movie }: WatchlistButtonProps) {
           id: movie.id,
           title: movie.title,
           poster_path: movie.poster_path,
+        }, {
+          headers: { Authorization: `Bearer ${token}` },
         });
         addToWatchlist(movie);
         toast.success('Added to watchlist');
       }
       // Đồng bộ lại watchlist từ server
-      await fetchWatchlistFromServer();
+      await fetchWatchlistFromServer(token);
     } catch (err: unknown) {
       if (err && typeof err === 'object' && 'response' in err) {
         toast.error((err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'An error occurred');
