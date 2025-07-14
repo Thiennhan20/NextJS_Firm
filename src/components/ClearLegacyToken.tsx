@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import useAuthStore from "@/store/useAuthStore";
 
-const LEGACY_TOKEN_KEYS = ["token", "accessToken", "refreshToken"];
+const LEGACY_TOKEN_KEYS = ["token", "accessToken", "refreshToken", "auth-storage", "user"];
 
 export default function ClearLegacyToken() {
   const router = useRouter();
@@ -19,8 +19,11 @@ export default function ClearLegacyToken() {
       }
     });
     if (found) {
-      logout(); // Xóa state user
-      router.replace("/login"); // Chuyển về trang login
+      logout();
+      // Xóa lại toàn bộ localStorage liên quan user/token
+      LEGACY_TOKEN_KEYS.forEach((key) => localStorage.removeItem(key));
+      // Reload lại trang để chắc chắn state sạch
+      window.location.replace("/login");
     }
   }, [logout, router]);
   return null;
