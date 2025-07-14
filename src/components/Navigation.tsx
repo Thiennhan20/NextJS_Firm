@@ -28,6 +28,7 @@ import { LogOut, Settings } from 'lucide-react';
 import { useUIStore } from '@/store/store';
 import AutocompleteSearch from '@/components/common/AutocompleteSearch';
 import { useWatchlistStore } from '@/store/store';
+import useAuthHydrated from '@/store/useAuthHydrated';
 
 const mainNavItems = [
   { name: 'Home', href: '/', icon: HomeIcon },
@@ -43,12 +44,20 @@ const moreNavItems = [
   { name: 'Streaming', href: '/streaming', icon: PlayCircleIcon },
 ]
 
+// Spinner loading (tái sử dụng hoặc tạo mới nếu không import được)
+const LoadingSpinner = () => (
+  <div className="flex items-center justify-center px-4 py-2">
+    <span className="inline-block w-5 h-5 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
+  </div>
+);
+
 export default function Navigation() {
   const [isOpen, setIsOpen] = useState(false)
   const pathname = usePathname()
   const { user, isAuthenticated, logout } = useAuthStore()
   const { setNavDropdownOpen } = useUIStore();
   const { watchlist } = useWatchlistStore();
+  const hydrated = useAuthHydrated();
 
   const [isMoreDropdownActive, setIsMoreDropdownActive] = useState(false);
   const [isProfileDropdownActive, setIsProfileDropdownActive] = useState(false);
@@ -189,7 +198,9 @@ export default function Navigation() {
               <AutocompleteSearch />
             </div>
 
-            {isAuthenticated ? (
+            {!hydrated ? (
+              <LoadingSpinner />
+            ) : isAuthenticated ? (
               <div className="flex items-center space-x-4">
                 <Menu as="div" className="relative inline-block text-left">
                   <div>
@@ -415,7 +426,9 @@ export default function Navigation() {
               </div>
             )}
             {/* Mobile Watchlist, User/Login, Logout */}
-            {isAuthenticated ? (
+            {!hydrated ? (
+              <LoadingSpinner />
+            ) : isAuthenticated ? (
               <div className="px-3 mt-4 space-y-2">
                 <button
                   className="block w-full px-3 py-2 rounded-md text-base font-medium text-gray-700 mb-1 bg-gray-100 flex items-center space-x-2 focus:outline-none"

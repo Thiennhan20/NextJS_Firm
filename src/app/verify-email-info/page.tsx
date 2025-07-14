@@ -26,7 +26,7 @@ function VerifyEmailInfoPageInner() {
   useEffect(() => {
     const emailFromQuery = searchParams.get("email");
     if (emailFromQuery) setEmail(emailFromQuery);
-    else setError("Không tìm thấy email. Vui lòng đăng ký lại hoặc kiểm tra link xác thực.");
+    else setError("Email not found. Please register again or check your verification link.");
   }, [searchParams]);
 
   useEffect(() => {
@@ -45,9 +45,9 @@ function VerifyEmailInfoPageInner() {
         }
       } catch (err: unknown) {
         if ((err as { response?: { status?: number } }).response?.status === 404) {
-          setError("Không tìm thấy email này. Vui lòng kiểm tra lại.");
+          setError("This email was not found. Please check again.");
         } else {
-          setError("Có lỗi xảy ra khi kiểm tra trạng thái xác thực.");
+          setError("An error occurred while checking verification status.");
         }
       } finally {
         setChecking(false);
@@ -66,16 +66,16 @@ function VerifyEmailInfoPageInner() {
         <ClockIcon className="h-10 w-10 sm:h-14 sm:w-14 text-yellow-400 animate-pulse" />
       </div>
       <h2 className="text-xl sm:text-3xl font-extrabold mb-3 sm:mb-4 text-yellow-400 drop-shadow-lg tracking-wide">
-        Kiểm tra email để xác thực tài khoản
+        Check your email to verify your account
       </h2>
       <p className="text-yellow-200 mb-4 sm:mb-6 text-sm sm:text-base">
-        Chúng tôi đã gửi một email xác thực tới địa chỉ bạn vừa đăng ký.<br />
-        <span className="text-yellow-300 font-semibold">Vui lòng kiểm tra hộp thư (bao gồm cả mục Spam/Junk) và làm theo hướng dẫn để kích hoạt tài khoản.</span>
+        We have sent a verification email to the address you just registered.<br />
+        <span className="text-yellow-300 font-semibold">Please check your inbox (including Spam/Junk) and follow the instructions to activate your account.</span>
       </p>
       {checking && email && (
         <div className="flex items-center justify-center gap-2 text-yellow-300 mb-3 sm:mb-4 animate-pulse">
           <ClockIcon className="h-5 w-5 sm:h-6 sm:w-6" />
-          <span className="text-sm sm:text-base">Đang kiểm tra trạng thái xác thực...</span>
+          <span className="text-sm sm:text-base">Checking verification status...</span>
         </div>
       )}
       {error && (
@@ -85,11 +85,11 @@ function VerifyEmailInfoPageInner() {
         </div>
       )}
       <p className="text-yellow-300 text-sm sm:text-base mb-2">
-        Sau khi xác thực, bạn có thể đăng nhập vào hệ thống.<br/>
+        After verification, you can log in to the system.<br/>
         {shouldRedirect ? (
-          <span className="flex items-center justify-center gap-2 text-green-400 font-bold animate-bounce mt-2"><CheckCircleIcon className="h-5 w-5 sm:h-6 sm:w-6" />Xác thực thành công! Đang chuyển về trang đăng nhập...</span>
+          <span className="flex items-center justify-center gap-2 text-green-400 font-bold animate-bounce mt-2"><CheckCircleIcon className="h-5 w-5 sm:h-6 sm:w-6" />Verification successful! Redirecting to login page...</span>
         ) : (
-          <span className="text-yellow-400">Bạn sẽ được chuyển về trang đăng nhập sau khi xác thực thành công.</span>
+          <span className="text-yellow-400">You will be redirected to the login page after successful verification.</span>
         )}
       </p>
       <div className="absolute -bottom-6 -right-6 sm:-bottom-10 sm:-right-10 opacity-30 pointer-events-none select-none">

@@ -48,7 +48,7 @@ export const useAuthStore = create<AuthState>()(
 );
 
 export const useWatchlistStore = create<WatchlistState & {
-  fetchWatchlistFromServer: (token: string) => Promise<void>;
+  fetchWatchlistFromServer: () => Promise<void>;
 }>()(
   persist(
     (set, get) => ({
@@ -63,11 +63,9 @@ export const useWatchlistStore = create<WatchlistState & {
         })),
       isInWatchlist: (movieId) =>
         get().watchlist.some((movie) => movie.id === movieId),
-      fetchWatchlistFromServer: async (token) => {
+      fetchWatchlistFromServer: async () => {
         try {
-          const response = await api.get('/auth/watchlist', {
-            headers: { Authorization: `Bearer ${token}` },
-          });
+          const response = await api.get('/auth/watchlist');
           set({ watchlist: response.data.watchlist || [] });
         } catch {
           set({ watchlist: [] });

@@ -25,7 +25,7 @@ function VerifyEmailPageInner() {
     const email = searchParams.get("email");
     if (!token || !email) {
       setStatus("error");
-      setMessage("Thiếu thông tin xác thực.");
+      setMessage("Missing verification information.");
       return;
     }
     const verify = async () => {
@@ -35,7 +35,7 @@ function VerifyEmailPageInner() {
           { params: { token, email } }
         );
         const msg = typeof res.data === 'string' ? res.data : res.data?.message;
-        if (msg && msg.includes('thành công')) {
+        if (msg && (msg.includes('thành công') || msg.toLowerCase().includes('success'))) {
           setStatus("success");
           localStorage.setItem('email_verified_success', 'true');
           setTimeout(() => {
@@ -44,7 +44,7 @@ function VerifyEmailPageInner() {
           }, 2000);
         } else {
           setStatus("error");
-          setMessage(msg || "Xác thực email thất bại. Vui lòng thử lại.");
+          setMessage(msg || "Email verification failed. Please try again.");
         }
       } catch (err: unknown) {
         let msg: string | undefined = undefined;
@@ -58,7 +58,7 @@ function VerifyEmailPageInner() {
         }
         setStatus("error");
         setMessage(
-          msg || "Xác thực thất bại hoặc link đã hết hạn. Vui lòng thử lại."
+          msg || "Verification failed or the link has expired. Please try again."
         );
       }
     };
@@ -87,9 +87,9 @@ function VerifyEmailPageInner() {
           <ClockIcon className="h-10 w-10 sm:h-14 sm:w-14 text-yellow-400 animate-pulse" />
         </div>
         <h2 className="text-xl sm:text-3xl font-extrabold mb-3 sm:mb-4 text-yellow-400 drop-shadow-lg tracking-wide">
-          Xác thực Email
+          Email Verification
         </h2>
-        <div className="text-yellow-200 text-base sm:text-lg">Đang xác thực, vui lòng chờ...</div>
+        <div className="text-yellow-200 text-base sm:text-lg">Verifying, please wait...</div>
       </motion.div>
     );
   }
@@ -104,10 +104,10 @@ function VerifyEmailPageInner() {
           <CheckCircleIcon className="h-10 w-10 sm:h-14 sm:w-14 text-green-400 animate-bounce" />
         </div>
         <h2 className="text-xl sm:text-3xl font-extrabold mb-3 sm:mb-4 text-green-400 drop-shadow-lg tracking-wide">
-          Xác thực Email
+          Email Verification
         </h2>
-        <div className="text-green-400 font-bold text-base sm:text-lg">Xác thực email thành công! Bạn có thể đăng nhập.</div>
-        <div className="text-yellow-200 text-sm sm:text-base mt-2">Bạn sẽ được chuyển về trang đăng nhập sau vài giây...</div>
+        <div className="text-green-400 font-bold text-base sm:text-lg">Email verified successfully! You can now log in.</div>
+        <div className="text-yellow-200 text-sm sm:text-base mt-2">You will be redirected to the login page in a few seconds...</div>
         <div className="absolute -bottom-6 -right-6 sm:-bottom-10 sm:-right-10 opacity-30 pointer-events-none select-none">
           <svg width="80" height="80" className="sm:w-[120px] sm:h-[120px]" viewBox="0 0 120 120" fill="none"><circle cx="60" cy="60" r="60" fill="#00FF99" /></svg>
         </div>
@@ -125,7 +125,7 @@ function VerifyEmailPageInner() {
           <XCircleIcon className="h-10 w-10 sm:h-14 sm:w-14 text-red-400 animate-shake" />
         </div>
         <h2 className="text-xl sm:text-3xl font-extrabold mb-3 sm:mb-4 text-red-400 drop-shadow-lg tracking-wide">
-          Xác thực Email
+          Email Verification
         </h2>
         <div className="text-red-400 font-bold text-base sm:text-lg">{message}</div>
         <div className="absolute -bottom-6 -right-6 sm:-bottom-10 sm:-right-10 opacity-30 pointer-events-none select-none">

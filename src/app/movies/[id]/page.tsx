@@ -49,19 +49,18 @@ export default function MovieDetail() {
   })
 
   const { addToWatchlist, removeFromWatchlist, isInWatchlist, fetchWatchlistFromServer } = useWatchlistStore();
-  const { isAuthenticated, token } = useAuthStore();
+  const { isAuthenticated } = useAuthStore();
   const isBookmarked = movie ? isInWatchlist(movie.id) : false;
 
   const handleToggleWatchlist = async () => {
     if (!movie) return;
-    if (!isAuthenticated || !token) {
+    if (!isAuthenticated) {
       toast.error('You need to log in to save movies!');
       return;
     }
     try {
       if (isBookmarked) {
         await api.delete('/auth/watchlist', {
-          headers: { Authorization: `Bearer ${token}` },
           data: { id: movie.id },
         });
         removeFromWatchlist(movie.id);
@@ -71,8 +70,6 @@ export default function MovieDetail() {
           id: movie.id,
           title: movie.title,
           poster_path: movie.poster,
-        }, {
-          headers: { Authorization: `Bearer ${token}` },
         });
         addToWatchlist({
           id: movie.id,
@@ -81,7 +78,7 @@ export default function MovieDetail() {
         });
         toast.success('Added movie to watchlist!');
       }
-      await fetchWatchlistFromServer(token);
+      await fetchWatchlistFromServer();
     } catch (err: unknown) {
       if (err && typeof err === 'object' && 'response' in err) {
         toast.error((err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'An error occurred');

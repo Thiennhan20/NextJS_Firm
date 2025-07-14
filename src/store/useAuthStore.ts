@@ -15,7 +15,6 @@ const useAuthStore = create<AuthStore>()(
   persist(
     (set) => ({
       user: null,
-      token: null,
       isAuthenticated: false,
       isLoading: false,
       error: null,
@@ -24,11 +23,9 @@ const useAuthStore = create<AuthStore>()(
         try {
           set({ isLoading: true, error: null });
           const response = await api.post('/auth/login', credentials);
-          const { token, user } = response.data;
-          localStorage.setItem('token', token);
+          const { user } = response.data;
           set({
             user: user as User,
-            token,
             isAuthenticated: true,
             isLoading: false,
           });
@@ -51,9 +48,13 @@ const useAuthStore = create<AuthStore>()(
       register: async (credentials) => {
         try {
           set({ isLoading: true, error: null });
-          await api.post('/auth/register', credentials);
-          // Chỉ hiển thị thông báo, không tự đăng nhập
-          set({ isLoading: false });
+          const response = await api.post('/auth/register', credentials);
+          const { user } = response.data;
+          set({
+            user: user as User,
+            isAuthenticated: true,
+            isLoading: false,
+          });
         } catch (error: unknown) {
           if (isAxiosError(error)) {
             set({
@@ -70,11 +71,10 @@ const useAuthStore = create<AuthStore>()(
         }
       },
 
-      logout: () => {
-        localStorage.removeItem('token');
+      logout: async () => {
+        await api.post('/auth/logout');
         set({
           user: null,
-          token: null,
           isAuthenticated: false,
           error: null,
         });
@@ -86,7 +86,6 @@ const useAuthStore = create<AuthStore>()(
       name: 'auth-storage',
       partialize: (state) => ({
         user: state.user,
-        token: state.token,
         isAuthenticated: state.isAuthenticated,
       }),
     }

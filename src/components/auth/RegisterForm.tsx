@@ -38,7 +38,7 @@ export default function RegisterForm() {
     e.preventDefault();
     try {
       await register(formData);
-      toast.success('Vui lòng kiểm tra email để xác thực tài khoản!');
+      toast.success('Please check your email to verify your account!');
       router.push(`/verify-email-info?email=${encodeURIComponent(formData.email)}`);
     } catch (error: unknown) {
       if (axios.isAxiosError(error)) {
