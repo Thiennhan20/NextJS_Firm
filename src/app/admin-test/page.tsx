@@ -6,8 +6,11 @@ export default function AdminTestPage() {
 
   const checkAdmin = async () => {
     try {
+      const token = localStorage.getItem('token');
       const res = await fetch('http://localhost:3001/api/auth/admin-only', {
-        credentials: 'include',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
       });
       const data = await res.json();
       if (res.ok) {

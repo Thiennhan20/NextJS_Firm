@@ -15,6 +15,7 @@ import { useParams } from 'next/navigation'
 import useAuthStore from '@/store/useAuthStore'
 import api from '@/lib/axios'
 import MoviePlayer from '@/components/common/MoviePlayer';
+import { setupAudioNodes, cleanupAudioNodes, AudioNodes } from '@/lib/audioUtils';
 
 // Định nghĩa kiểu Movie rõ ràng
 interface Movie {
@@ -91,29 +92,22 @@ export default function MovieDetail() {
     }
   };
 
-  // Thêm state quản lý server và modal chọn server
   const [showServerModal, setShowServerModal] = useState(false);
   const [selectedServer, setSelectedServer] = useState<string | null>(null);
 
   const handleWatchMovie = async () => {
     if (!movie) return;
-    setShowServerModal(true); // BỎ kiểm tra subtitle, luôn hiện modal chọn server
+    setShowServerModal(true);
   };
 
   const y = useTransform(scrollYProgress, [0, 1], [0, -100])
   const opacity = useTransform(scrollYProgress, [0, 0.5], [1, 0])
 
-  // Thêm state movieLinks để demo, sau này thay bằng data thực tế lấy từ API chi tiết phim
   const [movieLinks, setMovieLinks] = useState({
     embed: '',
     m3u8: '',
   });
   const [movieLinksLoading, setMovieLinksLoading] = useState(false);
-
-  // Bỏ state và UI lỗi server
-  // const [showServerError, setShowServerError] = useState(false);
-  // Reset lỗi khi đổi server
-  // useEffect(() => { setShowServerError(false); }, [selectedServer]);
 
   useEffect(() => {
     const fetchMovie = async () => {
@@ -123,7 +117,6 @@ export default function MovieDetail() {
           `https://api.themoviedb.org/3/movie/${id}?api_key=${API_KEY}`
         );
         const data = response.data;
-        // Fetch images
         let scenes: string[] = [];
         try {
           const imgRes = await axios.get(
@@ -132,13 +125,11 @@ export default function MovieDetail() {
           const backdrops: { file_path: string }[] = imgRes.data.backdrops || [];
           scenes = backdrops.slice(0, 3).map((img) => `https://image.tmdb.org/t/p/w780${img.file_path}`);
         } catch {}
-        // Fallback nếu không có đủ ảnh
         if (scenes.length < 3) {
           if (data.backdrop_path) scenes.push(`https://image.tmdb.org/t/p/w780${data.backdrop_path}`);
           if (data.poster_path) scenes.push(`https://image.tmdb.org/t/p/w500${data.poster_path}`);
         }
         scenes = scenes.slice(0, 3);
-        // Fetch trailer
         let trailer = '';
         try {
           const videoRes = await axios.get(
@@ -167,7 +158,6 @@ export default function MovieDetail() {
           scenes,
         };
         setMovie(movieData);
-        
       } catch {
         setMovie(null);
       }
@@ -181,15 +171,38 @@ export default function MovieDetail() {
       setMovieLinksLoading(true);
       fetch(`/api/subtitles?query=${encodeURIComponent(movie.title)}&year=${movie.year.toString()}`)
         .then(res => res.json())
-        .then(() => {
-          // setSubtitles(data.data || []); // Removed as per edit hint
-        })
-        .catch(() => {
-          // setSubtitles([]); // Removed as per edit hint
-        })
+        .then(() => {})
+        .catch(() => {})
         .finally(() => setMovieLinksLoading(false));
     }
   }, [movie?.title, movie?.year]);
+
+  const videoRef = useRef<HTMLVideoElement>(null);
+  // State cho các bộ lọc âm thanh (không hiển thị trong UI)
+  const audioNodesRef = useRef<AudioNodes | null>(null);
+
+  // Khởi tạo AudioContext và các bộ lọc
+  useEffect(() => {
+    if (!showMovie || !videoRef.current) return;
+    let cancelled = false;
+    const videoEl = videoRef.current;
+    if (!videoEl) return;
+    (async () => {
+      if (!audioNodesRef.current) {
+        const nodes = await setupAudioNodes(videoEl);
+        if (!cancelled) {
+          audioNodesRef.current = nodes;
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+      if (audioNodesRef.current) {
+        cleanupAudioNodes(audioNodesRef.current);
+        audioNodesRef.current = null;
+      }
+    };
+  }, [showMovie]);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -200,11 +213,9 @@ export default function MovieDetail() {
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
     async function fetchPhimApiEmbed() {
-      if (movieLinks.m3u8) return; // Nếu đã có link thì không fetch nữa
+      if (movieLinks.m3u8) return;
       setMovieLinksLoading(true);
-      timeoutId = setTimeout(() => {
-        // Không tắt loading nếu chưa có link
-      }, 60000); // 1 phút
+      timeoutId = setTimeout(() => {}, 60000);
       try {
         if (typeof id !== 'string') {
           return;
@@ -212,11 +223,7 @@ export default function MovieDetail() {
         let slug = null;
         let logged = false;
         if (movie?.title) {
-          // Chuẩn bị các biến thể keyword
-          const keywords = [
-            movie.title,
-          ].filter(Boolean);
-          // Thử tìm kiếm với nhiều keyword
+          const keywords = [movie.title].filter(Boolean);
           outer: for (const keyword of keywords) {
             for (const y of [movie.year as number, undefined]) {
               let url = `https://phimapi.com/v1/api/tim-kiem?keyword=${encodeURIComponent(keyword)}`;
@@ -226,10 +233,6 @@ export default function MovieDetail() {
               }
               const res = await fetch(url);
               const data = await res.json();
-              if (!logged) {
-                logged = true;
-              }
-              // Sửa: kiểm tra data.data.items thay vì data.items
               if (
                 data.status === 'success' &&
                 data.data &&
@@ -246,7 +249,6 @@ export default function MovieDetail() {
         if (!slug) {
           return;
         }
-        // Lấy chi tiết phim theo slug để lấy link_embed
         const detailRes = await fetch(`https://phimapi.com/phim/${slug}`);
         const detailData = await detailRes.json();
         let embed = '';
@@ -255,20 +257,15 @@ export default function MovieDetail() {
           if (embed.includes('?url=')) {
             embed = embed.split('?url=')[1];
           }
-          if (embed.endsWith('.m3u8')) {
-          }
         } else if (detailData.episodes && detailData.episodes[0]?.server_data[0]?.link_embed) {
           embed = detailData.episodes[0].server_data[0].link_embed;
           if (embed.includes('?url=')) {
             embed = embed.split('?url=')[1];
           }
-          if (embed.endsWith('.m3u8')) {
-          }
-        } else {
         }
         if (embed) {
           setMovieLinks(links => ({ ...links, m3u8: embed }));
-          setMovieLinksLoading(false); // Tắt loading khi đã có link
+          setMovieLinksLoading(false);
         }
       } catch (e) {
         console.error('Lỗi khi fetch phimapi:', e);
@@ -291,14 +288,11 @@ export default function MovieDetail() {
     );
   }
 
-  // destructure movie để dùng an toàn phía dưới
   const { title, backdrop, poster, rating, duration, year, genre, director, cast, description, scenes, trailer } = movie;
 
   return (
     <div ref={containerRef} className="min-h-screen bg-gradient-to-b from-gray-900 to-black">
-      {/* Hero Section */}
       <div className="relative w-full overflow-hidden py-16 lg:py-0 min-h-screen flex items-center">
-        {/* Background Image */}
         <div className="absolute inset-0">
           <Image
             src={backdrop}
@@ -310,12 +304,10 @@ export default function MovieDetail() {
           <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/30 to-black" />
         </div>
         
-        {/* Content Area */}
         <motion.div
           style={{ y, opacity }}
           className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 lg:grid lg:grid-cols-2 lg:gap-8 lg:items-center"
         >
-          {/* 3D Poster Column */}
           <div className="relative h-[40vh] md:h-[50vh] lg:h-[60vh] w-full flex items-center justify-center mb-8 lg:mb-0">
             {poster && poster.startsWith('https://image.tmdb.org') ? (
               <Canvas className="w-full h-full">
@@ -348,7 +340,6 @@ export default function MovieDetail() {
             )}
           </div>
           
-          {/* Details Column */}
           <div className="text-white space-y-6">
             <motion.h1 
               initial={{ opacity: 0, y: 20 }}
@@ -389,7 +380,6 @@ export default function MovieDetail() {
               {description}
             </p>
 
-            {/* Action Buttons */}
             <div className="flex flex-wrap gap-4">
               <motion.button
                 whileHover={{ scale: 1.05 }}
@@ -411,7 +401,6 @@ export default function MovieDetail() {
                   <PlayIcon className="h-5 w-5" />
                   Watch Full Movie
                 </motion.button>
-                
               </div>
 
               <motion.button
@@ -427,13 +416,11 @@ export default function MovieDetail() {
                 <BookmarkIcon className="h-5 w-5" />
                 {isBookmarked ? 'Added to list' : 'Save to list'}
               </motion.button>
-
             </div>
           </div>
         </motion.div>
       </div>
 
-      {/* Watch Movie Section */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 text-white">
         <h2 className="text-3xl font-bold mb-6">About This Movie</h2>
         <p className="text-gray-300 mb-6">
@@ -455,7 +442,6 @@ export default function MovieDetail() {
         </div>
       </div>
 
-      {/* Trailer Modal */}
       <AnimatePresence>
         {showTrailer && (
           <motion.div
@@ -491,7 +477,6 @@ export default function MovieDetail() {
         )}
       </AnimatePresence>
 
-      {/* Server Selection Modal */}
       <AnimatePresence>
         {showServerModal && (
           <motion.div
@@ -529,7 +514,7 @@ export default function MovieDetail() {
                   </span>
                 </button>
                 <button
-                  className="mt-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                  className="mt-2 px-4 py-2 bg-gray-600 Phật giáo text-white rounded-lg hover:bg-gray-700 transition-colors"
                   onClick={() => setShowServerModal(false)}
                 >
                   Cancel
@@ -540,7 +525,6 @@ export default function MovieDetail() {
         )}
       </AnimatePresence>
 
-      {/* Movie Player Modal */}
       <AnimatePresence>
         {showMovie && movie && (
           <motion.div
@@ -557,7 +541,6 @@ export default function MovieDetail() {
               className="relative w-full h-full max-w-7xl max-h-screen p-4"
               onClick={e => e.stopPropagation()}
             >
-              {/* Header with close button */}
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-white text-xl font-semibold">{title}</h3>
                 <button
@@ -569,7 +552,6 @@ export default function MovieDetail() {
                   </svg>
                 </button>
               </div>
-              {/* Video Player */}
               <div className="w-full h-[calc(100%-4rem)] rounded-lg overflow-hidden">
                 {selectedServer === 'server1' && (
                   movieLinksLoading ? (
@@ -578,24 +560,22 @@ export default function MovieDetail() {
                     </div>
                   ) : movieLinks.m3u8 ? (
                     <MoviePlayer
+                      ref={videoRef}
                       src={movieLinks.m3u8}
                       poster={poster}
                     />
                   ) : (
-                    // Không hiển thị gì nếu không có link, không show thông báo lỗi
                     null
                   )
                 )}
                 {selectedServer === 'server2' && (
-                  <>
-                    <iframe
-                      src={`https://vidsrc.icu/embed/movie/${id}?ds_lang=vi`}
-                      className="w-full h-full"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      allowFullScreen
-                      title={title + ' - Server 2'}
-                    />
-                  </>
+                  <iframe
+                    src={`https://vidsrc.icu/embed/movie/${id}?ds_lang=vi`}
+                    className="w-full h-full"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                    title={title + ' - Server 2'}
+                  />
                 )}
                 {!selectedServer && (
                   <div className="flex items-center justify-center h-full text-white">Please select a server to watch the movie.</div>
@@ -606,7 +586,6 @@ export default function MovieDetail() {
         )}
       </AnimatePresence>
 
-      {/* Scenes Section */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <h2 className="text-3xl font-bold text-white mb-8">Movie Scenes</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -633,7 +612,6 @@ export default function MovieDetail() {
         </div>
       </div>
 
-      {/* Scene Preview Modal */}
       <AnimatePresence>
         {activeScene !== null && (
           <motion.div
@@ -668,7 +646,6 @@ export default function MovieDetail() {
           </motion.div>
         )}
       </AnimatePresence>
-
     </div>
   )
 }
@@ -680,8 +657,8 @@ function MoviePoster3D({ posterUrl }: { posterUrl: string }) {
   useEffect(() => {
     let frameId: number;
     const start = Date.now();
-    const maxY = 0.35; // ~20 độ, đổi thành Math.PI/2 * 0.98 nếu muốn gần 89 độ
-    const maxX = 0.1;  // lắc lên xuống nhẹ, có thể để 0 nếu chỉ muốn lắc trái phải
+    const maxY = 0.35;
+    const maxX = 0.1;
 
     const animate = () => {
       if (meshRef.current) {
