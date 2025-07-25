@@ -46,7 +46,7 @@ export default function RegisterForm() {
       } else {
         toast.error('An unexpected error occurred during registration.');
       }
-    }    
+    }
   };
 
   const inputVariants = {

@@ -188,8 +188,7 @@ export default function FloatingChatbox() {
       }
       setMessages(prev => [...prev, assistantMessage])
 
-    } catch (error) {
-      console.error("Error fetching from API:", error)
+    } catch {
       setMessages(prev => [...prev, { 
         role: 'assistant', 
         content: 'Sorry, I am unable to connect to the AI at the moment.' 

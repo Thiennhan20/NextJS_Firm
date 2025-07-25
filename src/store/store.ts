@@ -1,5 +1,4 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
 import api from '@/lib/axios';
 
 interface User {
@@ -34,50 +33,40 @@ interface UIState {
 }
 
 export const useAuthStore = create<AuthState>()(
-  persist(
-    (set) => ({
-      user: null,
-      isAuthenticated: false,
-      login: (user) => set({ user, isAuthenticated: true }),
-      logout: () => set({ user: null, isAuthenticated: false }),
-    }),
-    {
-      name: 'auth-storage',
-    }
-  )
+  (set) => ({
+    user: null,
+    isAuthenticated: false,
+    login: (user) => set({ user, isAuthenticated: true }),
+    logout: () => set({ user: null, isAuthenticated: false }),
+  })
 );
 
 export const useWatchlistStore = create<WatchlistState & {
-  fetchWatchlistFromServer: (token: string) => Promise<void>;
+  fetchWatchlistFromServer: () => Promise<void>;
+  clearWatchlist: () => void;
 }>()(
-  persist(
-    (set, get) => ({
-      watchlist: [],
-      addToWatchlist: (movie) =>
-        set((state) => ({
-          watchlist: [...state.watchlist, movie],
-        })),
-      removeFromWatchlist: (movieId) =>
-        set((state) => ({
-          watchlist: state.watchlist.filter((movie) => movie.id !== movieId),
-        })),
-      isInWatchlist: (movieId) =>
-        get().watchlist.some((movie) => movie.id === movieId),
-      fetchWatchlistFromServer: async (token) => {
-        try {
-          const response = await api.get('/auth/watchlist', {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          set({ watchlist: response.data.watchlist || [] });
-        } catch {
-          set({ watchlist: [] });
-        }
-      },
-    }),
-    {
-      name: 'watchlist-storage',
-    }
-  )
+  (set, get) => ({
+    watchlist: [],
+    addToWatchlist: (movie) =>
+      set((state) => ({
+        watchlist: [...state.watchlist, movie],
+      })),
+    removeFromWatchlist: (movieId) =>
+      set((state) => ({
+        watchlist: state.watchlist.filter((movie) => movie.id !== movieId),
+      })),
+    isInWatchlist: (movieId) =>
+      get().watchlist.some((movie) => movie.id === movieId),
+    fetchWatchlistFromServer: async () => {
+      try {
+        const response = await api.get('/auth/watchlist');
+        set({ watchlist: response.data.watchlist || [] });
+      } catch {
+        set({ watchlist: [] });
+      }
+    },
+    clearWatchlist: () => set({ watchlist: [] }),
+  })
 );
 
 export const useUIStore = create<UIState>()((set) => ({

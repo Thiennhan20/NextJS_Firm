@@ -15,7 +15,7 @@ const MotionDiv = dynamic(() => import('framer-motion').then(mod => mod.motion.d
 export default function WatchlistPage() {
   const hydrated = useAuthHydrated();
   const { watchlist, removeFromWatchlist, fetchWatchlistFromServer } = useWatchlistStore();
-  const { isAuthenticated, token } = useAuthStore();
+  const { isAuthenticated } = useAuthStore();
 
   if (!hydrated) {
     return null; // hoặc spinner nếu muốn
@@ -38,17 +38,16 @@ export default function WatchlistPage() {
   }
 
   const handleRemove = async (movieId: number) => {
-    if (!token) {
+    if (!isAuthenticated) {
       toast.error('You need to log in!');
       return;
     }
     try {
       await api.delete('/auth/watchlist', {
-        headers: { Authorization: `Bearer ${token}` },
         data: { id: movieId },
       });
       removeFromWatchlist(movieId);
-      await fetchWatchlistFromServer(token);
+      await fetchWatchlistFromServer();
       toast.success('Removed movie from watchlist!');
     } catch (err: unknown) {
       if (err && typeof err === 'object' && 'response' in err) {

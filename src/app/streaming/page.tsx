@@ -9,6 +9,7 @@ import imageCompression from 'browser-image-compression';
 import useAuthStore from '@/store/useAuthStore';
 import { useUIStore } from '@/store/store';
 import axios from 'axios';
+import RequireAdmin from '@/components/RequireAdmin';
 
 // Network Information interface
 interface NetworkInformation extends EventTarget {
@@ -635,448 +636,450 @@ export default function StreamingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 text-white flex flex-col">
-      {/* Header Stats */}
-      {!isFullscreen && !isNavDropdownOpen && (
-        <div className="bg-black/50 backdrop-blur-sm border-b border-yellow-600/30 sticky top-0 z-50">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4 sm:gap-6">
-                <div className="flex items-center gap-2 text-red-400">
-                  <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse" />
-                  <span className="text-sm font-semibold">LIVE</span>
+    <RequireAdmin>
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 text-white flex flex-col">
+        {/* Header Stats */}
+        {!isFullscreen && !isNavDropdownOpen && (
+          <div className="bg-black/50 backdrop-blur-sm border-b border-yellow-600/30 sticky top-0 z-50">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4 sm:gap-6">
+                  <div className="flex items-center gap-2 text-red-400">
+                    <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse" />
+                    <span className="text-sm font-semibold">LIVE</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-gray-300">
+                    <Eye className="h-4 w-4" />
+                    <span className="text-sm">{formatNumber(streamMovie?.viewers ?? 0)} viewers</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-pink-400">
+                    <Heart className="h-4 w-4" />
+                    <span className="text-sm">{formatNumber(streamMovie?.likes ?? 0)} likes</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 text-gray-300">
-                  <Eye className="h-4 w-4" />
-                  <span className="text-sm">{formatNumber(streamMovie?.viewers ?? 0)} viewers</span>
+                <div className="flex items-center gap-2 text-green-400">
+                  <User className="h-4 w-4" />
+                  <span className="text-sm">{onlineUsers} online</span>
                 </div>
-                <div className="flex items-center gap-2 text-pink-400">
-                  <Heart className="h-4 w-4" />
-                  <span className="text-sm">{formatNumber(streamMovie?.likes ?? 0)} likes</span>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 text-green-400">
-                <User className="h-4 w-4" />
-                <span className="text-sm">{onlineUsers} online</span>
               </div>
             </div>
           </div>
-        </div>
-      )}
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full flex-grow flex flex-col py-6">
-        {/* Title */}
-        {!isFullscreen && (
-          <motion.h1
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="text-xl sm:text-2xl md:text-4xl font-bold text-center bg-gradient-to-r from-yellow-400 via-yellow-300 to-yellow-500 bg-clip-text text-transparent mb-6 drop-shadow-2xl"
-          >
-            {streamMovie?.title}
-          </motion.h1>
         )}
 
-        <div className={`flex-grow flex flex-col ${isMobileLandscape ? 'relative landscape:flex-row landscape:flex-grow landscape:max-h-[calc(100vh-6rem)]' : 'lg:flex-row'} gap-6`}>
-          {/* Main Content */}
-          <div className={`${isMobileLandscape || isFullscreen ? 'w-full h-full landscape:flex-grow' : 'lg:w-2/3'} flex flex-col gap-6`}>
-            {/* Main Video */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.6 }}
-              ref={videoContainerRef}
-              className={`relative ${isMobileLandscape || isFullscreen ? 'h-full' : 'aspect-video'} w-full rounded-2xl overflow-hidden shadow-2xl border-2 border-yellow-600/50 bg-gray-900 hover:border-yellow-500/70 transition-all duration-300`}
-            >
-              {loading ? (
-                <div className="flex-grow flex items-center justify-center">
-                  <div className="flex flex-col items-center gap-2">
-                    <div className="w-8 h-8 border-2 border-yellow-500 border-t-transparent rounded-full animate-spin" />
-                    <span className="text-xs text-gray-400">Loading...</span>
-                  </div>
-                </div>
-              ) : (
-                <iframe
-                  src={streamMovie?.streamUrl}
-                  title={streamMovie?.title}
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                  allowFullScreen
-                  className="absolute top-0 left-0 w-full h-full"
-                />
-              )}
-              <div className="absolute top-4 left-4 bg-red-600 text-white px-3 py-1 rounded-full text-sm font-bold animate-pulse">
-                LIVE
-              </div>
-              {/* Fullscreen Button */}
-              <motion.button
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-                onClick={toggleFullscreen}
-                className="absolute top-4 right-4 p-2 bg-gray-700/50 hover:bg-gray-600/50 text-yellow-400 rounded-xl transition-all duration-200 border border-yellow-500/20 hover:border-yellow-500/40 shadow-lg"
-              >
-                {isFullscreen ? <Minimize2 className="h-5 w-5" /> : <Maximize2 className="h-5 w-5" />}
-              </motion.button>
-            </motion.div>
-
-            {/* Camera & Screen Share */}
-            {!isFullscreen && !isMobileLandscape && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6, delay: 0.2 }}
-                  className="relative aspect-video bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl overflow-hidden shadow-lg border border-gray-700/50 flex items-center justify-center group hover:border-yellow-600/50 transition-all duration-300 hover:shadow-yellow-600/20 hover:shadow-lg"
-                >
-                  <Video className="h-12 w-12 text-gray-600 group-hover:text-yellow-500 transition-colors duration-300" />
-                  <span className="absolute bottom-4 text-gray-400 text-sm group-hover:text-yellow-300 transition-colors duration-300">Your Camera</span>
-                </motion.div>
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6, delay: 0.3 }}
-                  className="relative aspect-video bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl overflow-hidden shadow-lg border border-gray-700/50 flex items-center justify-center group hover:border-yellow-600/50 transition-all duration-300 hover:shadow-yellow-600/20 hover:shadow-lg"
-                >
-                  <Share className="h-12 w-12 text-gray-600 group-hover:text-yellow-500 transition-colors duration-300" />
-                  <span className="absolute bottom-4 text-gray-400 text-sm group-hover:text-yellow-300 transition-colors duration-300">Screen Share</span>
-                </motion.div>
-              </div>
-            )}
-          </div>
-
-          {/* Chat Sidebar */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full flex-grow flex flex-col py-6">
+          {/* Title */}
           {!isFullscreen && (
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.6, delay: 0.4 }}
-              className={isMobileLandscape ? `fixed inset-y-0 right-0 w-full h-full bg-gradient-to-b from-gray-900/95 to-black/95 backdrop-blur-xl rounded-l-none shadow-2xl transition-transform duration-300 transform landscape:w-full landscape:max-w-[80%] landscape:h-full landscape:inset-y-0 landscape:left-auto landscape:right-0 ${isChatVisible ? 'translate-x-0' : 'translate-x-full'}` : (isChatVisible ? 'lg:w-1/2 flex flex-col h-[calc(100vh-12rem)] lg:h-[calc(100vh-8rem)] bg-gradient-to-b from-gray-900/95 to-black/95 backdrop-blur-xl rounded-2xl border border-yellow-500/20 shadow-2xl' : 'hidden')}
+            <motion.h1
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6 }}
+              className="text-xl sm:text-2xl md:text-4xl font-bold text-center bg-gradient-to-r from-yellow-400 via-yellow-300 to-yellow-500 bg-clip-text text-transparent mb-6 drop-shadow-2xl"
             >
-            {/* Chat Header */}
-            <div className="bg-gradient-to-r from-yellow-600/20 to-yellow-500/10 backdrop-blur-lg p-3 sm:p-4 rounded-t-2xl border-b border-yellow-500/30">
-              <div className="flex items-center justify-between">
-                <h2 className="text-base sm:text-lg font-bold text-yellow-300 flex items-center gap-1 sm:gap-2">
-                  <MessageCircle className="h-4 w-4 sm:h-5 sm:w-5" />
-                  Live Chat
-                </h2>
-                <div className="flex items-center gap-2 sm:gap-3">
-                  {isEditingUsername ? (
-                    <div className="flex items-center gap-1 sm:gap-2">
-                      <input
-                        type="text"
-                        value={tempUsername}
-                        onChange={(e) => setTempUsername(e.target.value)}
-                        placeholder="New username"
-                        className="px-2 py-1 bg-gray-800/80 rounded-md text-xs sm:text-sm text-white border border-yellow-500/30 focus:border-yellow-500/50 focus:outline-none focus:ring-1 focus:ring-yellow-500/30"
-                        onKeyDown={(e) => e.key === 'Enter' && handleUsernameChange()}
-                      />
-                      <button
-                        onClick={handleUsernameChange}
-                        className="px-2 py-1 bg-gradient-to-r from-yellow-500 to-yellow-600 text-black rounded-md text-xs sm:text-sm font-medium hover:from-yellow-400 hover:to-yellow-500 transition-all duration-200 shadow-lg shadow-yellow-500/20"
-                      >
-                        Save
-                      </button>
+              {streamMovie?.title}
+            </motion.h1>
+          )}
+
+          <div className={`flex-grow flex flex-col ${isMobileLandscape ? 'relative landscape:flex-row landscape:flex-grow landscape:max-h-[calc(100vh-6rem)]' : 'lg:flex-row'} gap-6`}>
+            {/* Main Content */}
+            <div className={`${isMobileLandscape || isFullscreen ? 'w-full h-full landscape:flex-grow' : 'lg:w-2/3'} flex flex-col gap-6`}>
+              {/* Main Video */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.6 }}
+                ref={videoContainerRef}
+                className={`relative ${isMobileLandscape || isFullscreen ? 'h-full' : 'aspect-video'} w-full rounded-2xl overflow-hidden shadow-2xl border-2 border-yellow-600/50 bg-gray-900 hover:border-yellow-500/70 transition-all duration-300`}
+              >
+                {loading ? (
+                  <div className="flex-grow flex items-center justify-center">
+                    <div className="flex flex-col items-center gap-2">
+                      <div className="w-8 h-8 border-2 border-yellow-500 border-t-transparent rounded-full animate-spin" />
+                      <span className="text-xs text-gray-400">Loading...</span>
                     </div>
-                  ) : (
-                    <button
-                      onClick={() => {
-                        setTempUsername(username);
-                        setIsEditingUsername(true);
-                      }}
-                      className="text-xs sm:text-sm text-yellow-300 hover:text-yellow-200 transition-colors duration-200 flex items-center gap-1 sm:gap-2"
-                    >
-                      <User className="h-3 w-3 sm:h-4 sm:w-4" />
-                      {username}
-                    </button>
-                  )}
-                  <div className="flex items-center gap-1 sm:gap-2 text-xs text-gray-400">
-                    <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-green-500 rounded-full animate-pulse" />
-                    {chatMessages.length} messages
                   </div>
+                ) : (
+                  <iframe
+                    src={streamMovie?.streamUrl}
+                    title={streamMovie?.title}
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowFullScreen
+                    className="absolute top-0 left-0 w-full h-full"
+                  />
+                )}
+                <div className="absolute top-4 left-4 bg-red-600 text-white px-3 py-1 rounded-full text-sm font-bold animate-pulse">
+                  LIVE
                 </div>
-              </div>
-            </div>
-          
-            {/* Chat Messages */}
-            <div
-              ref={chatContainerRef}
-              className="flex-grow overflow-y-auto p-3 sm:p-4 space-y-1.5 sm:space-y-2 scrollbar-hide hover:scrollbar-default relative"
-              style={{
-                scrollbarWidth: 'none',
-                msOverflowStyle: 'none',
-              }}
-            >
-              <AnimatePresence>
-                {chatMessages.map((msg) => (
+                {/* Fullscreen Button */}
+                <motion.button
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={toggleFullscreen}
+                  className="absolute top-4 right-4 p-2 bg-gray-700/50 hover:bg-gray-600/50 text-yellow-400 rounded-xl transition-all duration-200 border border-yellow-500/20 hover:border-yellow-500/40 shadow-lg"
+                >
+                  {isFullscreen ? <Minimize2 className="h-5 w-5" /> : <Maximize2 className="h-5 w-5" />}
+                </motion.button>
+              </motion.div>
+
+              {/* Camera & Screen Share */}
+              {!isFullscreen && !isMobileLandscape && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <motion.div
-                    key={msg.id}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -20 }}
-                    transition={{ duration: 0.3 }}
-                    className={`flex items-start ${msg.sender === 'me' ? 'justify-end' : 'justify-start'} ${msg.type === 'system' ? 'text-center' : ''} ${showEmojiPicker && msg.type === 'system' ? 'hidden' : ''}`}
+                    transition={{ duration: 0.6, delay: 0.2 }}
+                    className="relative aspect-video bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl overflow-hidden shadow-lg border border-gray-700/50 flex items-center justify-center group hover:border-yellow-600/50 transition-all duration-300 hover:shadow-yellow-600/20 hover:shadow-lg"
                   >
-                    {msg.type === 'system' ? (
-                      <div className="relative w-full text-center text-white text-xs py-2">
-                        <hr className="absolute top-1/2 left-0 right-0 border-t border-gray-500" />
-                        <span className="relative z-10 px-2 bg-gray-900 rounded-xl py-1">{msg.text}</span>
+                    <Video className="h-12 w-12 text-gray-600 group-hover:text-yellow-500 transition-colors duration-300" />
+                    <span className="absolute bottom-4 text-gray-400 text-sm group-hover:text-yellow-300 transition-colors duration-300">Your Camera</span>
+                  </motion.div>
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.6, delay: 0.3 }}
+                    className="relative aspect-video bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl overflow-hidden shadow-lg border border-gray-700/50 flex items-center justify-center group hover:border-yellow-600/50 transition-all duration-300 hover:shadow-yellow-600/20 hover:shadow-lg"
+                  >
+                    <Share className="h-12 w-12 text-gray-600 group-hover:text-yellow-500 transition-colors duration-300" />
+                    <span className="absolute bottom-4 text-gray-400 text-sm group-hover:text-yellow-300 transition-colors duration-300">Screen Share</span>
+                  </motion.div>
+                </div>
+              )}
+            </div>
+
+            {/* Chat Sidebar */}
+            {!isFullscreen && (
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.6, delay: 0.4 }}
+                className={isMobileLandscape ? `fixed inset-y-0 right-0 w-full h-full bg-gradient-to-b from-gray-900/95 to-black/95 backdrop-blur-xl rounded-l-none shadow-2xl transition-transform duration-300 transform landscape:w-full landscape:max-w-[80%] landscape:h-full landscape:inset-y-0 landscape:left-auto landscape:right-0 ${isChatVisible ? 'translate-x-0' : 'translate-x-full'}` : (isChatVisible ? 'lg:w-1/2 flex flex-col h-[calc(100vh-12rem)] lg:h-[calc(100vh-8rem)] bg-gradient-to-b from-gray-900/95 to-black/95 backdrop-blur-xl rounded-2xl border border-yellow-500/20 shadow-2xl' : 'hidden')}
+              >
+              {/* Chat Header */}
+              <div className="bg-gradient-to-r from-yellow-600/20 to-yellow-500/10 backdrop-blur-lg p-3 sm:p-4 rounded-t-2xl border-b border-yellow-500/30">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-base sm:text-lg font-bold text-yellow-300 flex items-center gap-1 sm:gap-2">
+                    <MessageCircle className="h-4 w-4 sm:h-5 sm:w-5" />
+                    Live Chat
+                  </h2>
+                  <div className="flex items-center gap-2 sm:gap-3">
+                    {isEditingUsername ? (
+                      <div className="flex items-center gap-1 sm:gap-2">
+                        <input
+                          type="text"
+                          value={tempUsername}
+                          onChange={(e) => setTempUsername(e.target.value)}
+                          placeholder="New username"
+                          className="px-2 py-1 bg-gray-800/80 rounded-md text-xs sm:text-sm text-white border border-yellow-500/30 focus:border-yellow-500/50 focus:outline-none focus:ring-1 focus:ring-yellow-500/30"
+                          onKeyDown={(e) => e.key === 'Enter' && handleUsernameChange()}
+                        />
+                        <button
+                          onClick={handleUsernameChange}
+                          className="px-2 py-1 bg-gradient-to-r from-yellow-500 to-yellow-600 text-black rounded-md text-xs sm:text-sm font-medium hover:from-yellow-400 hover:to-yellow-500 transition-all duration-200 shadow-lg shadow-yellow-500/20"
+                        >
+                          Save
+                        </button>
                       </div>
                     ) : (
-                      <>
-                        {msg.sender !== 'me' && (
-                          <div className="flex-shrink-0">
-                            <div className="w-5 sm:w-6 h-5 sm:h-6 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center text-xs sm:text-sm shadow-lg shadow-yellow-500/20 ring-2 ring-yellow-500/20">
-                              {msg.avatar}
-                            </div>
-                          </div>
-                        )}
-          
-                        <div className={`max-w-[75%] ${msg.sender === 'me' ? 'order-2' : ''}`}>
+                      <button
+                        onClick={() => {
+                          setTempUsername(username);
+                          setIsEditingUsername(true);
+                        }}
+                        className="text-xs sm:text-sm text-yellow-300 hover:text-yellow-200 transition-colors duration-200 flex items-center gap-1 sm:gap-2"
+                      >
+                        <User className="h-3 w-3 sm:h-4 sm:w-4" />
+                        {username}
+                      </button>
+                    )}
+                    <div className="flex items-center gap-1 sm:gap-2 text-xs text-gray-400">
+                      <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-green-500 rounded-full animate-pulse" />
+                      {chatMessages.length} messages
+                    </div>
+                  </div>
+                </div>
+              </div>
+            
+              {/* Chat Messages */}
+              <div
+                ref={chatContainerRef}
+                className="flex-grow overflow-y-auto p-3 sm:p-4 space-y-1.5 sm:space-y-2 scrollbar-hide hover:scrollbar-default relative"
+                style={{
+                  scrollbarWidth: 'none',
+                  msOverflowStyle: 'none',
+                }}
+              >
+                <AnimatePresence>
+                  {chatMessages.map((msg) => (
+                    <motion.div
+                      key={msg.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                      transition={{ duration: 0.3 }}
+                      className={`flex items-start ${msg.sender === 'me' ? 'justify-end' : 'justify-start'} ${msg.type === 'system' ? 'text-center' : ''} ${showEmojiPicker && msg.type === 'system' ? 'hidden' : ''}`}
+                    >
+                      {msg.type === 'system' ? (
+                        <div className="relative w-full text-center text-white text-xs py-2">
+                          <hr className="absolute top-1/2 left-0 right-0 border-t border-gray-500" />
+                          <span className="relative z-10 px-2 bg-gray-900 rounded-xl py-1">{msg.text}</span>
+                        </div>
+                      ) : (
+                        <>
                           {msg.sender !== 'me' && (
-                            <div className="flex items-center gap-0.5 mb-0.5">
-                              <span className={`text-xs font-semibold ${msg.isVip ? 'text-yellow-400' : 'text-gray-300'}`}>
-                                {msg.username}
-                                {msg.isVip && <span className="text-yellow-400 ml-0.5">⭐</span>}
-                              </span>
-                              <span className="text-xs text-gray-500">{formatTime(msg.timestamp)}</span>
+                            <div className="flex-shrink-0">
+                              <div className="w-5 sm:w-6 h-5 sm:h-6 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center text-xs sm:text-sm shadow-lg shadow-yellow-500/20 ring-2 ring-yellow-500/20">
+                                {msg.avatar}
+                              </div>
                             </div>
                           )}
           
-                          <div
-                            className={`rounded-xl px-2 py-1.5 ${
-                              msg.sender === 'me'
-                                ? 'bg-gradient-to-r from-yellow-500 to-yellow-600 text-black shadow-md shadow-yellow-500/20 ring-1 ring-yellow-500/30'
-                                : msg.type === 'emoji'
-                                ? 'bg-transparent text-xl sm:text-2xl'
-                                : 'bg-gradient-to-r from-gray-800/80 to-gray-700/80 text-white shadow-md backdrop-blur-sm ring-1 ring-gray-500/30'
-                            } ${msg.type === 'emoji' ? 'text-center' : ''}`}
-                          >
-                            {msg.type === 'image' && (msg.imageUrl || msg.imageStatus === 'loading' || msg.imageStatus === 'error') ? (
-                              <div className="relative">
-                                {msg.imageUrl && (
-                                  <Image
-                                    src={msg.imageUrl}
-                                    alt="Shared image in chat"
-                                    width={120}
-                                    height={90}
-                                    className="max-w-full h-auto rounded-lg object-contain shadow-md ring-1 ring-gray-500/30"
-                                    sizes="(max-width: 768px) 100vw, 33vw"
-                                  />
-                                )}
-                                {(msg.imageStatus === 'loading' && msg.progress !== undefined && msg.progress < 100) && (
-                                  <div className="absolute inset-0 bg-gray-900/70 rounded-lg flex items-center justify-center">
-                                    <div className="flex flex-col items-center gap-2">
-                                      <div className="w-8 h-8 border-2 border-yellow-500 border-t-transparent rounded-full animate-spin" />
-                                      <span className="text-xs text-gray-400">{Math.round(msg.progress || 0)}%</span>
-                                    </div>
-                                  </div>
-                                )}
-                                {msg.imageStatus === 'error' && (
-                                  <div className="absolute inset-0 bg-red-900/70 rounded-lg flex items-center justify-center">
-                                    <div className="flex flex-col items-center gap-1">
-                                      <span className="text-red-500">⚠️</span>
-                                      <span className="text-xs text-red-400">{msg.text || 'Lỗi tải ảnh'}</span>
-                                    </div>
-                                  </div>
-                                )}
-                                {(!msg.imageUrl && msg.imageStatus === 'loading') && (
-                                  <div className="w-[120px] h-[90px] bg-gray-700/50 rounded-lg flex items-center justify-center">
-                                    <div className="flex flex-col items-center gap-2">
-                                      <div className="w-8 h-8 border-2 border-yellow-500 border-t-transparent rounded-full animate-spin" />
-                                      <span className="text-xs text-gray-400">{Math.round(msg.progress || 0)}%</span>
-                                    </div>
-                                  </div>
-                                )}
+                          <div className={`max-w-[75%] ${msg.sender === 'me' ? 'order-2' : ''}`}>
+                            {msg.sender !== 'me' && (
+                              <div className="flex items-center gap-0.5 mb-0.5">
+                                <span className={`text-xs font-semibold ${msg.isVip ? 'text-yellow-400' : 'text-gray-300'}`}>
+                                  {msg.username}
+                                  {msg.isVip && <span className="text-yellow-400 ml-0.5">⭐</span>}
+                                </span>
+                                <span className="text-xs text-gray-500">{formatTime(msg.timestamp)}</span>
                               </div>
-                            ) : (
-                              <p className={`${msg.type === 'emoji' ? 'text-base sm:text-xl' : 'text-xs'} break-words`}>
-                                {msg.text}
-                                {msg.networkStatus && (
-                                  <span className={`ml-1 text-xs ${
-                                    msg.networkStatus === 'slow' ? 'text-yellow-500' : 'text-red-500'
-                                  }`}>
-                                    {msg.networkStatus === 'slow' ? '⚠️' : '❌'}
-                                  </span>
-                                )}
-                              </p>
                             )}
-                            {msg.sender === 'me' && (
-                              <div className="text-right text-xs text-black/70 mt-0.5">{formatTime(msg.timestamp)}</div>
-                            )}
-                          </div>
-                        </div>
           
-                        {msg.sender === 'me' && (
-                          <div className="flex-shrink-0 order-3">
-                            <div className="w-5 sm:w-6 h-5 sm:h-6 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-xs sm:text-sm shadow-lg shadow-blue-500/20 ring-2 ring-blue-500/20">
-                              {msg.avatar}
+                            <div
+                              className={`rounded-xl px-2 py-1.5 ${
+                                msg.sender === 'me'
+                                  ? 'bg-gradient-to-r from-yellow-500 to-yellow-600 text-black shadow-md shadow-yellow-500/20 ring-1 ring-yellow-500/30'
+                                  : msg.type === 'emoji'
+                                  ? 'bg-transparent text-xl sm:text-2xl'
+                                  : 'bg-gradient-to-r from-gray-800/80 to-gray-700/80 text-white shadow-md backdrop-blur-sm ring-1 ring-gray-500/30'
+                              } ${msg.type === 'emoji' ? 'text-center' : ''}`}
+                            >
+                              {msg.type === 'image' && (msg.imageUrl || msg.imageStatus === 'loading' || msg.imageStatus === 'error') ? (
+                                <div className="relative">
+                                  {msg.imageUrl && (
+                                    <Image
+                                      src={msg.imageUrl}
+                                      alt="Shared image in chat"
+                                      width={120}
+                                      height={90}
+                                      className="max-w-full h-auto rounded-lg object-contain shadow-md ring-1 ring-gray-500/30"
+                                      sizes="(max-width: 768px) 100vw, 33vw"
+                                    />
+                                  )}
+                                  {(msg.imageStatus === 'loading' && msg.progress !== undefined && msg.progress < 100) && (
+                                    <div className="absolute inset-0 bg-gray-900/70 rounded-lg flex items-center justify-center">
+                                      <div className="flex flex-col items-center gap-2">
+                                        <div className="w-8 h-8 border-2 border-yellow-500 border-t-transparent rounded-full animate-spin" />
+                                        <span className="text-xs text-gray-400">{Math.round(msg.progress || 0)}%</span>
+                                      </div>
+                                    </div>
+                                  )}
+                                  {msg.imageStatus === 'error' && (
+                                    <div className="absolute inset-0 bg-red-900/70 rounded-lg flex items-center justify-center">
+                                      <div className="flex flex-col items-center gap-1">
+                                        <span className="text-red-500">⚠️</span>
+                                        <span className="text-xs text-red-400">{msg.text || 'Lỗi tải ảnh'}</span>
+                                      </div>
+                                    </div>
+                                  )}
+                                  {(!msg.imageUrl && msg.imageStatus === 'loading') && (
+                                    <div className="w-[120px] h-[90px] bg-gray-700/50 rounded-lg flex items-center justify-center">
+                                      <div className="flex flex-col items-center gap-2">
+                                        <div className="w-8 h-8 border-2 border-yellow-500 border-t-transparent rounded-full animate-spin" />
+                                        <span className="text-xs text-gray-400">{Math.round(msg.progress || 0)}%</span>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                <p className={`${msg.type === 'emoji' ? 'text-base sm:text-xl' : 'text-xs'} break-words`}>
+                                  {msg.text}
+                                  {msg.networkStatus && (
+                                    <span className={`ml-1 text-xs ${
+                                      msg.networkStatus === 'slow' ? 'text-yellow-500' : 'text-red-500'
+                                    }`}>
+                                      {msg.networkStatus === 'slow' ? '⚠️' : '❌'}
+                                    </span>
+                                  )}
+                                </p>
+                              )}
+                              {msg.sender === 'me' && (
+                                <div className="text-right text-xs text-black/70 mt-0.5">{formatTime(msg.timestamp)}</div>
+                              )}
                             </div>
                           </div>
-                        )}
-                      </>
-                    )}
-                  </motion.div>
-                ))}
-              </AnimatePresence>
-              <div ref={chatEndRef} />
-            </div>
           
-            {/* Chat Input */}
-            <div className="bg-gradient-to-r from-gray-900/95 to-black/95 backdrop-blur-lg p-3 sm:p-4 rounded-b-2xl border-t border-yellow-500/20">
-              <div className="flex flex-col gap-2">
-                <textarea
-                  rows={2}
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  placeholder="Type your message..."
-                  className="w-full px-3 py-2 bg-gray-800/80 rounded-xl border border-yellow-500/20 focus:outline-none focus:ring-2 focus:ring-yellow-500/30 focus:border-yellow-500/40 text-white placeholder-gray-400 text-xs resize-none transition-all duration-300 backdrop-blur-sm shadow-md ring-1 ring-yellow-500/10 hover:border-yellow-500/40 hover:shadow-yellow-500/5 scrollbar-hide"
-                  style={{
-                    scrollbarWidth: 'none',
-                    msOverflowStyle: 'none',
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      handleSendMessage();
-                    }
-                  }}
-                />
+                          {msg.sender === 'me' && (
+                            <div className="flex-shrink-0 order-3">
+                              <div className="w-5 sm:w-6 h-5 sm:h-6 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-xs sm:text-sm shadow-lg shadow-blue-500/20 ring-2 ring-blue-500/20">
+                                {msg.avatar}
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+                <div ref={chatEndRef} />
+              </div>
+            
+              {/* Chat Input */}
+              <div className="bg-gradient-to-r from-gray-900/95 to-black/95 backdrop-blur-lg p-3 sm:p-4 rounded-b-2xl border-t border-yellow-500/20">
+                <div className="flex flex-col gap-2">
+                  <textarea
+                    rows={2}
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    placeholder="Type your message..."
+                    className="w-full px-3 py-2 bg-gray-800/80 rounded-xl border border-yellow-500/20 focus:outline-none focus:ring-2 focus:ring-yellow-500/30 focus:border-yellow-500/40 text-white placeholder-gray-400 text-xs resize-none transition-all duration-300 backdrop-blur-sm shadow-md ring-1 ring-yellow-500/10 hover:border-yellow-500/40 hover:shadow-yellow-500/5 scrollbar-hide"
+                    style={{
+                      scrollbarWidth: 'none',
+                      msOverflowStyle: 'none',
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSendMessage();
+                      }
+                    }}
+                  />
           
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1 sm:gap-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1 sm:gap-2">
+                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                        className="emoji-button p-1.5 bg-gray-700/50 hover:bg-gray-600/50 text-yellow-400 rounded-lg transition-all duration-200 flex items-center justify-center border border-yellow-500/20 hover:border-yellow-500/40 shadow-md ring-1 ring-yellow-500/10 hover:shadow-yellow-500/10"
+                      >
+                        <Smile className="h-3 w-3" />
+                      </motion.button>
+          
+                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => fileInputRef.current?.click()}
+                        className="p-1.5 bg-gray-700/50 hover:bg-gray-600/50 text-yellow-400 rounded-lg transition-all duration-200 flex items-center justify-center border border-yellow-500/20 hover:border-yellow-500/40 shadow-md ring-1 ring-yellow-500/10 hover:shadow-yellow-500/10"
+                      >
+                        <LucideImage className="h-3 w-3" />
+                      </motion.button>
+                    </div>
+          
                     <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                      className="emoji-button p-1.5 bg-gray-700/50 hover:bg-gray-600/50 text-yellow-400 rounded-lg transition-all duration-200 flex items-center justify-center border border-yellow-500/20 hover:border-yellow-500/40 shadow-md ring-1 ring-yellow-500/10 hover:shadow-yellow-500/10"
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={handleSendMessage}
+                      disabled={!newMessage.trim()}
+                      className="px-2 py-1 bg-gradient-to-r from-yellow-500/90 to-yellow-600/90 hover:from-yellow-400/90 hover:to-yellow-500/90 disabled:from-gray-600/50 disabled:to-gray-700/50 disabled:cursor-not-allowed text-black/90 font-medium rounded-lg transition-all duration-300 shadow-md shadow-yellow-500/10 flex items-center gap-1 ring-1 ring-yellow-500/20 hover:shadow-yellow-500/20 disabled:shadow-none text-xs sm:text-sm"
                     >
-                      <Smile className="h-3 w-3" />
-                    </motion.button>
-          
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => fileInputRef.current?.click()}
-                      className="p-1.5 bg-gray-700/50 hover:bg-gray-600/50 text-yellow-400 rounded-lg transition-all duration-200 flex items-center justify-center border border-yellow-500/20 hover:border-yellow-500/40 shadow-md ring-1 ring-yellow-500/10 hover:shadow-yellow-500/10"
-                    >
-                      <LucideImage className="h-3 w-3" />
+                      <span className="hidden sm:inline">Send</span>
+                      <Send className="h-3 w-3" />
                     </motion.button>
                   </div>
-          
-                  <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={handleSendMessage}
-                    disabled={!newMessage.trim()}
-                    className="px-2 py-1 bg-gradient-to-r from-yellow-500/90 to-yellow-600/90 hover:from-yellow-400/90 hover:to-yellow-500/90 disabled:from-gray-600/50 disabled:to-gray-700/50 disabled:cursor-not-allowed text-black/90 font-medium rounded-lg transition-all duration-300 shadow-md shadow-yellow-500/10 flex items-center gap-1 ring-1 ring-yellow-500/20 hover:shadow-yellow-500/20 disabled:shadow-none text-xs sm:text-sm"
-                  >
-                    <span className="hidden sm:inline">Send</span>
-                    <Send className="h-3 w-3" />
-                  </motion.button>
                 </div>
-              </div>
           
-              {/* Emoji Picker */}
-              <AnimatePresence>
-                {showEmojiPicker && (
-                  <motion.div
-                    ref={emojiPickerRef}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 10 }}
-                    className="absolute bottom-full left-0 right-0 mb-2 bg-gray-800/95 rounded-xl p-3 sm:p-4 border border-yellow-500/20 shadow-xl z-10 backdrop-blur-xl ring-1 ring-yellow-500/20"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    {/* Emoji Categories */}
-                    <div className="flex gap-1 mb-3 overflow-x-auto pb-2 scrollbar-hide">
-                      {emojiCategories.map((category) => (
-                        <motion.button
-                          key={category.name}
-                          whileHover={{ scale: 1.1 }}
-                          whileTap={{ scale: 0.9 }}
-                          onClick={() => setSelectedEmojiCategory(category.name)}
-                          className={`flex items-center gap-1 px-2 py-1 rounded-lg text-sm transition-all duration-200 ${
-                            selectedEmojiCategory === category.name
-                              ? 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/40'
-                              : 'bg-gray-700/50 text-gray-300 hover:bg-gray-600/50 border border-transparent'
-                          }`}
-                        >
-                          <span>{category.icon}</span>
-                          <span className="hidden sm:inline">{category.name}</span>
-                        </motion.button>
-                      ))}
-                    </div>
-
-                    {/* Emoji Grid */}
-                    <div className="grid grid-cols-6 sm:grid-cols-8 gap-1 sm:gap-2 max-h-[200px] overflow-y-auto scrollbar-hide hover:scrollbar-default pr-1">
-                      {quickEmojis
-                        .filter((emoji) => emoji.category === selectedEmojiCategory)
-                        .map((emoji) => (
+                {/* Emoji Picker */}
+                <AnimatePresence>
+                  {showEmojiPicker && (
+                    <motion.div
+                      ref={emojiPickerRef}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 10 }}
+                      className="absolute bottom-full left-0 right-0 mb-2 bg-gray-800/95 rounded-xl p-3 sm:p-4 border border-yellow-500/20 shadow-xl z-10 backdrop-blur-xl ring-1 ring-yellow-500/20"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {/* Emoji Categories */}
+                      <div className="flex gap-1 mb-3 overflow-x-auto pb-2 scrollbar-hide">
+                        {emojiCategories.map((category) => (
                           <motion.button
-                            key={emoji.name}
-                            whileHover={{ scale: 1.2 }}
+                            key={category.name}
+                            whileHover={{ scale: 1.1 }}
                             whileTap={{ scale: 0.9 }}
-                            onClick={() => handleEmojiClick(emoji.emoji)}
-                            className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-gray-700/80 hover:bg-gray-600/80 flex items-center justify-center text-lg transition-all duration-200 border border-yellow-500/20 hover:border-yellow-500/40 ring-1 ring-yellow-500/10 hover:shadow-md hover:shadow-yellow-500/10"
-                            title={emoji.name}
+                            onClick={() => setSelectedEmojiCategory(category.name)}
+                            className={`flex items-center gap-1 px-2 py-1 rounded-lg text-sm transition-all duration-200 ${
+                              selectedEmojiCategory === category.name
+                                ? 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/40'
+                                : 'bg-gray-700/50 text-gray-300 hover:bg-gray-600/50 border border-transparent'
+                            }`}
                           >
-                            {emoji.emoji}
+                            <span>{category.icon}</span>
+                            <span className="hidden sm:inline">{category.name}</span>
                           </motion.button>
                         ))}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          </motion.div> 
-          )}
+                      </div>
 
-          {/* Floating Chat Button for Mobile Landscape */}
-          {isMobileLandscape && !isFullscreen && (
-            <motion.button
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-              onClick={() => setIsChatVisible(!isChatVisible)}
-              className="fixed bottom-3 right-3 p-2 bg-gradient-to-r from-yellow-500 to-yellow-600 text-black rounded-full shadow-lg shadow-yellow-500/30 hover:shadow-yellow-500/50 transition-all duration-200 z-50"
-            >
-              <MessageCircle className="h-5 w-5" />
-            </motion.button>
-          )}
+                      {/* Emoji Grid */}
+                      <div className="grid grid-cols-6 sm:grid-cols-8 gap-1 sm:gap-2 max-h-[200px] overflow-y-auto scrollbar-hide hover:scrollbar-default pr-1">
+                        {quickEmojis
+                          .filter((emoji) => emoji.category === selectedEmojiCategory)
+                          .map((emoji) => (
+                            <motion.button
+                              key={emoji.name}
+                              whileHover={{ scale: 1.2 }}
+                              whileTap={{ scale: 0.9 }}
+                              onClick={() => handleEmojiClick(emoji.emoji)}
+                              className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-gray-700/80 hover:bg-gray-600/80 flex items-center justify-center text-lg transition-all duration-200 border border-yellow-500/20 hover:border-yellow-500/40 ring-1 ring-yellow-500/10 hover:shadow-md hover:shadow-yellow-500/10"
+                              title={emoji.name}
+                            >
+                              {emoji.emoji}
+                            </motion.button>
+                          ))}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </motion.div> 
+            )}
+
+            {/* Floating Chat Button for Mobile Landscape */}
+            {isMobileLandscape && !isFullscreen && (
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={() => setIsChatVisible(!isChatVisible)}
+                className="fixed bottom-3 right-3 p-2 bg-gradient-to-r from-yellow-500 to-yellow-600 text-black rounded-full shadow-lg shadow-yellow-500/30 hover:shadow-yellow-500/50 transition-all duration-200 z-50"
+              >
+                <MessageCircle className="h-5 w-5" />
+              </motion.button>
+            )}
+          </div>
         </div>
+
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleImageUpload}
+          accept="image/*"
+          className="hidden"
+        />
+
+        <style jsx>{`
+          .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+          }
+          .scrollbar-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+          }
+          .scrollbar-default::-webkit-scrollbar {
+            display: block;
+            width: 6px;
+            height: 6px;
+          }
+          .scrollbar-default::-webkit-scrollbar-track {
+            background: #1f2937;
+            border-radius: 10px;
+          }
+          .scrollbar-default::-webkit-scrollbar-thumb {
+            background: #fbbf24;
+            border-radius: 10px;
+          }
+          .scrollbar-default::-webkit-scrollbar-thumb:hover {
+            background: #f59e0b;
+          }
+        `}</style>
       </div>
-
-      <input
-        type="file"
-        ref={fileInputRef}
-        onChange={handleImageUpload}
-        accept="image/*"
-        className="hidden"
-      />
-
-      <style jsx>{`
-        .scrollbar-hide::-webkit-scrollbar {
-          display: none;
-        }
-        .scrollbar-hide {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
-        }
-        .scrollbar-default::-webkit-scrollbar {
-          display: block;
-          width: 6px;
-          height: 6px;
-        }
-        .scrollbar-default::-webkit-scrollbar-track {
-          background: #1f2937;
-          border-radius: 10px;
-        }
-        .scrollbar-default::-webkit-scrollbar-thumb {
-          background: #fbbf24;
-          border-radius: 10px;
-        }
-        .scrollbar-default::-webkit-scrollbar-thumb:hover {
-          background: #f59e0b;
-        }
-      `}</style>
-    </div>
+    </RequireAdmin>
   );
 }

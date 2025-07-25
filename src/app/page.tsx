@@ -120,7 +120,7 @@ export default function Home() {
               transition={{ duration: 0.8, delay: 0.2 }}
               className="text-base xs:text-lg sm:text-xl md:text-2xl mb-6 sm:mb-8 text-gray-100 drop-shadow"
             >
-              Discover amazing movies in stunning 3D
+              Discover amazing movies
             </motion.p>
             <motion.div
               initial={{ opacity: 0, y: 20 }}

@@ -2,11 +2,9 @@
 import { useEffect } from 'react';
 import { useWatchlistStore } from './store';
 
-export default function useSyncWatchlistWithToken(token: string | null) {
+export default function useSyncWatchlistWithToken() {
   const { fetchWatchlistFromServer } = useWatchlistStore();
   useEffect(() => {
-    if (token) {
-      fetchWatchlistFromServer(token);
-    }
-  }, [token, fetchWatchlistFromServer]);
+    fetchWatchlistFromServer();
+  }, [fetchWatchlistFromServer]);
 } 

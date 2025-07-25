@@ -21,7 +21,7 @@ const LoadingSpinner = () => (
 
 export default function LoginForm() {
   const router = useRouter();
-  const { login, isLoading, error, clearError, token } = useAuthStore();
+  const { login, isLoading, error, clearError, checkAuth } = useAuthStore();
   const { fetchWatchlistFromServer } = useWatchlistStore();
   const [formData, setFormData] = useState<LoginCredentials>({
     email: '',
@@ -39,9 +39,8 @@ export default function LoginForm() {
     e.preventDefault();
     try {
       await login(formData);
-      if (token) {
-        await fetchWatchlistFromServer(token);
-      }
+      await checkAuth();
+      await fetchWatchlistFromServer();
       toast.success('Login successful!');
       router.push('/');
     } catch (error: unknown) {
@@ -50,7 +49,7 @@ export default function LoginForm() {
       } else {
         toast.error('An unexpected error occurred during login.');
       }
-    }    
+    }
   };
 
   const inputVariants = {
