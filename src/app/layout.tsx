@@ -6,7 +6,6 @@ import FloatingChatbox from '@/components/FloatingChatbox'
 import { Toaster } from 'react-hot-toast';
 import Footer from '@/components/Footer';
 import WatchlistSyncer from '@/components/WatchlistSyncer';
-import ClearStorageOnLoad from '@/components/ClearStorageOnLoad';
 import AuthChecker from '../components/AuthChecker';
 
 const inter = Inter({ subsets: ["latin"] });
@@ -33,7 +32,6 @@ export default function RootLayout({
       </head>
       <body className={`${inter.className} bg-black text-white min-h-screen flex flex-col`}>
         <AuthChecker />
-        <ClearStorageOnLoad />
         <Navigation />
         <WatchlistSyncer />
         <div className="pt-16 flex-grow">

@@ -15,7 +15,7 @@ interface WatchlistButtonProps {
 
 export default function WatchlistButton({ movie }: WatchlistButtonProps) {
   const { addToWatchlist, removeFromWatchlist, isInWatchlist, fetchWatchlistFromServer } = useWatchlistStore();
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, token } = useAuthStore();
   const isBookmarked = isInWatchlist(movie.id);
 
   const handleClick = async () => {
@@ -40,7 +40,7 @@ export default function WatchlistButton({ movie }: WatchlistButtonProps) {
         toast.success('Added to watchlist');
       }
       // Đồng bộ lại watchlist từ server
-      await fetchWatchlistFromServer();
+      if (token) await fetchWatchlistFromServer(token);
     } catch (err: unknown) {
       if (err && typeof err === 'object' && 'response' in err) {
         toast.error((err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'An error occurred');

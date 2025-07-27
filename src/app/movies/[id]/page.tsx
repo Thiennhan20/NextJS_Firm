@@ -50,7 +50,7 @@ export default function MovieDetail() {
   })
 
   const { addToWatchlist, removeFromWatchlist, isInWatchlist, fetchWatchlistFromServer } = useWatchlistStore();
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, token } = useAuthStore();
   const isBookmarked = movie ? isInWatchlist(movie.id) : false;
 
   const handleToggleWatchlist = async () => {
@@ -66,6 +66,7 @@ export default function MovieDetail() {
         });
         removeFromWatchlist(movie.id);
         toast.success('Removed movie from watchlist!');
+        if (token) await fetchWatchlistFromServer(token);
       } else {
         await api.post('/auth/watchlist', {
           id: movie.id,
@@ -78,8 +79,8 @@ export default function MovieDetail() {
           poster_path: movie.poster,
         });
         toast.success('Added movie to watchlist!');
+        if (token) await fetchWatchlistFromServer(token);
       }
-      await fetchWatchlistFromServer();
     } catch (err: unknown) {
       if (err && typeof err === 'object' && 'response' in err) {
         toast.error((err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'An error occurred');
