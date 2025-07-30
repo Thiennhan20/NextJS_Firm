@@ -7,10 +7,13 @@ import { useWatchlistStore } from './store';
  * Token nên được lấy từ AuthStore và truyền vào hook này.
  */
 export default function useSyncWatchlistWithToken(token: string | null) {
-  const { fetchWatchlistFromServer } = useWatchlistStore();
+  const { fetchWatchlistFromServer, clearWatchlist } = useWatchlistStore();
   useEffect(() => {
     if (token) {
       fetchWatchlistFromServer(token);
+    } else {
+      // Clear watchlist khi không có token (logout hoặc chưa đăng nhập)
+      clearWatchlist();
     }
-  }, [token, fetchWatchlistFromServer]);
+  }, [token, fetchWatchlistFromServer, clearWatchlist]);
 } 

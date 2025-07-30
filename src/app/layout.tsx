@@ -11,9 +11,10 @@ import AuthChecker from '../components/AuthChecker';
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "MovieWorld - Your Ultimate Movie Destination",
-  description: "Discover, watch, and discuss movies with our AI-powered platform",
+  title: "Entertainment Galaxy – Explore Movies, Games & Beyond",
+  description: "Dive into a universe of entertainment: stream movies, play games, and enjoy AI-powered recommendations in one seamless platform.",
 };
+
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -28,7 +29,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon.ico" />
       </head>
       <body className={`${inter.className} bg-black text-white min-h-screen flex flex-col`}>
         <AuthChecker />

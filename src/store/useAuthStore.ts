@@ -73,6 +73,15 @@ const useAuthStore = create<AuthStore>()(
 
       logout: () => {
         localStorage.removeItem('token');
+        // Clear watchlist khi logout - import trong function để tránh circular dependency
+        try {
+          import('./store').then(({ useWatchlistStore }) => {
+            const { clearWatchlist } = useWatchlistStore.getState();
+            clearWatchlist();
+          });
+        } catch (error) {
+          console.warn('Could not clear watchlist:', error);
+        }
         set({
           user: null,
           token: null,
@@ -103,26 +112,28 @@ const useAuthStore = create<AuthStore>()(
           });
         } catch {
           localStorage.removeItem('token');
+          // Clear watchlist khi token không hợp lệ
+          try {
+            import('./store').then(({ useWatchlistStore }) => {
+              const { clearWatchlist } = useWatchlistStore.getState();
+              clearWatchlist();
+            });
+          } catch (error) {
+            console.warn('Could not clear watchlist:', error);
+          }
           set({
             user: null,
             token: null,
             isAuthenticated: false,
             isLoading: false,
-            error: 'Authentication check failed',
           });
         }
       },
     }),
     {
       name: 'auth-storage',
-      partialize: (state) => ({
-        user: state.user,
-        token: state.token,
-        isAuthenticated: state.isAuthenticated,
-      }),
     }
   )
 );
 
-export default useAuthStore;
-// Đã xoá hook useSyncTokenToLocalStorage khỏi file này để tránh lỗi build. 
+export default useAuthStore; 

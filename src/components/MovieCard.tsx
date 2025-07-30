@@ -50,7 +50,7 @@ export default function MovieCard({ id, title, rating, year, image, genre }: Mov
 
           {/* Overlay Button */}
           <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 opacity-0 group-hover:opacity-100 transition-all duration-300">
-            <button className="bg-white/90 hover:bg-red-600 hover:text-white text-red-600 font-bold px-6 py-2 rounded-full shadow-lg transition-all">Xem chi tiết</button>
+            <button className="bg-white/90 hover:bg-red-600 hover:text-white text-red-600 font-bold px-6 py-2 rounded-full shadow-lg transition-all">See details</button>
           </div>
         </div>
 

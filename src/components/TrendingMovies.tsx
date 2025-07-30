@@ -122,7 +122,7 @@ export default function TrendingMovies() {
   return (
     <section className="py-16 px-2 sm:px-4 bg-gradient-to-b from-gray-900 to-black">
       <div className="max-w-7xl mx-auto">
-        <h2 className="text-2xl sm:text-4xl font-bold mb-8 bg-gradient-to-r from-yellow-400 to-pink-500 text-transparent bg-clip-text text-center">
+        <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-8 bg-gradient-to-r from-yellow-400 to-pink-500 text-transparent bg-clip-text text-center leading-tight px-4">
           Top Trending Movies
         </h2>
         <div className="relative">

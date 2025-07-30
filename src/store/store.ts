@@ -13,6 +13,7 @@ interface WatchlistState {
   addToWatchlist: (movie: Movie) => void;
   removeFromWatchlist: (movieId: number) => void;
   isInWatchlist: (movieId: number) => boolean;
+  clearWatchlist: () => void;
 }
 
 interface UIState {
@@ -38,6 +39,7 @@ export const useWatchlistStore = create<WatchlistState & {
         })),
       isInWatchlist: (movieId) =>
         get().watchlist.some((movie) => movie.id === movieId),
+      clearWatchlist: () => set({ watchlist: [] }),
       fetchWatchlistFromServer: async (token) => {
         if (!token) {
           set({ watchlist: [] });

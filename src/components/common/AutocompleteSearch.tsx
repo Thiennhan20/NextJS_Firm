@@ -115,10 +115,13 @@ export default function AutocompleteSearch({ menu, onSelectMovie, inputClassName
       {showDropdown && (
         <div
           ref={dropdownRef}
-          className={`absolute left-0 right-0 mt-2 rounded-2xl shadow-2xl z-50 max-h-80 overflow-y-auto border border-gray-200 ${
+          className={`absolute left-0 right-0 mt-2 rounded-2xl shadow-2xl z-50 max-h-80 overflow-y-auto border border-gray-200 scrollbar-hide ${
             menu ? 'bg-white text-gray-900' : 'bg-white'
           }`}
-          style={{ minWidth: menu ? '100%' : '220px', maxWidth: '100%' }}
+          style={{ 
+            minWidth: menu ? '100%' : '220px', 
+            maxWidth: '100%'
+          }}
         >
           {loading ? (
             <div className="p-4 text-center text-gray-500">Loading...</div>
