@@ -15,6 +15,7 @@ import {
 } from '@heroicons/react/24/outline'
 import { FaFacebook, FaInstagram, FaYoutube } from 'react-icons/fa'
 import { TbBrandX } from 'react-icons/tb'
+import Logo from '@/components/common/Logo'
 
 const footerNavItems = [
   { name: 'Home', href: '/', icon: HomeIcon },
@@ -44,15 +45,7 @@ export default function Footer() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           <div className="space-y-4">
-            <Link href="/" className="inline-block">
-              <motion.span 
-                className="text-2xl font-bold text-red-500"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                MovieWorld
-              </motion.span>
-            </Link>
+            <Logo variant="footer" />
             <p className="text-sm leading-relaxed">
               Your ultimate destination for discovering and experiencing movies in new dimensions.
             </p>

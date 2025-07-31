@@ -18,6 +18,9 @@ interface Movie {
   rating?: number;
   year?: number;
   genre?: string;
+  release_date?: string;
+  country?: string;
+  status?: 'Full HD' | 'Full HD/CAM' | 'Coming Soon' | 'Non';
 }
 
 // Type for TMDB API movie response
@@ -27,6 +30,7 @@ interface TMDBMovie {
   poster_path: string;
   vote_average: number;
   release_date?: string;
+  original_language?: string;
 }
 
 function MoviesPageContent() {
@@ -83,6 +87,58 @@ function MoviesPageContent() {
     return ['All', ...yearArr];
   }, [currentYear]);
 
+  // Hàm tạo status cho phim dựa trên ngày phát hành
+  const generateMovieStatus = (releaseDate?: string): 'Full HD' | 'Full HD/CAM' | 'Coming Soon' | 'Non' => {
+    if (!releaseDate) return 'Coming Soon';
+    
+    const releaseDateObj = new Date(releaseDate);
+    const currentDate = new Date();
+    const releaseYear = releaseDateObj.getFullYear();
+    
+    // Trường hợp Non: phim từ 1990 trở về quá khứ
+    if (releaseYear < 1990) return 'Non';
+    
+    // Tính khoảng cách thời gian giữa ngày hiện tại và ngày phát hành (tính bằng tuần)
+    const timeDiffInMs = currentDate.getTime() - releaseDateObj.getTime();
+    const timeDiffInWeeks = timeDiffInMs / (1000 * 60 * 60 * 24 * 7);
+    
+    // Trường hợp Coming Soon: phim chưa phát hành (trước thời điểm hiện tại)
+    if (timeDiffInWeeks < 0) return 'Coming Soon';
+    
+    // Trường hợp Full HD/CAM: phim mới xuất hiện dưới 2 tuần
+    if (timeDiffInWeeks < 2) return 'Full HD/CAM';
+    
+    // Trường hợp Full HD: phim đã xuất hiện hơn 2 tuần
+    return 'Full HD';
+  };
+
+  // Hàm chuyển đổi language code thành tên quốc gia
+  const getCountryName = (languageCode?: string): string => {
+    const countryMap: { [key: string]: string } = {
+      'en': 'USA',
+      'ja': 'Japan',
+      'ko': 'Korea',
+      'zh': 'China',
+      'hi': 'India',
+      'fr': 'France',
+      'de': 'Germany',
+      'es': 'Spain',
+      'it': 'Italy',
+      'pt': 'Brazil',
+      'ru': 'Russia',
+      'ar': 'Egypt',
+      'th': 'Thailand',
+      'vi': 'Vietnam',
+      'id': 'Indonesia',
+      'ms': 'Malaysia',
+      'tl': 'Philippines',
+      'my': 'Myanmar',
+      'km': 'Cambodia',
+      'lo': 'Laos'
+    };
+    return countryMap[languageCode || 'en'] || 'USA';
+  };
+
   // Hàm fetch 1 trang phim
   const fetchMoviesPage = async (pageToFetch: number) => {
     let url = `https://api.themoviedb.org/3/discover/movie?api_key=${API_KEY}&sort_by=popularity.desc&page=${pageToFetch}`;
@@ -98,6 +154,9 @@ function MoviesPageContent() {
       year: movie.release_date ? Number(movie.release_date.slice(0, 4)) : '',
       image: movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : '',
       genre: [],
+      release_date: movie.release_date,
+      country: getCountryName(movie.original_language),
+      status: generateMovieStatus(movie.release_date),
     }))
     return fetchedMovies
   }
@@ -252,27 +311,61 @@ function MoviesPageContent() {
                   No movies found.
                 </motion.div>
               )}
-              {pagedMovies.map((movie: Movie) => (
-                <motion.div
-                  key={movie.id}
-                  variants={itemVariants}
-                  whileHover={{ scale: 1.05 }}
-                  transition={{ type: 'spring', stiffness: 200, damping: 20 }}
-                >
-                  <Link key={movie.id} href={`/movies/${movie.id}?page=${page}`} className="block">
-                    <div className="border rounded-lg ">
-                      <Image
-                        src={movie.image ?? ''}
-                        alt={movie.title}
-                        width={500}
-                        height={750}
-                        className="w-full"
-                      />
-                      <p className="p-2 text-center text-white">{movie.title}</p>
-                    </div>
-                  </Link>
-                </motion.div>
-              ))}
+                             {pagedMovies.map((movie: Movie) => (
+                 <motion.div
+                   key={movie.id}
+                   variants={itemVariants}
+                   whileHover={{ scale: 1.05 }}
+                   transition={{ type: 'spring', stiffness: 200, damping: 20 }}
+                 >
+                   <Link key={movie.id} href={`/movies/${movie.id}?page=${page}`} className="block">
+                     <div className="border rounded-lg overflow-hidden relative group">
+                                               {/* Poster Image */}
+                        <div className="relative">
+                          <Image
+                            src={movie.image ?? ''}
+                            alt={movie.title}
+                            width={500}
+                            height={750}
+                            className="w-full"
+                          />
+                          
+                                                     {/* Status Badge */}
+                           <div className="absolute top-2 left-2">
+                             <span className={`px-2 py-1 text-xs font-bold rounded-md ${
+                               movie.status === 'Full HD' ? 'bg-green-500 text-white' :
+                               movie.status === 'Full HD/CAM' ? 'bg-red-500 text-white' :
+                               movie.status === 'Coming Soon' ? 'bg-yellow-500 text-black' :
+                               movie.status === 'Non' ? 'bg-gray-500 text-white' :
+                               'bg-yellow-500 text-black'
+                             }`}>
+                               {movie.status}
+                             </span>
+                           </div>
+                        </div>
+
+                        {/* Movie Info */}
+                        <div className="p-3 bg-gray-900">
+                          <h3 className="text-white font-semibold text-sm mb-2 line-clamp-2">
+                            {movie.title}
+                          </h3>
+                          
+                          {/* Date and Country */}
+                          <div className="flex items-center justify-between text-xs text-gray-400">
+                            <span>
+                              {movie.release_date ? new Date(movie.release_date).toLocaleDateString('en-US', {
+                                year: 'numeric',
+                                month: 'short',
+                                day: 'numeric'
+                              }) : 'TBA'}
+                            </span>
+                            <span>{movie.country}</span>
+                          </div>
+                        </div>
+                     </div>
+                   </Link>
+                 </motion.div>
+               ))}
             </motion.div>
           </AnimatePresence>
         )}

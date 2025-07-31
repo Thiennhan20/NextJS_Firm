@@ -33,12 +33,38 @@ interface Movie {
   trailer: string;
   movieUrl: string;
   scenes: string[];
+  status?: 'Full HD' | 'Full HD/CAM' | 'Coming Soon' | 'Non';
 }
 
 export default function MovieDetail() {
   const API_KEY = process.env.NEXT_PUBLIC_TMDB_API_KEY;
   const { id } = useParams();
   const [movie, setMovie] = useState<Movie | null>(null);
+  
+  // Hàm tạo status cho phim dựa trên ngày phát hành
+  const generateMovieStatus = (releaseDate?: string): 'Full HD' | 'Full HD/CAM' | 'Coming Soon' | 'Non' => {
+    if (!releaseDate) return 'Coming Soon';
+    
+    const releaseDateObj = new Date(releaseDate);
+    const currentDate = new Date();
+    const releaseYear = releaseDateObj.getFullYear();
+    
+    // Trường hợp Non: phim từ 1990 trở về quá khứ
+    if (releaseYear < 1990) return 'Non';
+    
+    // Tính khoảng cách thời gian giữa ngày hiện tại và ngày phát hành (tính bằng tuần)
+    const timeDiffInMs = currentDate.getTime() - releaseDateObj.getTime();
+    const timeDiffInWeeks = timeDiffInMs / (1000 * 60 * 60 * 24 * 7);
+    
+    // Trường hợp Coming Soon: phim chưa phát hành (trước thời điểm hiện tại)
+    if (timeDiffInWeeks < 0) return 'Coming Soon';
+    
+    // Trường hợp Full HD/CAM: phim mới xuất hiện dưới 2 tuần
+    if (timeDiffInWeeks < 2) return 'Full HD/CAM';
+    
+    // Trường hợp Full HD: phim đã xuất hiện hơn 2 tuần
+    return 'Full HD';
+  };
   const [loading, setLoading] = useState<boolean>(true);
   const [activeScene, setActiveScene] = useState<number | null>(null)
   const [showTrailer, setShowTrailer] = useState<boolean>(false)
@@ -154,6 +180,7 @@ export default function MovieDetail() {
           trailer,
           movieUrl: '',
           scenes,
+          status: generateMovieStatus(data.release_date),
         };
         setMovie(movieData);
       } catch {
@@ -286,7 +313,7 @@ export default function MovieDetail() {
     );
   }
 
-  const { title, backdrop, poster, rating, duration, year, genre, director, cast, description, scenes, trailer } = movie;
+  const { title, backdrop, poster, rating, duration, year, genre, director, cast, description, scenes, trailer, status } = movie;
 
   return (
     <div ref={containerRef} className="min-h-screen bg-gradient-to-b from-gray-900 to-black">
@@ -339,13 +366,26 @@ export default function MovieDetail() {
           </div>
           
           <div className="text-white space-y-6">
-            <motion.h1 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="text-4xl md:text-5xl font-bold"
-            >
-              {title}
-            </motion.h1>
+            <div className="flex items-center gap-4">
+              <motion.h1 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-4xl md:text-5xl font-bold"
+              >
+                {title}
+              </motion.h1>
+                             {status && (
+                 <span className={`px-3 py-1 text-sm font-bold rounded-md ${
+                   status === 'Full HD' ? 'bg-green-500 text-white' :
+                   status === 'Full HD/CAM' ? 'bg-red-500 text-white' :
+                   status === 'Coming Soon' ? 'bg-yellow-500 text-black' :
+                   status === 'Non' ? 'bg-gray-500 text-white' :
+                   'bg-yellow-500 text-black'
+                 }`}>
+                   {status}
+                 </span>
+               )}
+            </div>
             
             <div className="flex flex-wrap gap-4">
               <div className="flex items-center space-x-2">
