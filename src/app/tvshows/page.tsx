@@ -9,31 +9,31 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { Suspense } from 'react'
 
-// Định nghĩa kiểu Movie rõ ràng
-interface Movie {
+// Định nghĩa kiểu TVShow rõ ràng
+interface TVShow {
   id: number;
-  title: string;
+  name: string;
   poster_path: string;
   image?: string;
 
   year?: number;
   genre?: string;
-  release_date?: string;
+  first_air_date?: string;
   country?: string;
   status?: 'Full HD' | 'Full HD/CAM' | 'Coming Soon' | 'Non';
 }
 
-// Type for TMDB API movie response
-interface TMDBMovie {
+// Type for TMDB API TV response
+interface TMDBTV {
   id: number;
-  title: string;
+  name: string;
   poster_path: string;
   vote_average: number;
-  release_date?: string;
+  first_air_date?: string;
   original_language?: string;
 }
 
-function MoviesPageContent() {
+function TVShowsPageContent() {
   const API_KEY = process.env.NEXT_PUBLIC_TMDB_API_KEY
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -47,8 +47,8 @@ function MoviesPageContent() {
   const [page, setPage] = useState(urlPage)
   const [loading, setLoading] = useState(false)
   
-  // Cache các trang đã load: { [year]: { [page]: Movie[] } }
-  const [pagesCache, setPagesCache] = useState<{ [year: string]: { [page: number]: Movie[] } }>({})
+  // Cache các trang đã load: { [year]: { [page]: TVShow[] } }
+  const [pagesCache, setPagesCache] = useState<{ [year: string]: { [page: number]: TVShow[] } }>({})
   // Lưu các trang đã load cho từng năm: { [year]: number[] }
   const [loadedPages, setLoadedPages] = useState<{ [year: string]: number[] }>({})
 
@@ -63,13 +63,13 @@ function MoviesPageContent() {
     return loadedPages[yearKey] || [];
   };
 
-  const setCurrentYearCache = (page: number, movies: Movie[]) => {
+  const setCurrentYearCache = (page: number, tvShows: TVShow[]) => {
     const yearKey = String(selectedYear);
     setPagesCache(prev => ({
       ...prev,
       [yearKey]: {
         ...prev[yearKey],
-        [page]: movies
+        [page]: tvShows
       }
     }));
   };
@@ -109,8 +109,8 @@ function MoviesPageContent() {
       const initCache = async () => {
         setLoading(true);
         try {
-          const movies = await fetchMoviesPage(urlPage);
-          setCurrentYearCache(urlPage, movies);
+          const tvShows = await fetchTVShowsPage(urlPage);
+          setCurrentYearCache(urlPage, tvShows);
           setCurrentYearLoadedPages([urlPage]);
         } catch {
           setCurrentYearCache(urlPage, []);
@@ -146,8 +146,8 @@ function MoviesPageContent() {
         if (!getCurrentYearCache()[1]) {
           setLoading(true);
           try {
-            const movies = await fetchMoviesPage(1);
-            setCurrentYearCache(1, movies);
+            const tvShows = await fetchTVShowsPage(1);
+            setCurrentYearCache(1, tvShows);
             setCurrentYearLoadedPages([1]);
           } catch {
             setCurrentYearCache(1, []);
@@ -163,7 +163,7 @@ function MoviesPageContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedYear]);
 
-  // Compute years dynamically from movies
+  // Compute years dynamically from TV shows
   const currentYear = new Date().getFullYear();
   const years = useMemo(() => {
     const yearArr = [];
@@ -173,28 +173,28 @@ function MoviesPageContent() {
     return ['All', ...yearArr];
   }, [currentYear]);
 
-  // Hàm tạo status cho phim dựa trên ngày phát hành
-  const generateMovieStatus = (releaseDate?: string): 'Full HD' | 'Full HD/CAM' | 'Coming Soon' | 'Non' => {
-    if (!releaseDate) return 'Coming Soon';
+  // Hàm tạo status cho TV show dựa trên ngày phát hành
+  const generateTVShowStatus = (firstAirDate?: string): 'Full HD' | 'Full HD/CAM' | 'Coming Soon' | 'Non' => {
+    if (!firstAirDate) return 'Coming Soon';
     
-    const releaseDateObj = new Date(releaseDate);
+    const firstAirDateObj = new Date(firstAirDate);
     const currentDate = new Date();
-    const releaseYear = releaseDateObj.getFullYear();
+    const firstAirYear = firstAirDateObj.getFullYear();
     
-    // Trường hợp Non: phim từ 1990 trở về quá khứ
-    if (releaseYear < 1990) return 'Non';
+    // Trường hợp Non: TV show từ 1990 trở về quá khứ
+    if (firstAirYear < 1990) return 'Non';
     
     // Tính khoảng cách thời gian giữa ngày hiện tại và ngày phát hành (tính bằng tuần)
-    const timeDiffInMs = currentDate.getTime() - releaseDateObj.getTime();
+    const timeDiffInMs = currentDate.getTime() - firstAirDateObj.getTime();
     const timeDiffInWeeks = timeDiffInMs / (1000 * 60 * 60 * 24 * 7);
     
-    // Trường hợp Coming Soon: phim chưa phát hành (trước thời điểm hiện tại)
+    // Trường hợp Coming Soon: TV show chưa phát hành (trước thời điểm hiện tại)
     if (timeDiffInWeeks < 0) return 'Coming Soon';
     
-    // Trường hợp Full HD/CAM: phim mới xuất hiện dưới 1 tháng (4 tuần)
+    // Trường hợp Full HD/CAM: TV show mới xuất hiện dưới 1 tháng (4 tuần)
     if (timeDiffInWeeks < 4) return 'Full HD/CAM';
     
-    // Trường hợp Full HD: phim đã xuất hiện hơn 1 tháng (4 tuần)
+    // Trường hợp Full HD: TV show đã xuất hiện hơn 1 tháng (4 tuần)
     return 'Full HD';
   };
 
@@ -225,26 +225,26 @@ function MoviesPageContent() {
     return countryMap[languageCode || 'en'] || 'USA';
   };
 
-  // Hàm fetch 1 trang phim
-  const fetchMoviesPage = async (pageToFetch: number) => {
-    let url = `https://api.themoviedb.org/3/discover/movie?api_key=${API_KEY}&sort_by=popularity.desc&page=${pageToFetch}`;
+  // Hàm fetch 1 trang TV shows
+  const fetchTVShowsPage = async (pageToFetch: number) => {
+    let url = `https://api.themoviedb.org/3/discover/tv?api_key=${API_KEY}&sort_by=popularity.desc&page=${pageToFetch}`;
     if (selectedYear !== 'All') {
-      url += `&primary_release_year=${selectedYear}`;
+      url += `&first_air_date_year=${selectedYear}`;
     }
     const response = await axios.get(url);
-    let fetchedMovies = response.data.results
-    fetchedMovies = fetchedMovies.map((movie: TMDBMovie) => ({
-      id: movie.id,
-      title: movie.title,
+    let fetchedTVShows = response.data.results
+    fetchedTVShows = fetchedTVShows.map((tvShow: TMDBTV) => ({
+      id: tvShow.id,
+      name: tvShow.name,
       
-      year: movie.release_date ? Number(movie.release_date.slice(0, 4)) : '',
-      image: movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : '',
+      year: tvShow.first_air_date ? Number(tvShow.first_air_date.slice(0, 4)) : '',
+      image: tvShow.poster_path ? `https://image.tmdb.org/t/p/w500${tvShow.poster_path}` : '',
       genre: [],
-      release_date: movie.release_date,
-      country: getCountryName(movie.original_language),
-      status: generateMovieStatus(movie.release_date),
+      first_air_date: tvShow.first_air_date,
+      country: getCountryName(tvShow.original_language),
+      status: generateTVShowStatus(tvShow.first_air_date),
     }))
-    return fetchedMovies
+    return fetchedTVShows
   }
 
   // Khi page thay đổi, nếu chưa có trong cache thì fetch
@@ -254,9 +254,9 @@ function MoviesPageContent() {
       if (getCurrentYearCache()[page]) return;
       setLoading(true);
       try {
-        const movies = await fetchMoviesPage(page);
+        const tvShows = await fetchTVShowsPage(page);
         if (!ignore) {
-          setCurrentYearCache(page, movies);
+          setCurrentYearCache(page, tvShows);
           const currentPages = getCurrentYearLoadedPages();
           const newPages = currentPages.includes(page) ? currentPages : [...currentPages, page].sort((a, b) => a - b);
           setCurrentYearLoadedPages(newPages);
@@ -276,15 +276,15 @@ function MoviesPageContent() {
     const promises = [];
     for (let p = startPage; p < startPage + 10; p++) {
       if (!getCurrentYearCache()[p]) {
-        promises.push(fetchMoviesPage(p).then(movies => ({ p, movies })));
+        promises.push(fetchTVShowsPage(p).then(tvShows => ({ p, tvShows })));
       }
     }
     
     if (promises.length > 0) {
       setLoading(true);
       const results = await Promise.all(promises);
-      results.forEach(({ p, movies }) => {
-        setCurrentYearCache(p, movies);
+      results.forEach(({ p, tvShows }) => {
+        setCurrentYearCache(p, tvShows);
       });
       
       const currentPages = getCurrentYearLoadedPages();
@@ -297,8 +297,8 @@ function MoviesPageContent() {
     }
   }
 
-  // Lấy phim của trang hiện tại
-  const pagedMovies = getCurrentYearCache()[page] || [];
+  // Lấy TV shows của trang hiện tại
+  const pagedTVShows = getCurrentYearCache()[page] || [];
 
   // Animation variants for grid items
   const itemVariants = {
@@ -343,9 +343,8 @@ function MoviesPageContent() {
           animate={{ opacity: 1, y: 0 }}
           className="text-3xl sm:text-5xl font-bold mb-8 bg-gradient-to-r from-red-500 to-blue-500 text-transparent bg-clip-text text-center"
         >
-          All Movies
+          All TV Shows
         </motion.h1>
-        
         {/* Filter chỉ còn Year */}
         <div className="flex flex-col gap-4 mb-10">
           <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
@@ -363,7 +362,7 @@ function MoviesPageContent() {
                   ))}
                 </select>
                 {/* Custom dropdown arrow */}
-                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 dado-gray-400">
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-400">
                   <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
                     <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
                   </svg>
@@ -372,7 +371,7 @@ function MoviesPageContent() {
             </div>
           </div>
         </div>
-        {/* Movie Grid + Loading + Pagination */}
+        {/* TV Shows Grid + Loading + Pagination */}
         {loading ? (
           <div className="flex flex-col items-center justify-center py-24">
             <motion.div
@@ -380,12 +379,12 @@ function MoviesPageContent() {
               transition={{ repeat: Infinity, duration: 1.5, ease: 'linear' }}
               className="w-16 h-16 border-4 border-red-500 border-t-transparent rounded-full"
             />
-            <p className="mt-4 text-gray-400 text-lg">Loading Movies...</p>
+            <p className="mt-4 text-gray-400 text-lg">Loading TV Shows...</p>
           </div>
         ) : (
           <AnimatePresence mode="wait">
             <motion.div
-              key={`${selectedYear}-${page}`}
+              key={page}
               variants={{
                 hidden: { opacity: 0, y: 30 },
                 show: {
@@ -399,32 +398,32 @@ function MoviesPageContent() {
               exit="hidden"
               className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-6"
             >
-              {/* Sửa điều kiện: chỉ hiện No movies found khi !loading, cache đã có key cho page hiện tại và không có phim */}
-              {!loading && getCurrentYearCache().hasOwnProperty(page) && pagedMovies.length === 0 && (
+              {/* Sửa điều kiện: chỉ hiện No TV shows found khi !loading, cache đã có key cho page hiện tại và không có TV show */}
+              {!loading && getCurrentYearCache().hasOwnProperty(page) && pagedTVShows.length === 0 && (
                 <motion.div
-                  key="no-movies"
+                  key="no-tvshows"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   className="col-span-full text-center text-gray-400 py-12 text-xl"
                 >
-                  No movies found.
+                  No TV shows found.
                 </motion.div>
               )}
-                             {pagedMovies.map((movie: Movie) => (
+                             {pagedTVShows.map((tvShow: TVShow) => (
                  <motion.div
-                   key={movie.id}
+                   key={tvShow.id}
                    variants={itemVariants}
                    whileHover={{ scale: 1.05 }}
                    transition={{ type: 'spring', stiffness: 200, damping: 20 }}
                  >
-                   <Link key={movie.id} href={`/movies/${movie.id}?page=${page}&year=${selectedYear}`} className="block">
+                                       <Link key={tvShow.id} href={`/tvshows/${tvShow.id}?page=${page}&year=${selectedYear}`} className="block">
                      <div className="border rounded-lg overflow-hidden relative group">
                                                {/* Poster Image */}
                         <div className="relative">
                           <Image
-                            src={movie.image ?? ''}
-                            alt={movie.title}
+                            src={tvShow.image ?? ''}
+                            alt={tvShow.name}
                             width={500}
                             height={750}
                             className="w-full"
@@ -433,33 +432,33 @@ function MoviesPageContent() {
                                                      {/* Status Badge */}
                            <div className="absolute top-2 left-2">
                              <span className={`px-2 py-1 text-xs font-bold rounded-md ${
-                               movie.status === 'Full HD' ? 'bg-green-500 text-white' :
-                               movie.status === 'Full HD/CAM' ? 'bg-red-500 text-white' :
-                               movie.status === 'Coming Soon' ? 'bg-yellow-500 text-black' :
-                               movie.status === 'Non' ? 'bg-gray-500 text-white' :
+                               tvShow.status === 'Full HD' ? 'bg-green-500 text-white' :
+                               tvShow.status === 'Full HD/CAM' ? 'bg-red-500 text-white' :
+                               tvShow.status === 'Coming Soon' ? 'bg-yellow-500 text-black' :
+                               tvShow.status === 'Non' ? 'bg-gray-500 text-white' :
                                'bg-yellow-500 text-black'
                              }`}>
-                               {movie.status}
+                               {tvShow.status}
                              </span>
                            </div>
                         </div>
 
-                        {/* Movie Info */}
+                        {/* TV Show Info */}
                         <div className="p-3 bg-gray-900">
                           <h3 className="text-white font-semibold text-sm mb-2 truncate">
-                            {movie.title}
+                            {tvShow.name}
                           </h3>
                           
                           {/* Date and Country */}
                           <div className="flex items-center justify-between text-xs text-gray-400">
                             <span>
-                              {movie.release_date ? new Date(movie.release_date).toLocaleDateString('en-US', {
+                              {tvShow.first_air_date ? new Date(tvShow.first_air_date).toLocaleDateString('en-US', {
                                 year: 'numeric',
                                 month: 'short',
                                 day: 'numeric'
                               }) : 'TBA'}
                             </span>
-                            <span>{movie.country}</span>
+                            <span>{tvShow.country}</span>
                           </div>
                         </div>
                      </div>
@@ -483,10 +482,10 @@ function MoviesPageContent() {
   )
 }
 
-export default function MoviesPage() {
+export default function TVShowsPage() {
   return (
     <Suspense>
-      <MoviesPageContent />
+      <TVShowsPageContent />
     </Suspense>
   );
-}
+} 

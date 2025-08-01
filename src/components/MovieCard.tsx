@@ -2,18 +2,19 @@
 
 import { motion } from 'framer-motion'
 import Link from 'next/link'
-import { StarIcon, PlayIcon } from '@heroicons/react/24/solid'
+import { PlayIcon } from '@heroicons/react/24/solid'
 
 interface MovieCardProps {
   id: number
   title: string
-  rating: number
   year: number
+  release_date?: string
   image: string
   genre: string[]
+  status?: 'Full HD' | 'Full HD/CAM' | 'Coming Soon' | 'Non'
 }
 
-export default function MovieCard({ id, title, rating, year, image, genre }: MovieCardProps) {
+export default function MovieCard({ id, title, year, release_date, image, genre, status }: MovieCardProps) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -32,6 +33,21 @@ export default function MovieCard({ id, title, rating, year, image, genre }: Mov
             style={{ backgroundImage: `url(${image})` }}
           />
 
+          {/* Status Badge */}
+          {status && (
+            <div className="absolute top-2 left-2 z-20">
+              <span className={`px-2 py-1 text-xs font-bold rounded-md ${
+                status === 'Full HD' ? 'bg-green-500 text-white' :
+                status === 'Full HD/CAM' ? 'bg-red-500 text-white' :
+                status === 'Coming Soon' ? 'bg-yellow-500 text-black' :
+                status === 'Non' ? 'bg-gray-500 text-white' :
+                'bg-yellow-500 text-black'
+              }`}>
+                {status}
+              </span>
+            </div>
+          )}
+
           {/* Play Button */}
           <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20">
             <motion.div
@@ -42,11 +58,7 @@ export default function MovieCard({ id, title, rating, year, image, genre }: Mov
             </motion.div>
           </div>
 
-          {/* Rating Badge */}
-          <div className="absolute top-4 right-4 bg-black/80 px-3 py-1 rounded-full flex items-center space-x-1 z-20">
-            <StarIcon className="w-4 h-4 text-yellow-500" />
-            <span className="text-white text-sm font-medium">{rating}</span>
-          </div>
+
 
           {/* Overlay Button */}
           <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 opacity-0 group-hover:opacity-100 transition-all duration-300">
@@ -58,7 +70,13 @@ export default function MovieCard({ id, title, rating, year, image, genre }: Mov
         <div className="p-4">
           <h3 className="text-lg font-semibold mb-2 line-clamp-1 text-white">{title}</h3>
           <div className="flex items-center justify-between">
-            <span className="text-gray-400 text-sm">{year}</span>
+            <span className="text-gray-400 text-sm">
+              {release_date ? new Date(release_date).toLocaleDateString('en-US', { 
+                year: 'numeric', 
+                month: 'short', 
+                day: 'numeric' 
+              }) : year}
+            </span>
             <div className="flex space-x-2">
               {genre.slice(0, 2).map((g) => (
                 <span

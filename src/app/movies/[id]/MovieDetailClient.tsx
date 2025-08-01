@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import { motion, useScroll, useTransform } from 'framer-motion'
-import { StarIcon, ClockIcon, CalendarIcon } from '@heroicons/react/24/solid'
+import { ClockIcon, CalendarIcon } from '@heroicons/react/24/solid'
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls, PerspectiveCamera, Float } from '@react-three/drei'
 import * as THREE from 'three'
@@ -15,7 +15,7 @@ interface Movie {
   title: string;
   poster_path: string;
   poster?: string;
-  rating?: number;
+
   duration?: string;
   releaseDate?: string;
   description?: string;
@@ -72,21 +72,28 @@ export default function MovieDetail() {
     if (isMounted && id) {
       const fetchMovie = async () => {
         setLoading(true);
-        try {
+                try {
           const response = await axios.get(
             `https://api.themoviedb.org/3/movie/${id}?api_key=${API_KEY}`
           );
           const data = response.data;
+          
+          // Fetch credits for director and cast
+          const creditsResponse = await axios.get(
+            `https://api.themoviedb.org/3/movie/${id}/credits?api_key=${API_KEY}`
+          );
+          const credits = creditsResponse.data;
+          
           setMovie({
             id: data.id,
             title: data.title,
             description: data.overview,
-            rating: data.vote_average,
+
             duration: data.runtime ? `${Math.floor(data.runtime / 60)}h ${data.runtime % 60}m` : '',
             releaseDate: data.release_date,
             genre: data.genres ? data.genres.map((g: { name: string }) => g.name) : [],
-            director: '', // Có thể fetch thêm credits nếu muốn
-            cast: [], // Có thể fetch thêm credits nếu muốn
+            director: credits.crew?.find((person: { job: string; name: string }) => person.job === 'Director')?.name || '',
+            cast: credits.cast?.slice(0, 10).map((person: { name: string }) => person.name) || [],
             poster: data.poster_path ? `https://image.tmdb.org/t/p/w500${data.poster_path}` : '',
             trailer: '', // Có thể fetch thêm videos nếu muốn
             poster_path: data.poster_path,
@@ -149,10 +156,7 @@ export default function MovieDetail() {
           {/* Movie Info */}
           <div className="md:col-span-2 space-y-8">
             <div className="flex items-center space-x-6">
-              <div className="flex items-center bg-yellow-500/10 px-4 py-2 rounded-full">
-                <StarIcon className="h-5 w-5 text-yellow-500 mr-2" />
-                <span className="text-yellow-500">{movie.rating ?? 0}/5</span>
-              </div>
+
               <div className="flex items-center bg-gray-800 px-4 py-2 rounded-full">
                 <ClockIcon className="h-5 w-5 text-gray-400 mr-2" />
                 <span className="text-gray-300">{movie.duration}</span>

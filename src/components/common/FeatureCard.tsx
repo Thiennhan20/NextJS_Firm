@@ -40,7 +40,7 @@ const FeatureCard: React.FC<FeatureCardProps> = ({ icon, title, description, col
 
   return (
     <motion.div
-      className="group relative h-full rounded-2xl bg-black/60 backdrop-blur-md border border-white/10 p-6 sm:p-8 text-center transition-shadow duration-300 hover:shadow-2xl hover:shadow-purple-500/20"
+      className="group relative h-full rounded-2xl bg-black/60 backdrop-blur-md border border-white/10 p-4 sm:p-6 lg:p-8 text-center transition-shadow duration-300 hover:shadow-2xl hover:shadow-purple-500/20"
       style={{ transformStyle: 'preserve-3d', rotateX, rotateY }}
       onMouseMove={handleMouseMove}
       onMouseLeave={() => {
@@ -60,17 +60,17 @@ const FeatureCard: React.FC<FeatureCardProps> = ({ icon, title, description, col
         } as React.CSSProperties}
       />
 
-      <div style={{ transform: 'translateZ(50px)' }} className="flex flex-col items-center">
-        <motion.div
-          className={`inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-br ${colorVariants[color].gradient} text-white mb-6 shadow-lg`}
-          whileHover={{ scale: 1.1, rotate: -5 }}
-          transition={{ type: 'spring', stiffness: 400, damping: 10 }}
-        >
-          {icon}
-        </motion.div>
-        <h3 className="text-xl sm:text-2xl font-bold text-white mb-3">{title}</h3>
-        <p className="text-sm sm:text-base text-gray-300 leading-relaxed">{description}</p>
-      </div>
+             <div style={{ transform: 'translateZ(50px)' }} className="flex flex-col items-center">
+         <motion.div
+           className={`inline-flex items-center justify-center w-12 h-12 sm:w-16 sm:h-16 lg:w-20 lg:h-20 rounded-full bg-gradient-to-br ${colorVariants[color].gradient} text-white mb-4 sm:mb-6 shadow-lg`}
+           whileHover={{ scale: 1.1, rotate: -5 }}
+           transition={{ type: 'spring', stiffness: 400, damping: 10 }}
+         >
+           {icon}
+         </motion.div>
+                   <h3 className="text-sm sm:text-xl lg:text-2xl font-bold text-white mb-2 sm:mb-3">{title}</h3>
+         <p className="hidden sm:block text-xs sm:text-sm lg:text-base text-gray-300 leading-relaxed">{description}</p>
+       </div>
     </motion.div>
   )
 }

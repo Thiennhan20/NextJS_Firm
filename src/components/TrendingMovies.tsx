@@ -5,12 +5,12 @@ import { motion } from 'framer-motion'
 import Image from 'next/image'
 import axios from 'axios'
 import Link from 'next/link'
+import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline'
 
 interface Movie {
   id: number;
   title: string;
   poster_path: string;
-  rating?: number;
   year?: number;
   poster?: string;
   description?: string;
@@ -18,10 +18,28 @@ interface Movie {
   director?: string;
   cast?: string[];
   trailer?: string;
-  // Thêm các trường khác nếu cần
 }
 
-// Type for TMDB API movie response
+interface TVShow {
+  id: number;
+  name: string;
+  poster_path: string;
+  year?: number;
+  poster?: string;
+  description?: string;
+  genre?: string;
+  director?: string;
+  cast?: string[];
+  trailer?: string;
+}
+
+type TrendingItem = (Movie | TVShow) & { 
+  image: string; 
+  type: 'movie' | 'tv';
+  status?: string;
+};
+
+// Type for TMDB API responses
 interface TMDBMovie {
   id: number;
   title: string;
@@ -30,33 +48,74 @@ interface TMDBMovie {
   release_date?: string;
 }
 
+interface TMDBTVShow {
+  id: number;
+  name: string;
+  poster_path?: string;
+  vote_average: number;
+  first_air_date?: string;
+}
+
 export default function TrendingMovies() {
   const API_KEY = process.env.NEXT_PUBLIC_TMDB_API_KEY;
-  const [trending, setTrending] = useState<(Movie & { image: string })[]>([]);
+  const [trending, setTrending] = useState<TrendingItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null)
 
-  // Drag scroll state
-  const isDraggingRef = useRef(false);
-  const startXRef = useRef(0);
-  const scrollLeftRef = useRef(0);
-  const animationFrameRef = useRef<number | null>(null);
+  // Check scroll position
+  const checkScrollPosition = () => {
+    if (scrollRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
+      setCanScrollLeft(scrollLeft > 0);
+      setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 1);
+    }
+  };
+
+  // Scroll functions
+  const scrollLeft = () => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollBy({ left: -300, behavior: 'smooth' });
+    }
+  };
+
+  const scrollRight = () => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollBy({ left: 300, behavior: 'smooth' });
+    }
+  };
 
   useEffect(() => {
     const fetchTrending = async () => {
       setLoading(true);
       try {
-        const response = await axios.get(
-          `https://api.themoviedb.org/3/trending/movie/week?api_key=${API_KEY}`
-        );
-        const movies = response.data.results.map((movie: TMDBMovie) => ({
+        const [moviesResponse, tvShowsResponse] = await Promise.all([
+          axios.get(`https://api.themoviedb.org/3/trending/movie/week?api_key=${API_KEY}`),
+          axios.get(`https://api.themoviedb.org/3/trending/tv/week?api_key=${API_KEY}`)
+        ]);
+
+        const movies = moviesResponse.data.results.slice(0, 10).map((movie: TMDBMovie) => ({
           id: movie.id,
           title: movie.title,
           image: movie.poster_path ? `https://image.tmdb.org/t/p/w400${movie.poster_path}` : '',
-          rating: movie.vote_average,
-          year: movie.release_date ? Number(movie.release_date.slice(0, 4)) : '',
+          year: movie.release_date ? Number(movie.release_date.slice(0, 4)) : 0,
+          type: 'movie' as const,
+          status: 'Trending'
         }));
-        setTrending(movies.slice(0, 10));
+
+        const tvShows = tvShowsResponse.data.results.slice(0, 5).map((tvShow: TMDBTVShow) => ({
+          id: tvShow.id,
+          name: tvShow.name,
+          image: tvShow.poster_path ? `https://image.tmdb.org/t/p/w400${tvShow.poster_path}` : '',
+          year: tvShow.first_air_date ? Number(tvShow.first_air_date.slice(0, 4)) : 0,
+          type: 'tv' as const,
+          status: 'Trending'
+        }));
+
+        // Combine and shuffle to mix movies and TV shows
+        const combined = [...movies, ...tvShows];
+        setTrending(combined);
       } catch (error) {
         console.error(error);
         setTrending([]);
@@ -66,45 +125,20 @@ export default function TrendingMovies() {
     fetchTrending();
   }, [API_KEY]);
 
-  // Mouse event handlers
+  // Check scroll position on mount and scroll
   useEffect(() => {
     const container = scrollRef.current;
     if (!container) return;
 
-    const onMouseDown = (e: MouseEvent) => {
-      isDraggingRef.current = true;
-      startXRef.current = e.pageX - container.offsetLeft;
-      scrollLeftRef.current = container.scrollLeft;
-      container.classList.add('dragging');
-    };
-
-    const onMouseMove = (e: MouseEvent) => {
-      if (!isDraggingRef.current) return;
-      e.preventDefault();
-      if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
-      animationFrameRef.current = requestAnimationFrame(() => {
-        const x = e.pageX - container.offsetLeft;
-        const walk = (x - startXRef.current) * 1.2;
-        container.scrollLeft = scrollLeftRef.current - walk;
-      });
-    };
-
-    const onMouseUp = () => {
-      isDraggingRef.current = false;
-      container.classList.remove('dragging');
-    };
-
-    container.addEventListener('mousedown', onMouseDown);
-    document.addEventListener('mousemove', onMouseMove);
-    document.addEventListener('mouseup', onMouseUp);
+    checkScrollPosition();
+    container.addEventListener('scroll', checkScrollPosition);
+    window.addEventListener('resize', checkScrollPosition);
 
     return () => {
-      container.removeEventListener('mousedown', onMouseDown);
-      document.removeEventListener('mousemove', onMouseMove);
-      document.removeEventListener('mouseup', onMouseUp);
-      if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+      container.removeEventListener('scroll', checkScrollPosition);
+      window.removeEventListener('resize', checkScrollPosition);
     };
-  }, []);
+  }, [trending]);
 
   // Add wheel event handler for horizontal scrolling (no preventDefault)
   useEffect(() => {
@@ -119,17 +153,51 @@ export default function TrendingMovies() {
     return () => container.removeEventListener('wheel', handleWheel);
   }, []);
 
+  // Helper function to get title for both movies and TV shows
+  const getTitle = (item: TrendingItem) => {
+    return 'title' in item ? item.title : item.name;
+  };
+
+  // Helper function to get route for both movies and TV shows
+  const getRoute = (item: TrendingItem) => {
+    return item.type === 'movie' ? `/movies/${item.id}` : `/tvshows/${item.id}`;
+  };
+
   return (
     <section className="py-16 px-2 sm:px-4 bg-gradient-to-b from-gray-900 to-black">
       <div className="max-w-7xl mx-auto">
-        <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-8 bg-gradient-to-r from-yellow-400 to-pink-500 text-transparent bg-clip-text text-center leading-tight px-4">
-          Top Trending Movies
+        <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold mb-8 bg-gradient-to-r from-yellow-400 to-pink-500 text-transparent bg-clip-text text-center leading-tight px-4">
+          Top Trending<br />
+          Movies & TV Shows
         </h2>
-        <div className="relative">
-          {/* Fade left */}
-          <div className="pointer-events-none absolute left-0 top-0 h-full w-8 z-10 bg-gradient-to-r from-black/90 to-transparent" />
-          {/* Fade right */}
-          <div className="pointer-events-none absolute right-0 top-0 h-full w-8 z-10 bg-gradient-to-l from-black/90 to-transparent" />
+                  <div className="relative">
+            {/* Fade left */}
+            <div className="pointer-events-none absolute left-0 top-0 h-full w-8 z-10 bg-gradient-to-r from-black/90 to-transparent" />
+            {/* Fade right */}
+            <div className="pointer-events-none absolute right-0 top-0 h-full w-8 z-10 bg-gradient-to-l from-black/90 to-transparent" />
+            
+            {/* Navigation arrows */}
+            <motion.button
+              onClick={scrollLeft}
+              className={`absolute left-2 top-1/2 -translate-y-1/2 z-20 p-2 rounded-full bg-black/70 text-white hover:bg-black/90 transition-all duration-200 ${
+                canScrollLeft ? 'opacity-100' : 'opacity-0 pointer-events-none'
+              }`}
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+            >
+              <ChevronLeftIcon className="w-6 h-6" />
+            </motion.button>
+            
+            <motion.button
+              onClick={scrollRight}
+              className={`absolute right-2 top-1/2 -translate-y-1/2 z-20 p-2 rounded-full bg-black/70 text-white hover:bg-black/90 transition-all duration-200 ${
+                canScrollRight ? 'opacity-100' : 'opacity-0 pointer-events-none'
+              }`}
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+            >
+              <ChevronRightIcon className="w-6 h-6" />
+            </motion.button>
           
           {/* Scroll indicator */}
           <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 z-20">
@@ -142,7 +210,7 @@ export default function TrendingMovies() {
           
           <div
             ref={scrollRef}
-            className="flex gap-6 overflow-x-auto pb-4 scrollbar-none snap-x snap-mandatory relative cursor-grab active:cursor-grabbing horizontal-scroll-container"
+            className="flex gap-6 overflow-x-auto pb-4 scrollbar-none snap-x snap-mandatory relative horizontal-scroll-container"
             style={{ 
               WebkitOverflowScrolling: 'touch', 
               scrollbarWidth: 'none', 
@@ -153,16 +221,16 @@ export default function TrendingMovies() {
             {loading ? (
               <div className="text-gray-400 text-center py-8">Loading...</div>
             ) : (
-              trending.map((movie) => (
-                <Link key={movie.id} href={`/movies/${movie.id}`} className="min-w-[220px] sm:min-w-[260px] max-w-[260px]">
+              trending.map((item) => (
+                <Link key={item.id} href={getRoute(item)} className="min-w-[220px] sm:min-w-[260px] max-w-[260px]">
                   <motion.div
                     whileHover={{ scale: 1.07 }}
                     className="bg-gray-800 rounded-xl overflow-hidden shadow-lg snap-center cursor-pointer group relative"
                   >
-                    {movie.image ? (
+                    {item.image ? (
                       <Image
-                        src={movie.image}
-                        alt={movie.title}
+                        src={item.image}
+                        alt={getTitle(item)}
                         width={400}
                         height={600}
                         className="w-full h-72 object-cover group-hover:scale-105 transition-transform duration-300"
@@ -170,12 +238,17 @@ export default function TrendingMovies() {
                     ) : (
                       <div className="w-full h-72 flex items-center justify-center bg-gray-700 text-4xl">🎬</div>
                     )}
-                    <div className="absolute top-3 right-3 bg-black/70 px-2 py-1 rounded-full text-xs text-yellow-400 font-bold">
-                      ★ {movie.rating}
+                    {/* Status badge - top left */}
+                    <div className="absolute top-3 left-3 bg-red-500/90 px-2 py-1 rounded-full text-xs text-white font-bold">
+                      {item.status}
+                    </div>
+                    {/* Type badge - top right (replacing rating) */}
+                    <div className="absolute top-3 right-3 bg-black/70 px-2 py-1 rounded-full text-xs text-white font-bold">
+                      {item.type === 'movie' ? '🎬 Movie' : '📺 TV Show'}
                     </div>
                     <div className="p-4">
-                      <div className="font-semibold text-lg text-white mb-1 truncate">{movie.title}</div>
-                      <div className="text-gray-400 text-sm">{movie.year}</div>
+                      <div className="font-semibold text-lg text-white mb-1 truncate">{getTitle(item)}</div>
+                      <div className="text-gray-400 text-sm">{item.year}</div>
                     </div>
                   </motion.div>
                 </Link>

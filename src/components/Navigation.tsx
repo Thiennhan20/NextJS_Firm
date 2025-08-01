@@ -10,7 +10,6 @@ import {
   XMarkIcon,
   HomeIcon,
   FilmIcon,
-  TagIcon,
   NewspaperIcon,
   UserGroupIcon,
   QuestionMarkCircleIcon,
@@ -34,7 +33,7 @@ import Logo from '@/components/common/Logo';
 const mainNavItems = [
   { name: 'Home', href: '/', icon: HomeIcon },
   { name: 'Movies', href: '/movies', icon: FilmIcon },
-  { name: 'Categories', href: '/categories', icon: TagIcon },
+  { name: 'TV Shows', href: '/tvshows', icon: PlayCircleIcon },
 ]
 
 const moreNavItems = [

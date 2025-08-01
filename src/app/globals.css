@@ -195,6 +195,27 @@ body::-webkit-scrollbar {
   display: none;  /* Safari and Chrome */
 }
 
+/* Search dropdown scroll styles */
+.search-dropdown-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.search-dropdown-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.search-dropdown-scroll:hover {
+  cursor: grab;
+}
+
+.search-dropdown-scroll:active {
+  cursor: grabbing;
+}
+
 /* Horizontal Scroll Container Styles */
 .horizontal-scroll-container {
   -webkit-user-select: none;
@@ -352,4 +373,11 @@ body::-webkit-scrollbar {
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;
   line-clamp: 3;
+}
+
+.line-clamp-none {
+  overflow: visible;
+  display: block;
+  -webkit-line-clamp: unset;
+  line-clamp: unset;
 }

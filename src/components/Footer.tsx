@@ -5,7 +5,7 @@ import { motion } from 'framer-motion'
 import { 
   HomeIcon,
   FilmIcon,
-  TagIcon,
+  PlayCircleIcon,
   NewspaperIcon,
   UserGroupIcon,
   QuestionMarkCircleIcon,
@@ -20,7 +20,7 @@ import Logo from '@/components/common/Logo'
 const footerNavItems = [
   { name: 'Home', href: '/', icon: HomeIcon },
   { name: 'Movies', href: '/movies', icon: FilmIcon },
-  { name: 'Categories', href: '/categories', icon: TagIcon },
+  { name: 'TV Shows', href: '/tvshows', icon: PlayCircleIcon },
   { name: 'News', href: '/news', icon: NewspaperIcon },
   { name: 'About', href: '/about', icon: UserGroupIcon },
   { name: 'FAQ', href: '/faq', icon: QuestionMarkCircleIcon },

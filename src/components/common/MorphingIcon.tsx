@@ -24,63 +24,131 @@ interface MorphingIconProps {
 export const MorphingIcon = ({ direction = 'left' }: MorphingIconProps) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [hasStartedHorizontalAnimation, setHasStartedHorizontalAnimation] = useState(false);
+  const [randomWiggle, setRandomWiggle] = useState(0);
+  const [isExploding, setIsExploding] = useState(false);
+  const [explosionProgress, setExplosionProgress] = useState(0);
   const ref = useRef(null);
-  const isInView = useInView(ref, { once: false });
+  const isInView = useInView(ref, { 
+    once: false, 
+    margin: "-20% 0px -20% 0px",
+    amount: 0.3
+  });
 
+  // Shape morphing effect
   useEffect(() => {
     const interval = setInterval(() => {
-      setCurrentIndex((prev) => (prev + 1) % iconPaths.length);
-    }, 2000);
+      // Start explosion effect
+      setIsExploding(true);
+      setExplosionProgress(0);
+      
+      // After explosion, change shape
+      setTimeout(() => {
+        setCurrentIndex((prev) => (prev + 1) % iconPaths.length);
+        setIsExploding(false);
+        setExplosionProgress(0);
+      }, 1500); // Explosion duration
+    }, 3000); // Change shape every 3 seconds
 
     return () => clearInterval(interval);
   }, []);
 
-  // Start horizontal animation after 5 seconds when in view
+  // Smooth random wiggle effect during movement
+  useEffect(() => {
+    if (hasStartedHorizontalAnimation) {
+      // Initialize first wiggle
+      setRandomWiggle(Math.random() * 40 - 20);
+      
+      const wiggleInterval = setInterval(() => {
+        setRandomWiggle(Math.random() * 40 - 20);
+      }, 4000); // Change wiggle every 4 seconds
+
+      return () => clearInterval(wiggleInterval);
+    }
+  }, [hasStartedHorizontalAnimation]);
+
+  // Start horizontal animation after 2 seconds when in view
   useEffect(() => {
     if (isInView && !hasStartedHorizontalAnimation) {
       const timer = setTimeout(() => {
         setHasStartedHorizontalAnimation(true);
-      }, 3000);
+      }, 2000);
 
       return () => clearTimeout(timer);
     }
   }, [isInView, hasStartedHorizontalAnimation]);
 
-  // Different animation patterns for left and right
+  // Explosion progress animation
+  useEffect(() => {
+    if (isExploding) {
+      const explosionInterval = setInterval(() => {
+        setExplosionProgress(prev => {
+          if (prev >= 1) return 1;
+          return prev + 0.02; // Smooth explosion progress
+        });
+      }, 30); // 30fps for smooth explosion
+
+      return () => clearInterval(explosionInterval);
+    }
+  }, [isExploding]);
+  
+  // Explosion effect calculation
+  const explosionOffset = isExploding ? (explosionProgress * 100) : 0;
+  const explosionScale = isExploding ? (1 + explosionProgress * 0.5) : 1;
+  const explosionRotation = isExploding ? (explosionProgress * 720) : 0; // 2 full rotations
+  
+  // Different animation patterns for left and right with smooth transitions and wiggle
   const animationConfig = direction === 'left' 
     ? {
-        x: [-100, 0, 100, 0, -100],
-        times: [0, 0.25, 0.5, 0.75, 1]
+        x: [0, 50, 100, 50, 0, -50, -100, -50, 0],
+        y: [0, randomWiggle, -randomWiggle/2, randomWiggle, -randomWiggle, randomWiggle/2, -randomWiggle, randomWiggle, 0],
+        times: [0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1]
       }
     : {
-        x: [100, 0, -100, 0, 100],
-        times: [0, 0.25, 0.5, 0.75, 1]
+        x: [0, -50, -100, -50, 0, 50, 100, 50, 0],
+        y: [0, -randomWiggle, randomWiggle/2, -randomWiggle, randomWiggle, -randomWiggle/2, randomWiggle, -randomWiggle, 0],
+        times: [0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1]
       };
 
   return (
     <motion.div 
       ref={ref}
       className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 lg:w-28 lg:h-28 flex items-center justify-center"
-      initial={{ y: -200, opacity: 0 }}
+      initial={{ y: -100, opacity: 0, scale: 0.8, x: 0 }}
       animate={{
-        y: isInView ? 0 : -200,
-        opacity: isInView ? 1 : 0,
-        x: hasStartedHorizontalAnimation ? animationConfig.x : 0
+        y: isInView ? (hasStartedHorizontalAnimation ? animationConfig.y : 0) : -100,
+        opacity: isInView ? (isExploding ? 0.3 : 1) : 0,
+        scale: isInView ? explosionScale : 0.8,
+        x: hasStartedHorizontalAnimation ? animationConfig.x : 0,
+        rotate: explosionRotation
       }}
       transition={{
-        y: {
-          duration: 1.5,
+        y: hasStartedHorizontalAnimation ? {
+          duration: 25,
+          repeat: Infinity,
+          ease: "easeInOut",
+          times: animationConfig.times,
+          delay: 0
+        } : {
+          duration: 0.8,
           ease: "easeOut",
           type: "spring",
-          stiffness: 100,
-          damping: 10
+          stiffness: 120,
+          damping: 15
         },
         opacity: {
-          duration: 1,
+          duration: 0.6,
           ease: "easeOut"
         },
+        scale: {
+          duration: isExploding ? 1.5 : 0.6,
+          ease: isExploding ? "easeInOut" : "easeOut"
+        },
+        rotate: {
+          duration: isExploding ? 1.5 : 0.6,
+          ease: "easeInOut"
+        },
         x: {
-          duration: 12,
+          duration: 25,
           repeat: Infinity,
           ease: "easeInOut",
           times: animationConfig.times,
@@ -97,7 +165,25 @@ export const MorphingIcon = ({ direction = 'left' }: MorphingIconProps) => {
         strokeLinejoin="round"
         className="w-full h-full text-purple-300/70 transition-all duration-500 ease-in-out"
       >
+        {/* Main icon */}
         <path d={iconPaths[currentIndex]} />
+        
+        {/* Explosion particles */}
+        {isExploding && Array.from({ length: 8 }).map((_, i) => (
+          <motion.circle
+            key={i}
+            cx={12 + Math.cos(i * Math.PI / 4) * explosionOffset}
+            cy={12 + Math.sin(i * Math.PI / 4) * explosionOffset}
+            r={1}
+            fill="currentColor"
+            initial={{ opacity: 0, scale: 0 }}
+            animate={{ 
+              opacity: explosionProgress > 0.3 ? 1 : 0,
+              scale: explosionProgress > 0.3 ? 1 : 0
+            }}
+            transition={{ duration: 0.3, delay: i * 0.1 }}
+          />
+        ))}
       </svg>
     </motion.div>
   );

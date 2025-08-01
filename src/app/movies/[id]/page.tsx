@@ -6,7 +6,7 @@ import { Canvas } from '@react-three/fiber'
 import { OrbitControls, PerspectiveCamera } from '@react-three/drei'
 import * as THREE from 'three'
 import Image from 'next/image'
-import { StarIcon, ClockIcon, CalendarIcon, PlayIcon } from '@heroicons/react/24/solid'
+import { ClockIcon, CalendarIcon, PlayIcon } from '@heroicons/react/24/solid'
 import { BookmarkIcon } from '@heroicons/react/24/outline'
 import { useWatchlistStore } from '@/store/store'
 import toast from 'react-hot-toast'
@@ -21,7 +21,7 @@ import { setupAudioNodes, cleanupAudioNodes, AudioNodes } from '@/lib/audioUtils
 interface Movie {
   id: number;
   title: string;
-  rating: number;
+
   duration: string;
   year: number | '';
   director: string;
@@ -165,14 +165,21 @@ export default function MovieDetail() {
             trailer = `https://www.youtube.com/embed/${ytTrailer.key}`;
           }
         } catch {}
+        
+        // Fetch credits for director and cast
+        const creditsResponse = await axios.get(
+          `https://api.themoviedb.org/3/movie/${id}/credits?api_key=${API_KEY}`
+        );
+        const credits = creditsResponse.data;
+        
         const movieData = {
           id: data.id,
           title: data.title,
-          rating: data.vote_average,
+
           duration: data.runtime ? `${Math.floor(data.runtime / 60)}h ${data.runtime % 60}m` : '',
           year: data.release_date ? Number(data.release_date.slice(0, 4)) : '' as number | '',
-          director: '',
-          cast: [],
+          director: credits.crew?.find((person: { job: string; name: string }) => person.job === 'Director')?.name || '',
+          cast: credits.cast?.slice(0, 10).map((person: { name: string }) => person.name) || [],
           genre: data.genres ? data.genres.map((g: { name: string }) => g.name).join(', ') : '',
           description: data.overview,
           poster: data.poster_path ? `https://image.tmdb.org/t/p/w500${data.poster_path}` : '',
@@ -313,7 +320,7 @@ export default function MovieDetail() {
     );
   }
 
-  const { title, backdrop, poster, rating, duration, year, genre, director, cast, description, scenes, trailer, status } = movie;
+  const { title, backdrop, poster, duration, year, genre, director, cast, description, scenes, trailer, status } = movie;
 
   return (
     <div ref={containerRef} className="min-h-screen bg-gradient-to-b from-gray-900 to-black">
@@ -388,10 +395,7 @@ export default function MovieDetail() {
             </div>
             
             <div className="flex flex-wrap gap-4">
-              <div className="flex items-center space-x-2">
-                <StarIcon className="h-6 w-6 text-yellow-500" />
-                <span className="text-yellow-500">{rating}</span>
-              </div>
+              
               <div className="flex items-center space-x-2">
                 <ClockIcon className="h-6 w-6 text-gray-400" />
                 <span className="text-gray-400">{duration}</span>

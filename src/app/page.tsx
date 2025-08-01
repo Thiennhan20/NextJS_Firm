@@ -31,20 +31,21 @@ interface Movie {
   vote_average?: number;
   release_date?: string;
   image?: string;
-  rating?: number;
   year?: number;
   genre?: string;
   backdrop_path?: string;
+  status?: 'Full HD' | 'Full HD/CAM' | 'Coming Soon' | 'Non';
 }
 
 interface ProcessedMovie {
   id: number;
   title: string;
-  rating: number | undefined;
   year: number;
   image: string;
   backdrop: string;
   genre: never[];
+  release_date?: string;
+  status?: 'Full HD' | 'Full HD/CAM' | 'Coming Soon' | 'Non';
 }
 
 interface Particle {
@@ -82,8 +83,83 @@ const useResponsiveColumnCount = (config: { base: number; md?: number; lg?: numb
   return count;
 };
 
+// --- STATUS GENERATION FUNCTION ---
+const generateMovieStatus = (releaseDate?: string): 'Full HD' | 'Full HD/CAM' | 'Coming Soon' | 'Non' => {
+  if (!releaseDate) return 'Coming Soon';
+  
+  const releaseDateObj = new Date(releaseDate);
+  const currentDate = new Date();
+  const releaseYear = releaseDateObj.getFullYear();
+  
+  // Trường hợp Non: phim từ 1990 trở về quá khứ
+  if (releaseYear < 1990) return 'Non';
+  
+  // Tính khoảng cách thời gian giữa ngày hiện tại và ngày phát hành (tính bằng tuần)
+  const timeDiffInMs = currentDate.getTime() - releaseDateObj.getTime();
+  const timeDiffInWeeks = timeDiffInMs / (1000 * 60 * 60 * 24 * 7);
+  
+  // Trường hợp Coming Soon: phim chưa phát hành (trước thời điểm hiện tại)
+  if (timeDiffInWeeks < 0) return 'Coming Soon';
+  
+  // Trường hợp Full HD/CAM: phim mới xuất hiện dưới 2 tuần
+  if (timeDiffInWeeks < 2) return 'Full HD/CAM';
+  
+  // Trường hợp Full HD: phim đã xuất hiện hơn 2 tuần
+  return 'Full HD';
+};
+
 // --- REUSABLE COMPONENTS ---
 const ScrollRevealItem = ({ children, index, columnCount, scrollProgress }: { children: ReactNode, index: number, columnCount: number, scrollProgress: MotionValue<number> }) => {
+  const column = index % columnCount;
+  const isLeft = column === 0;
+  const isRight = column === columnCount - 1;
+  const isCenter = !isLeft && !isRight;
+
+  // Improved morphing effect with better timing
+  const x = useTransform(
+    scrollProgress,
+    [0, 0.2, 0.8, 1],
+    isLeft ? ['-120%', '0%', '0%', '-120%'] : isRight ? ['120%', '0%', '0%', '120%'] : ['0%', '0%', '0%', '0%']
+  );
+  
+  const opacity = useTransform(scrollProgress, [0, 0.15, 0.85, 1], [0, 1, 1, 0]);
+  
+  const scale = useTransform(
+    scrollProgress,
+    [0, 0.2, 0.8, 1],
+    isCenter ? [0.3, 1, 1, 0.3] : [0.7, 1, 1, 0.7]
+  );
+
+  const y = useTransform(
+    scrollProgress,
+    [0, 0.2, 0.8, 1],
+    [50, 0, 0, -50]
+  );
+  
+  return (
+    <motion.div 
+      style={{ x, opacity, scale, y }} 
+      className="h-full w-full"
+      initial={{ opacity: 0, scale: 0.8, y: 50 }}
+      whileInView={{ 
+        opacity: 1, 
+        scale: 1, 
+        y: 0,
+        transition: {
+          duration: 0.8,
+          ease: "easeOut",
+          delay: index * 0.1
+        }
+      }}
+      viewport={{ once: false, margin: "-10% 0px -10% 0px" }}
+    >
+      {children}
+    </motion.div>
+  );
+};
+
+// Original morphing effect for Redefining Entertainment section
+const OriginalScrollRevealItem = ({ children, index, columnCount, scrollProgress }: { children: ReactNode, index: number, columnCount: number, scrollProgress: MotionValue<number> }) => {
   const column = index % columnCount;
   const isLeft = column === 0;
   const isRight = column === columnCount - 1;
@@ -116,6 +192,7 @@ export default function Home() {
   const [featuredMovies, setFeaturedMovies] = useState<Movie[]>([]);
   const [loading, setLoading] = useState(true);
   const [particles, setParticles] = useState<Particle[]>([]);
+  const [lastFetchDate, setLastFetchDate] = useState<string>('');
   const router = useRouter();
   const { isAuthenticated, user } = useAuthStore();
   
@@ -128,11 +205,17 @@ export default function Home() {
   const heroY = useTransform(scrollY, [0, 800], [0, -200])
   const heroOpacity = useTransform(scrollY, [0, 300], [1, 0])
   
-  const { scrollYProgress: featuresScrollProgress } = useScroll({ target: featuresRef, offset: ["start end", "end start"] });
-  const { scrollYProgress: moviesScrollProgress } = useScroll({ target: moviesRef, offset: ["start end", "end start"] });
+  const { scrollYProgress: featuresScrollProgress } = useScroll({ 
+    target: featuresRef, 
+    offset: ["start end", "end start"]
+  });
+  const { scrollYProgress: moviesScrollProgress } = useScroll({ 
+    target: moviesRef, 
+    offset: ["start end", "end start"]
+  });
 
   const featuresColumnCount = useResponsiveColumnCount({ base: 1, md: 2, lg: 3 });
-  const moviesColumnCount = useResponsiveColumnCount({ base: 2, md: 3 });
+  const moviesColumnCount = useResponsiveColumnCount({ base: 2, md: 3, lg: 3 });
 
 
   useEffect(() => {
@@ -147,28 +230,33 @@ export default function Home() {
     const fetchMovies = async () => {
       setLoading(true);
       try {
-        const [popularResponse] = await Promise.all([
-          axios.get(`https://api.themoviedb.org/3/movie/popular?api_key=${API_KEY}&page=1`),
-          axios.get(`https://api.themoviedb.org/3/trending/movie/week?api_key=${API_KEY}`)
-        ]);
+        // Get upcoming movies from current date
+        const currentDate = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+        const upcomingResponse = await axios.get(`https://api.themoviedb.org/3/movie/upcoming?api_key=${API_KEY}&page=1&region=US`);
         
         const processMovies = (movies: Movie[]) => movies.map((movie: Movie) => ({
           id: movie.id,
           title: movie.title,
-          rating: movie.vote_average,
           year: movie.release_date ? Number(movie.release_date.slice(0, 4)) : 0,
           image: movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : '',
           backdrop: movie.backdrop_path ? `https://image.tmdb.org/t/p/w1280${movie.backdrop_path}` : '',
           genre: [],
+          release_date: movie.release_date || '',
+          status: generateMovieStatus(movie.release_date),
         }));
 
-        const processedFeatured = processMovies(popularResponse.data.results)
-          .slice(0, 6)
+        // Filter for Coming Soon movies and take first 12
+        const processedUpcoming = processMovies(upcomingResponse.data.results)
+          .filter((movie: ProcessedMovie) => movie.status === 'Coming Soon')
+          .slice(0, 12)
           .map((movie: ProcessedMovie) => ({
             ...movie,
             poster_path: movie.image ? movie.image.replace('https://image.tmdb.org/t/p/w500', '') : '',
+            release_date: movie.release_date || '',
           }));
-        setFeaturedMovies(processedFeatured as unknown as Movie[]);
+        
+        setFeaturedMovies(processedUpcoming as unknown as Movie[]);
+        setLastFetchDate(currentDate);
       } catch (error) {
         console.error(error);
         setFeaturedMovies([]);
@@ -177,6 +265,54 @@ export default function Home() {
     };
     fetchMovies();
   }, [API_KEY]);
+
+  // Check for daily updates
+  useEffect(() => {
+    const checkForDailyUpdate = () => {
+      const currentDate = new Date().toISOString().split('T')[0];
+      if (lastFetchDate && lastFetchDate !== currentDate) {
+        // Date has changed, refetch movies
+        const fetchMovies = async () => {
+          setLoading(true);
+          try {
+            const upcomingResponse = await axios.get(`https://api.themoviedb.org/3/movie/upcoming?api_key=${API_KEY}&page=1&region=US`);
+            
+            const processMovies = (movies: Movie[]) => movies.map((movie: Movie) => ({
+              id: movie.id,
+              title: movie.title,
+              year: movie.release_date ? Number(movie.release_date.slice(0, 4)) : 0,
+              image: movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : '',
+              backdrop: movie.backdrop_path ? `https://image.tmdb.org/t/p/w1280${movie.backdrop_path}` : '',
+              genre: [],
+              release_date: movie.release_date || '',
+              status: generateMovieStatus(movie.release_date),
+            }));
+
+            const processedUpcoming = processMovies(upcomingResponse.data.results)
+              .filter((movie: ProcessedMovie) => movie.status === 'Coming Soon')
+              .slice(0, 12)
+              .map((movie: ProcessedMovie) => ({
+                ...movie,
+                poster_path: movie.image ? movie.image.replace('https://image.tmdb.org/t/p/w500', '') : '',
+                release_date: movie.release_date || '',
+              }));
+            
+            setFeaturedMovies(processedUpcoming as unknown as Movie[]);
+            setLastFetchDate(currentDate);
+          } catch (error) {
+            console.error(error);
+          }
+          setLoading(false);
+        };
+        fetchMovies();
+      }
+    };
+
+    // Check every hour for date changes
+    const interval = setInterval(checkForDailyUpdate, 60 * 60 * 1000); // 1 hour
+
+    return () => clearInterval(interval);
+  }, [lastFetchDate, API_KEY]);
 
   return (
     <main className="min-h-screen overflow-x-hidden bg-black text-white">
@@ -308,29 +444,29 @@ export default function Home() {
       </motion.section>
 
       {/* Features Section */}
-      <section ref={featuresRef} className="py-20 sm:py-24 lg:py-32 px-4 sm:px-6 lg:px-8 relative">
-        <div className="text-center mb-12 sm:mb-16 lg:mb-20 px-4">
-            <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-4 bg-gradient-to-r from-purple-400 via-pink-400 to-red-400 text-transparent bg-clip-text leading-tight">
+      <section ref={featuresRef} className="py-12 sm:py-24 lg:py-32 px-4 sm:px-6 lg:px-8 relative">
+        <div className="text-center mb-8 sm:mb-16 lg:mb-20 px-4">
+            <h2 className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-3 sm:mb-4 bg-gradient-to-r from-purple-400 via-pink-400 to-red-400 text-transparent bg-clip-text leading-tight">
               Redefining Entertainment
             </h2>
-            <p className="text-base sm:text-lg lg:text-xl xl:text-2xl text-gray-300 max-w-4xl mx-auto">
+            <p className="text-sm sm:text-lg lg:text-xl xl:text-2xl text-gray-300 max-w-4xl mx-auto">
               Built with cutting-edge technology for an unparalleled viewing experience.
             </p>
         </div>
-        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 sm:gap-10 lg:gap-12">
+        <div className="max-w-7xl mx-auto grid grid-cols-3 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-10 lg:gap-12">
             {[
               { icon: <TvIcon className="w-10 h-10" />, title: "4K Streaming", description: "NULL", color: "purple" },
               { icon: <CodeBracketIcon className="w-10 h-10" />, title: "Gaming Hub", description: "NULL", color: "red" },
               { icon: <SparklesIcon className="w-10 h-10" />, title: "AI Recommendations", description: "NULL", color: "blue" }
             ].map((feature, index) => (
-              <ScrollRevealItem key={index} index={index} columnCount={featuresColumnCount} scrollProgress={featuresScrollProgress}>
+              <OriginalScrollRevealItem key={index} index={index} columnCount={featuresColumnCount} scrollProgress={featuresScrollProgress}>
                   <FeatureCard
                     icon={feature.icon}
                     title={feature.title}
                     description={feature.description}
                     color={feature.color as "purple" | "red" | "blue"}
                   />
-              </ScrollRevealItem>
+              </OriginalScrollRevealItem>
             ))}
         </div>
       </section>
@@ -338,13 +474,13 @@ export default function Home() {
       {/* Trending Movies Section */}
       <TrendingMovies />
 
-      {/* Featured Movies Section */}
+      {/* Coming Soon Movies Section */}
       <section ref={moviesRef} className="py-8 sm:py-12 lg:py-20 px-4 sm:px-6 lg:px-8 relative">
          <div className="text-center mb-8 sm:mb-12 lg:mb-16 px-4">
-            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold mb-6 bg-gradient-to-r from-blue-400 to-purple-400 text-transparent bg-clip-text leading-tight">
-              Handpicked For You
+            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold mb-6 bg-gradient-to-r from-yellow-400 to-orange-400 text-transparent bg-clip-text leading-tight">
+              Coming Soon
             </h2>
-            <p className="text-sm sm:text-base lg:text-lg xl:text-xl text-gray-400 max-w-3xl mx-auto">Our curated selection of must-watch films.</p>
+            <p className="text-sm sm:text-base lg:text-lg xl:text-xl text-gray-400 max-w-3xl mx-auto">Exciting new releases coming to theaters and streaming platforms.</p>
           </div>
           {loading ? (
             <div className="flex justify-center items-center h-64">
@@ -358,7 +494,13 @@ export default function Home() {
             <div className="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
               {featuredMovies.map((movie, index) => (
                 <ScrollRevealItem key={movie.id} index={index} columnCount={moviesColumnCount} scrollProgress={moviesScrollProgress}>
-                  <MovieCard {...movie} image={movie.image ?? ''} rating={movie.rating ?? 0} year={movie.year ?? 0} genre={Array.isArray(movie.genre) ? movie.genre : [movie.genre ?? '']} />
+                  <MovieCard 
+                    {...movie} 
+                    image={movie.image ?? ''} 
+                    year={movie.year ?? 0} 
+                    genre={Array.isArray(movie.genre) ? movie.genre : [movie.genre ?? '']} 
+                    status={movie.status}
+                  />
                 </ScrollRevealItem>
               ))}
             </div>
