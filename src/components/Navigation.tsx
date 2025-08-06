@@ -29,6 +29,7 @@ import AutocompleteSearch from '@/components/common/AutocompleteSearch';
 import { useWatchlistStore } from '@/store/store';
 import useAuthHydrated from '@/store/useAuthHydrated';
 import Logo from '@/components/common/Logo';
+import LanguageSelector from '@/components/common/LanguageSelector';
 
 const mainNavItems = [
   { name: 'Home', href: '/', icon: HomeIcon },
@@ -179,6 +180,9 @@ export default function Navigation() {
             <div className="relative">
               <AutocompleteSearch />
             </div>
+            
+            {/* Language Selector */}
+            <LanguageSelector isScrolled={isScrolled} />
 
             {!hydrated || isLoading ? (
               <div className="flex items-center space-x-2 px-4 py-2">
@@ -287,7 +291,10 @@ export default function Navigation() {
           </div>
 
           {/* Mobile search icon and menu button combined */}
-          <div className="flex lg:hidden items-center space-x-0">
+          <div className="flex lg:hidden items-center space-x-2">
+            {/* Mobile Language Selector */}
+            <LanguageSelector isScrolled={isScrolled} />
+            
             <button
               onClick={() => setShowMobileSearch(true)}
               className="p-1 rounded-full bg-white shadow border border-red-200 text-red-600 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-400 transition"
@@ -296,6 +303,7 @@ export default function Navigation() {
             >
               <MagnifyingGlassIcon className="h-3 w-3" />
             </button>
+            
             <button
               onClick={() => setIsOpen(!isOpen)}
               className={`inline-flex items-center justify-center p-2 rounded-md focus:outline-none focus:ring-2 focus:ring-inset focus:ring-red-500 transition-colors duration-200 ${

@@ -1,5 +1,16 @@
 @import "tailwindcss";
 
+/* Prevent translation for logo and brand elements */
+[translate="no"],
+.no-translate {
+  translate: no !important;
+}
+
+/* Alternative method for next-intl */
+[data-no-translate="true"] {
+  translate: no !important;
+}
+
 :root {
   --background: #ffffff;
   --foreground: #171717;

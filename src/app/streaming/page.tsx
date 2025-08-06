@@ -496,7 +496,7 @@ export default function StreamingPage() {
           id: movie.id,
           title: movie.title,
           description: movie.overview,
-          streamUrl: `https://vidsrc.icu/embed/movie/${movie.id}`,
+          streamUrl: `https://vidsrc.xyz/embed/movie/${movie.id}`,
           viewers: Math.floor(Math.random() * 2000) + 100, // random viewers
           likes: Math.floor(Math.random() * 500) + 50, // random likes
           poster: movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : null,

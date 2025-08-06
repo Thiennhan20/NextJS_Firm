@@ -547,7 +547,7 @@ export default function MovieDetail() {
                   className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors relative flex flex-col items-center"
                   onClick={() => { setSelectedServer('server2'); setShowServerModal(false); setShowMovie(true); }}
                 >
-                  Server 2 (vidsrc.icu)
+                  Server 2 (vidsrc.xyz)
                   <span className="mt-2 flex items-center gap-1 text-yellow-900 bg-yellow-200 rounded px-2 py-1 text-xs font-semibold">
                     <svg className="w-4 h-4 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -612,7 +612,7 @@ export default function MovieDetail() {
                 )}
                 {selectedServer === 'server2' && (
                   <iframe
-                    src={`https://vidsrc.icu/embed/movie/${id}?ds_lang=vi`}
+                    src={`https://vidsrc.xyz/embed/movie/${id}?ds_lang=vi`}
                     className="w-full h-full"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     allowFullScreen
