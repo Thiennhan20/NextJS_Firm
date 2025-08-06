@@ -39,6 +39,8 @@ interface Movie {
 interface PhimApiEpisode {
   server_name?: string;
   server_data?: Array<{
+    name?: string;
+    slug?: string;
     link_embed?: string;
   }>;
 }
@@ -47,6 +49,7 @@ interface PhimApiMovie {
   name?: string;
   title?: string;
   slug?: string;
+  origin_name?: string;
   year?: string | number;
   tmdb?: {
     id?: string | number;
@@ -155,6 +158,7 @@ export default function MovieDetail() {
     dubbed: '', // Gộp thuyết minh và lồng tiếng
   });
   const [movieLinksLoading, setMovieLinksLoading] = useState(false);
+  const [apiSearchCompleted, setApiSearchCompleted] = useState(false);
   const [showAudioModal, setShowAudioModal] = useState(false);
   const [selectedAudio, setSelectedAudio] = useState<'vietsub' | 'dubbed' | null>(null);
 
@@ -211,6 +215,7 @@ useEffect(() => {
     if (movieLinks.m3u8) return;
     
     setMovieLinksLoading(true);
+    setApiSearchCompleted(false);
     timeoutId = setTimeout(() => {
       console.log('⏰ Timeout reached for movie link fetching');
     }, 60000);
@@ -299,6 +304,30 @@ useEffect(() => {
             }
           }
         }
+
+        // Strategy 6: Search by origin_name field (for movies with English titles)
+        if (!slug) {
+          console.log('🔍 Strategy 6: Searching by origin_name field');
+          // Try searching with common English title variations
+          const englishTitleVariations = [
+            movie.title,
+            movie.title.replace(/[^\w\s]/g, ''), // Remove special characters
+            movie.title.toLowerCase(),
+            movie.title.split(' ').slice(0, 3).join(' ') // First 3 words
+          ];
+          
+          for (const variation of englishTitleVariations) {
+            console.log(`  🌍 Trying origin_name variation: "${variation}"`);
+            const searchResults6 = await searchPhimApi(variation, movie.year as number);
+            const match6 = findBestMatch(searchResults6, movie.title, movie.year as number, id);
+            if (match6) {
+              slug = match6.slug;
+              matchedMovie = match6;
+              console.log('✅ Strategy 6 SUCCESS:', match6);
+              break;
+            }
+          }
+        }
       }
 
       if (!slug) {
@@ -329,14 +358,55 @@ useEffect(() => {
       if (detailData.episodes && detailData.episodes.length > 0) {
         detailData.episodes.forEach((episode: PhimApiEpisode) => {
           const serverName = episode.server_name?.toLowerCase() || '';
-          const linkEmbed = episode.server_data?.[0]?.link_embed || '';
           
-          if (serverName.includes('vietsub') && linkEmbed) {
-            vietsubLink = linkEmbed;
-            console.log('🎬 Found Vietsub link:', vietsubLink);
-          } else if ((serverName.includes('thuyết minh') || serverName.includes('lồng tiếng') || serverName.includes('dubbed')) && linkEmbed) {
-            dubbedLink = linkEmbed;
-            console.log('🎬 Found Dubbed link:', dubbedLink);
+          // Check each server_data item for more precise audio version detection
+          if (episode.server_data && episode.server_data.length > 0) {
+            episode.server_data.forEach((serverData) => {
+              const dataName = serverData.name?.toLowerCase() || '';
+              const dataSlug = serverData.slug?.toLowerCase() || '';
+              const linkEmbed = serverData.link_embed || '';
+              
+              console.log('🔍 Checking server data:', {
+                serverName,
+                dataName,
+                dataSlug,
+                hasLink: !!linkEmbed
+              });
+              
+              // Check for Vietsub/Full version
+              if (linkEmbed && (
+                serverName.includes('vietsub') ||
+                dataName.includes('full') ||
+                dataName.includes('vietsub') ||
+                dataSlug.includes('full') ||
+                dataSlug.includes('vietsub')
+              )) {
+                vietsubLink = linkEmbed;
+                console.log('🎬 Found Vietsub/Full link:', vietsubLink, {
+                  matchedBy: {
+                    serverName: serverName.includes('vietsub'),
+                    dataName: dataName.includes('full') || dataName.includes('vietsub'),
+                    dataSlug: dataSlug.includes('full') || dataSlug.includes('vietsub')
+                  }
+                });
+              }
+              
+              // Check for Dubbed/Lồng Tiếng/Thuyết Minh version (independent check)
+              if (linkEmbed && (
+                serverName.includes('thuyết minh') || serverName.includes('lồng tiếng') || serverName.includes('dubbed') ||
+                dataName.includes('lồng tiếng') || dataName.includes('thuyết minh') || dataName.includes('dubbed') ||
+                dataSlug.includes('long-tieng') || dataSlug.includes('thuyet-minh') || dataSlug.includes('dubbed')
+              )) {
+                dubbedLink = linkEmbed;
+                console.log('🎬 Found Dubbed/Lồng Tiếng link:', dubbedLink, {
+                  matchedBy: {
+                    serverName: serverName.includes('thuyết minh') || serverName.includes('lồng tiếng') || serverName.includes('dubbed'),
+                    dataName: dataName.includes('lồng tiếng') || dataName.includes('thuyết minh') || dataName.includes('dubbed'),
+                    dataSlug: dataSlug.includes('long-tieng') || dataSlug.includes('thuyet-minh') || dataSlug.includes('dubbed')
+                  }
+                });
+              }
+            });
           }
         });
       }
@@ -346,10 +416,32 @@ useEffect(() => {
         defaultEmbed = detailData.link_embed;
         console.log('🎬 Using direct embed link as fallback:', defaultEmbed);
       } 
-      // Try to get embed from first episode as fallback
-      else if (detailData.episodes && detailData.episodes[0]?.server_data?.[0]?.link_embed) {
-        defaultEmbed = detailData.episodes[0].server_data[0].link_embed;
-        console.log('🎬 Using first episode embed link as fallback:', defaultEmbed);
+      // Try to get embed from first episode as fallback (prioritize vietsub/full over dubbed)
+      else if (detailData.episodes && detailData.episodes[0]?.server_data) {
+        const firstEpisode = detailData.episodes[0];
+        let foundFallback = false;
+        
+        // First try to find vietsub/full version
+        for (const serverData of firstEpisode.server_data) {
+          const dataName = serverData.name?.toLowerCase() || '';
+          const dataSlug = serverData.slug?.toLowerCase() || '';
+          
+          if (serverData.link_embed && (
+            dataName.includes('full') || dataName.includes('vietsub') ||
+            dataSlug.includes('full') || dataSlug.includes('vietsub')
+          )) {
+            defaultEmbed = serverData.link_embed;
+            console.log('🎬 Using vietsub/full episode embed link as fallback:', defaultEmbed);
+            foundFallback = true;
+            break;
+          }
+        }
+        
+        // If no vietsub found, use any available link
+        if (!foundFallback && firstEpisode.server_data[0]?.link_embed) {
+          defaultEmbed = firstEpisode.server_data[0].link_embed;
+          console.log('🎬 Using first available episode embed link as fallback:', defaultEmbed);
+        }
       }
 
       // Clean up URLs if they contain ?url= parameter
@@ -389,6 +481,7 @@ useEffect(() => {
           m3u8: vietsubLink || dubbedLink || defaultEmbed // Default to vietsub if available
         }));
         setMovieLinksLoading(false);
+        setApiSearchCompleted(true);
       } else if (defaultEmbed) {
         console.log('✅ SUCCESS: Single movie link found and set');
         console.log('📊 Final result:', {
@@ -403,6 +496,7 @@ useEffect(() => {
 
         setMovieLinks(links => ({ ...links, m3u8: defaultEmbed }));
         setMovieLinksLoading(false);
+        setApiSearchCompleted(true);
       } else {
         console.log('❌ No embed link found in movie details');
         console.log('📋 Full movie details:', detailData);
@@ -419,6 +513,7 @@ useEffect(() => {
     } finally {
       clearTimeout(timeoutId);
       setMovieLinksLoading(false);
+      setApiSearchCompleted(true);
     }
   }
 
@@ -481,7 +576,21 @@ useEffect(() => {
       return exactMatch;
     }
 
-    // Priority 3: Title match with year tolerance
+    // Priority 3: Origin name match (similar to slug matching)
+    const originNameMatch = items.find(item => {
+      if (!item.origin_name) return false;
+      const originNameNormalized = normalizeTitle(item.origin_name);
+      const targetNormalized = normalizeTitle(targetTitle);
+      const similarity = calculateSimilarity(originNameNormalized, targetNormalized);
+      const yearDiff = Math.abs(parseInt(String(item.year || '0')) - targetYear);
+      return similarity > 0.7 && yearDiff <= 2;
+    });
+    if (originNameMatch) {
+      console.log(`  ✅ Origin name match found:`, originNameMatch);
+      return originNameMatch;
+    }
+
+    // Priority 4: Title match with year tolerance
     const titleMatchWithYearTolerance = items.find(item => {
       const titleMatch = normalizeTitle(item.name || item.title || '') === normalizeTitle(targetTitle);
       const yearDiff = Math.abs(parseInt(String(item.year || '0')) - targetYear);
@@ -492,7 +601,7 @@ useEffect(() => {
       return titleMatchWithYearTolerance;
     }
 
-    // Priority 4: Fuzzy title match
+    // Priority 5: Fuzzy title match
     const fuzzyMatch = items.find(item => {
       const itemTitle = normalizeTitle(item.name || item.title || '');
       const targetNormalized = normalizeTitle(targetTitle);
@@ -890,7 +999,7 @@ useEffect(() => {
                   </span>
                 </button>
                 <button
-                  className="mt-2 px-4 py-2 bg-gray-600 Phật giáo text-white rounded-lg hover:bg-gray-700 transition-colors"
+                  className="mt-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
                   onClick={() => setShowServerModal(false)}
                 >
                   Cancel
@@ -917,7 +1026,7 @@ useEffect(() => {
               className="relative w-full max-w-md bg-gray-800 rounded-lg p-6"
               onClick={e => e.stopPropagation()}
             >
-              <h3 className="text-lg font-medium text-white mb-4 text-center">Chọn phiên bản âm thanh</h3>
+              <h3 className="text-lg font-medium text-white mb-4 text-center">Select Audio Version</h3>
               <div className="flex flex-col gap-4">
                 {movieLinks.vietsub && (
                   <button
@@ -932,7 +1041,7 @@ useEffect(() => {
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
                     </svg>
-                    Vietsub (Phụ đề tiếng Việt)
+                    Vietsub (Vietnamese Subtitles)
                   </button>
                 )}
                 {movieLinks.dubbed && (
@@ -948,14 +1057,14 @@ useEffect(() => {
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
                     </svg>
-                    Lồng tiếng Việt (Thuyết minh/Lồng tiếng)
+                    Vietnamese Dubbed (Dubbed/Narrated)
                   </button>
                 )}
                 <button
                   className="mt-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
                   onClick={() => setShowAudioModal(false)}
                 >
-                  Hủy
+                  Cancel
                 </button>
               </div>
             </motion.div>
@@ -988,7 +1097,7 @@ useEffect(() => {
                         ? 'bg-blue-600 text-white' 
                         : 'bg-green-600 text-white'
                     }`}>
-                      {selectedAudio === 'vietsub' ? 'Vietsub' : 'Lồng tiếng Việt'}
+                      {selectedAudio === 'vietsub' ? 'Vietsub' : 'Vietnamese Dubbed'}
                     </span>
                   )}
                 </div>
@@ -1003,11 +1112,24 @@ useEffect(() => {
               </div>
               <div className="w-full h-[calc(100%-4rem)] rounded-lg overflow-hidden">
                 {selectedServer === 'server1' && (
-                  movieLinksLoading ? (
-                    <div className="flex items-center justify-center h-full text-white text-lg font-semibold">
-                      Loading video link...
-                    </div>
-                  ) : (() => {
+                  (() => {
+                    // Show loading if API search is still in progress
+                    if (!apiSearchCompleted || movieLinksLoading) {
+                      return (
+                        <div className="flex items-center justify-center h-full text-white">
+                          <div className="flex flex-col items-center gap-4">
+                            <motion.div 
+                              animate={{ rotate: 360 }}
+                              transition={{ repeat: Infinity, duration: 1.5, ease: 'linear' }}
+                              className="w-12 h-12 border-4 border-red-500 border-t-transparent rounded-full"
+                            />
+                            <p className="text-lg font-semibold">Searching for video...</p>
+                            <p className="text-sm text-gray-400">Please wait a moment</p>
+                          </div>
+                        </div>
+                      );
+                    }
+
                     // Determine which link to use based on selected audio or availability
                     let videoSrc = '';
                     if (selectedAudio === 'vietsub' && movieLinks.vietsub) {
