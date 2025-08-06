@@ -457,7 +457,7 @@ export default function Home() {
             {[
               { icon: <TvIcon className="w-10 h-10" />, title: "4K Streaming", description: "NULL", color: "purple" },
               { icon: <CodeBracketIcon className="w-10 h-10" />, title: "Gaming Hub", description: "NULL", color: "red" },
-              { icon: <SparklesIcon className="w-10 h-10" />, title: "AI Recommendations", description: "NULL", color: "blue" }
+              { icon: <SparklesIcon className="w-10 h-10" />, title: "AI Smart", description: "NULL", color: "blue" }
             ].map((feature, index) => (
               <OriginalScrollRevealItem key={index} index={index} columnCount={featuresColumnCount} scrollProgress={featuresScrollProgress}>
                   <FeatureCard

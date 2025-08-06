@@ -36,6 +36,27 @@ interface Movie {
   status?: 'Full HD' | 'Full HD/CAM' | 'Coming Soon' | 'Non';
 }
 
+interface PhimApiEpisode {
+  server_name?: string;
+  server_data?: Array<{
+    link_embed?: string;
+  }>;
+}
+
+interface PhimApiMovie {
+  name?: string;
+  title?: string;
+  slug?: string;
+  year?: string | number;
+  tmdb?: {
+    id?: string | number;
+  };
+  link_embed?: string;
+  episodes?: PhimApiEpisode[];
+}
+
+
+
 export default function MovieDetail() {
   const API_KEY = process.env.NEXT_PUBLIC_TMDB_API_KEY;
   const { id } = useParams();
@@ -130,8 +151,422 @@ export default function MovieDetail() {
   const [movieLinks, setMovieLinks] = useState({
     embed: '',
     m3u8: '',
+    vietsub: '',
+    dubbed: '', // Gộp thuyết minh và lồng tiếng
   });
   const [movieLinksLoading, setMovieLinksLoading] = useState(false);
+  const [showAudioModal, setShowAudioModal] = useState(false);
+  const [selectedAudio, setSelectedAudio] = useState<'vietsub' | 'dubbed' | null>(null);
+
+  useEffect(() => {
+    if (movie?.title && movie?.year) {
+      setMovieLinksLoading(true);
+      fetch(`/api/subtitles?query=${encodeURIComponent(movie.title)}&year=${movie.year.toString()}`)
+        .then(res => res.json())
+        .then(() => {})
+        .catch(() => {})
+        .finally(() => setMovieLinksLoading(false));
+    }
+  }, [movie?.title, movie?.year]);
+
+  const videoRef = useRef<HTMLVideoElement>(null);
+  // State cho các bộ lọc âm thanh (không hiển thị trong UI)
+  const audioNodesRef = useRef<AudioNodes | null>(null);
+
+  // Khởi tạo AudioContext và các bộ lọc
+  useEffect(() => {
+    if (!showMovie || !videoRef.current) return;
+    let cancelled = false;
+    const videoEl = videoRef.current;
+    if (!videoEl) return;
+    (async () => {
+      if (!audioNodesRef.current) {
+        const nodes = await setupAudioNodes(videoEl);
+        if (!cancelled) {
+          audioNodesRef.current = nodes;
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+      if (audioNodesRef.current) {
+        cleanupAudioNodes(audioNodesRef.current);
+        audioNodesRef.current = null;
+      }
+    };
+  }, [showMovie]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      (window as { isWatchingFullMovie?: boolean }).isWatchingFullMovie = showMovie;
+    }
+  }, [showMovie]);
+
+  // Replace the existing fetchPhimApiEmbed function in your useEffect with this improved version
+
+useEffect(() => {
+  let timeoutId: NodeJS.Timeout;
+  
+  async function fetchPhimApiEmbed() {
+    if (movieLinks.m3u8) return;
+    
+    setMovieLinksLoading(true);
+    timeoutId = setTimeout(() => {
+      console.log('⏰ Timeout reached for movie link fetching');
+    }, 60000);
+
+    try {
+      if (typeof id !== 'string') {
+        console.log('❌ Invalid movie ID:', id);
+        return;
+      }
+
+      console.log('🎬 Starting movie link fetch for:', {
+        tmdbId: id,
+        title: movie?.title,
+        year: movie?.year
+      });
+
+      let slug = null;
+      let matchedMovie = null;
+
+      if (movie?.title) {
+        // Strategy 1: Search by exact title with year
+        console.log('🔍 Strategy 1: Searching by exact title with year');
+        const searchResults1 = await searchPhimApi(movie.title, movie.year as number);
+        const match1 = findBestMatch(searchResults1, movie.title, movie.year as number, id);
+        if (match1) {
+          slug = match1.slug;
+          matchedMovie = match1;
+          console.log('✅ Strategy 1 SUCCESS:', match1);
+        }
+
+        // Strategy 2: Search by exact title without year
+        if (!slug) {
+          console.log('🔍 Strategy 2: Searching by exact title without year');
+          const searchResults2 = await searchPhimApi(movie.title);
+          const match2 = findBestMatch(searchResults2, movie.title, movie.year as number, id);
+          if (match2) {
+            slug = match2.slug;
+            matchedMovie = match2;
+            console.log('✅ Strategy 2 SUCCESS:', match2);
+          }
+        }
+
+        // Strategy 3: Search by title with special characters removed
+        if (!slug) {
+          console.log('🔍 Strategy 3: Searching with normalized title');
+          const normalizedTitle = normalizeTitle(movie.title);
+          const searchResults3 = await searchPhimApi(normalizedTitle, movie.year as number);
+          const match3 = findBestMatch(searchResults3, movie.title, movie.year as number, id);
+          if (match3) {
+            slug = match3.slug;
+            matchedMovie = match3;
+            console.log('✅ Strategy 3 SUCCESS:', match3);
+          }
+        }
+
+        // Strategy 4: Search by keywords from title
+        if (!slug) {
+          console.log('🔍 Strategy 4: Searching by title keywords');
+          const keywords = extractKeywords(movie.title);
+          for (const keyword of keywords) {
+            console.log(`  🔎 Trying keyword: "${keyword}"`);
+            const searchResults4 = await searchPhimApi(keyword, movie.year as number);
+            const match4 = findBestMatch(searchResults4, movie.title, movie.year as number, id);
+            if (match4) {
+              slug = match4.slug;
+              matchedMovie = match4;
+              console.log('✅ Strategy 4 SUCCESS:', match4);
+              break;
+            }
+          }
+        }
+
+        // Strategy 5: Search by year range (±1 year)
+        if (!slug && movie.year) {
+          console.log('🔍 Strategy 5: Searching with year range');
+          const years = [movie.year - 1, movie.year + 1];
+          for (const yearVariant of years) {
+            console.log(`  📅 Trying year: ${yearVariant}`);
+            const searchResults5 = await searchPhimApi(movie.title, yearVariant);
+            const match5 = findBestMatch(searchResults5, movie.title, movie.year as number, id);
+            if (match5) {
+              slug = match5.slug;
+              matchedMovie = match5;
+              console.log('✅ Strategy 5 SUCCESS:', match5);
+              break;
+            }
+          }
+        }
+      }
+
+      if (!slug) {
+        console.log('❌ No movie found after all search strategies');
+        return;
+      }
+
+      console.log('🎯 Found movie slug:', slug);
+      console.log('📊 Matched movie details:', matchedMovie);
+
+      // Get movie details and extract embed link
+      console.log('📥 Fetching movie details from PhimAPI...');
+      const detailRes = await fetch(`https://phimapi.com/phim/${slug}`);
+      const detailData = await detailRes.json();
+
+      console.log('📋 Movie detail response status:', detailData.status);
+      console.log('🔗 Available embed sources:', {
+        direct_link_embed: detailData.link_embed || 'None',
+        episodes_available: detailData.episodes ? detailData.episodes.length : 0,
+        first_episode_servers: detailData.episodes?.[0]?.server_data?.length || 0
+      });
+
+      let vietsubLink = '';
+      let dubbedLink = '';
+      let defaultEmbed = '';
+
+      // Extract links from episodes
+      if (detailData.episodes && detailData.episodes.length > 0) {
+        detailData.episodes.forEach((episode: PhimApiEpisode) => {
+          const serverName = episode.server_name?.toLowerCase() || '';
+          const linkEmbed = episode.server_data?.[0]?.link_embed || '';
+          
+          if (serverName.includes('vietsub') && linkEmbed) {
+            vietsubLink = linkEmbed;
+            console.log('🎬 Found Vietsub link:', vietsubLink);
+          } else if ((serverName.includes('thuyết minh') || serverName.includes('lồng tiếng') || serverName.includes('dubbed')) && linkEmbed) {
+            dubbedLink = linkEmbed;
+            console.log('🎬 Found Dubbed link:', dubbedLink);
+          }
+        });
+      }
+
+      // Try to get embed from direct link as fallback
+      if (detailData.link_embed) {
+        defaultEmbed = detailData.link_embed;
+        console.log('🎬 Using direct embed link as fallback:', defaultEmbed);
+      } 
+      // Try to get embed from first episode as fallback
+      else if (detailData.episodes && detailData.episodes[0]?.server_data?.[0]?.link_embed) {
+        defaultEmbed = detailData.episodes[0].server_data[0].link_embed;
+        console.log('🎬 Using first episode embed link as fallback:', defaultEmbed);
+      }
+
+      // Clean up URLs if they contain ?url= parameter
+      const cleanUrl = (url: string) => {
+        if (url && url.includes('?url=')) {
+          const originalUrl = url;
+          const cleanedUrl = url.split('?url=')[1];
+          console.log('🧹 Cleaned URL:', {
+            original: originalUrl,
+            cleaned: cleanedUrl
+          });
+          return cleanedUrl;
+        }
+        return url;
+      };
+
+      vietsubLink = cleanUrl(vietsubLink);
+      dubbedLink = cleanUrl(dubbedLink);
+      defaultEmbed = cleanUrl(defaultEmbed);
+
+      // Set the appropriate link based on availability
+      if (vietsubLink || dubbedLink) {
+        console.log('✅ SUCCESS: Multiple audio versions found');
+        console.log('📊 Audio versions available:', {
+          vietsub: !!vietsubLink,
+          dubbed: !!dubbedLink
+        });
+        console.log('🔗 Audio links:', {
+          vietsub: vietsubLink,
+          dubbed: dubbedLink
+        });
+
+        setMovieLinks(links => ({ 
+          ...links, 
+          vietsub: vietsubLink,
+          dubbed: dubbedLink,
+          m3u8: vietsubLink || dubbedLink || defaultEmbed // Default to vietsub if available
+        }));
+        setMovieLinksLoading(false);
+      } else if (defaultEmbed) {
+        console.log('✅ SUCCESS: Single movie link found and set');
+        console.log('📊 Final result:', {
+          tmdbId: id,
+          title: movie?.title,
+          year: movie?.year,
+          foundTitle: matchedMovie?.name || matchedMovie?.title,
+          foundYear: matchedMovie?.year,
+          slug: slug,
+          finalEmbedUrl: defaultEmbed
+        });
+
+        setMovieLinks(links => ({ ...links, m3u8: defaultEmbed }));
+        setMovieLinksLoading(false);
+      } else {
+        console.log('❌ No embed link found in movie details');
+        console.log('📋 Full movie details:', detailData);
+      }
+
+    } catch (e) {
+      console.error('💥 Error in fetchPhimApiEmbed:', e);
+      console.log('📊 Error context:', {
+        tmdbId: id,
+        title: movie?.title,
+        year: movie?.year,
+        error: e instanceof Error ? e.message : 'Unknown error'
+      });
+    } finally {
+      clearTimeout(timeoutId);
+      setMovieLinksLoading(false);
+    }
+  }
+
+  // Helper function to search PhimAPI
+  async function searchPhimApi(keyword: string, year?: number): Promise<PhimApiMovie[]> {
+    try {
+      let url = `https://phimapi.com/v1/api/tim-kiem?keyword=${encodeURIComponent(keyword)}`;
+      if (year) url += `&year=${year}`;
+      
+      console.log(`  🌐 API Request: ${url}`);
+      
+      const res = await fetch(url);
+      const data = await res.json();
+      
+      console.log(`  📥 API Response:`, {
+        status: data.status,
+        itemCount: data.data?.items?.length || 0,
+        items: data.data?.items?.map((item: PhimApiMovie) => ({
+          name: item.name,
+          slug: item.slug,
+          year: item.year,
+          tmdbId: item.tmdb?.id
+        })) || []
+      });
+
+      if (data.status === 'success' && data.data && Array.isArray(data.data.items)) {
+        return data.data.items;
+      }
+      
+      return [];
+    } catch (error) {
+      console.error(`  ❌ Search API error:`, error);
+      return [];
+    }
+  }
+
+  // Helper function to find best matching movie
+  function findBestMatch(items: PhimApiMovie[], targetTitle: string, targetYear: number, tmdbId: string): PhimApiMovie | null {
+    if (!items || items.length === 0) return null;
+
+    console.log(`  🎯 Finding best match for "${targetTitle}" (${targetYear}) in ${items.length} results`);
+
+    // Priority 1: Exact TMDB ID match
+    const tmdbMatch = items.find(item => 
+      item.tmdb && item.tmdb.id && item.tmdb.id.toString() === tmdbId.toString()
+    );
+    if (tmdbMatch) {
+      console.log(`  ✅ TMDB ID match found:`, tmdbMatch);
+      return tmdbMatch;
+    }
+
+    // Priority 2: Exact title and year match
+    const exactMatch = items.find(item => {
+      const titleMatch = normalizeTitle(item.name || item.title || '') === normalizeTitle(targetTitle);
+      const yearMatch = item.year && parseInt(String(item.year)) === targetYear;
+      return titleMatch && yearMatch;
+    });
+    if (exactMatch) {
+      console.log(`  ✅ Exact title+year match found:`, exactMatch);
+      return exactMatch;
+    }
+
+    // Priority 3: Title match with year tolerance
+    const titleMatchWithYearTolerance = items.find(item => {
+      const titleMatch = normalizeTitle(item.name || item.title || '') === normalizeTitle(targetTitle);
+      const yearDiff = Math.abs(parseInt(String(item.year || '0')) - targetYear);
+      return titleMatch && yearDiff <= 1;
+    });
+    if (titleMatchWithYearTolerance) {
+      console.log(`  ✅ Title match with year tolerance found:`, titleMatchWithYearTolerance);
+      return titleMatchWithYearTolerance;
+    }
+
+    // Priority 4: Fuzzy title match
+    const fuzzyMatch = items.find(item => {
+      const itemTitle = normalizeTitle(item.name || item.title || '');
+      const targetNormalized = normalizeTitle(targetTitle);
+      const similarity = calculateSimilarity(itemTitle, targetNormalized);
+      const yearDiff = Math.abs(parseInt(String(item.year || '0')) - targetYear);
+      return similarity > 0.8 && yearDiff <= 2;
+    });
+    if (fuzzyMatch) {
+      console.log(`  ✅ Fuzzy match found:`, fuzzyMatch);
+      return fuzzyMatch;
+    }
+
+    console.log(`  ❌ No suitable match found`);
+    return null;
+  }
+
+  // Helper function to normalize title for comparison
+  function normalizeTitle(title: string): string {
+    return title
+      .toLowerCase()
+      .replace(/[^\w\s]/g, '') // Remove special characters
+      .replace(/\s+/g, ' ')    // Replace multiple spaces with single space
+      .trim();
+  }
+
+  // Helper function to extract keywords from title
+  function extractKeywords(title: string): string[] {
+    const normalized = normalizeTitle(title);
+    const words = normalized.split(' ').filter(word => word.length > 2);
+    
+    // Return combinations: full title, major words, individual significant words
+    const keywords = [
+      title, // Original title
+      normalized, // Normalized title
+      ...words.filter(word => word.length > 3) // Significant individual words
+    ];
+
+    return [...new Set(keywords)]; // Remove duplicates
+  }
+
+  // Helper function to calculate string similarity
+  function calculateSimilarity(str1: string, str2: string): number {
+    const longer = str1.length > str2.length ? str1 : str2;
+    const shorter = str1.length > str2.length ? str2 : str1;
+    
+    if (longer.length === 0) return 1.0;
+    
+    const distance = levenshteinDistance(longer, shorter);
+    return (longer.length - distance) / longer.length;
+  }
+
+  // Helper function to calculate Levenshtein distance
+  function levenshteinDistance(str1: string, str2: string): number {
+    const matrix = Array(str2.length + 1).fill(null).map(() => Array(str1.length + 1).fill(null));
+    
+    for (let i = 0; i <= str1.length; i++) matrix[0][i] = i;
+    for (let j = 0; j <= str2.length; j++) matrix[j][0] = j;
+    
+    for (let j = 1; j <= str2.length; j++) {
+      for (let i = 1; i <= str1.length; i++) {
+        const indicator = str1[i - 1] === str2[j - 1] ? 0 : 1;
+        matrix[j][i] = Math.min(
+          matrix[j][i - 1] + 1,     // deletion
+          matrix[j - 1][i] + 1,     // insertion
+          matrix[j - 1][i - 1] + indicator // substitution
+        );
+      }
+    }
+    
+    return matrix[str2.length][str1.length];
+  }
+
+  fetchPhimApiEmbed();
+}, [id, movie?.title, movie?.year, movieLinks.m3u8]);
 
   useEffect(() => {
     const fetchMovie = async () => {
@@ -197,116 +632,6 @@ export default function MovieDetail() {
     };
     fetchMovie();
   }, [id, API_KEY]);
-
-  useEffect(() => {
-    if (movie?.title && movie?.year) {
-      setMovieLinksLoading(true);
-      fetch(`/api/subtitles?query=${encodeURIComponent(movie.title)}&year=${movie.year.toString()}`)
-        .then(res => res.json())
-        .then(() => {})
-        .catch(() => {})
-        .finally(() => setMovieLinksLoading(false));
-    }
-  }, [movie?.title, movie?.year]);
-
-  const videoRef = useRef<HTMLVideoElement>(null);
-  // State cho các bộ lọc âm thanh (không hiển thị trong UI)
-  const audioNodesRef = useRef<AudioNodes | null>(null);
-
-  // Khởi tạo AudioContext và các bộ lọc
-  useEffect(() => {
-    if (!showMovie || !videoRef.current) return;
-    let cancelled = false;
-    const videoEl = videoRef.current;
-    if (!videoEl) return;
-    (async () => {
-      if (!audioNodesRef.current) {
-        const nodes = await setupAudioNodes(videoEl);
-        if (!cancelled) {
-          audioNodesRef.current = nodes;
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-      if (audioNodesRef.current) {
-        cleanupAudioNodes(audioNodesRef.current);
-        audioNodesRef.current = null;
-      }
-    };
-  }, [showMovie]);
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      (window as { isWatchingFullMovie?: boolean }).isWatchingFullMovie = showMovie;
-    }
-  }, [showMovie]);
-
-  useEffect(() => {
-    let timeoutId: NodeJS.Timeout;
-    async function fetchPhimApiEmbed() {
-      if (movieLinks.m3u8) return;
-      setMovieLinksLoading(true);
-      timeoutId = setTimeout(() => {}, 60000);
-      try {
-        if (typeof id !== 'string') {
-          return;
-        }
-        let slug = null;
-        let logged = false;
-        if (movie?.title) {
-          const keywords = [movie.title].filter(Boolean);
-          outer: for (const keyword of keywords) {
-            for (const y of [movie.year as number, undefined]) {
-              let url = `https://phimapi.com/v1/api/tim-kiem?keyword=${encodeURIComponent(keyword)}`;
-              if (y) url += `&year=${y}`;
-              if (!logged) {
-                logged = true;
-              }
-              const res = await fetch(url);
-              const data = await res.json();
-              if (
-                data.status === 'success' &&
-                data.data &&
-                Array.isArray(data.data.items) &&
-                data.data.items.length > 0 &&
-                data.data.items[0].slug
-              ) {
-                slug = data.data.items[0].slug;
-                break outer;
-              }
-            }
-          }
-        }
-        if (!slug) {
-          return;
-        }
-        const detailRes = await fetch(`https://phimapi.com/phim/${slug}`);
-        const detailData = await detailRes.json();
-        let embed = '';
-        if (detailData.link_embed) {
-          embed = detailData.link_embed;
-          if (embed.includes('?url=')) {
-            embed = embed.split('?url=')[1];
-          }
-        } else if (detailData.episodes && detailData.episodes[0]?.server_data[0]?.link_embed) {
-          embed = detailData.episodes[0].server_data[0].link_embed;
-          if (embed.includes('?url=')) {
-            embed = embed.split('?url=')[1];
-          }
-        }
-        if (embed) {
-          setMovieLinks(links => ({ ...links, m3u8: embed }));
-          setMovieLinksLoading(false);
-        }
-      } catch (e) {
-        console.error('Lỗi khi fetch phimapi:', e);
-      } finally {
-        clearTimeout(timeoutId);
-      }
-    }
-    fetchPhimApiEmbed();
-  }, [id, movie?.title, movie?.year, movieLinks.m3u8]);
 
   if (loading || !movie) {
     return (
@@ -539,7 +864,16 @@ export default function MovieDetail() {
               <div className="flex flex-col gap-4">
                 <button
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                  onClick={() => { setSelectedServer('server1'); setShowServerModal(false); setShowMovie(true); }}
+                  onClick={() => { 
+                    setSelectedServer('server1'); 
+                    setShowServerModal(false); 
+                    // Check if both audio versions are available
+                    if (movieLinks.vietsub && movieLinks.dubbed) {
+                      setShowAudioModal(true);
+                    } else {
+                      setShowMovie(true);
+                    }
+                  }}
                 >
                   Server 1
                 </button>
@@ -568,13 +902,75 @@ export default function MovieDetail() {
       </AnimatePresence>
 
       <AnimatePresence>
+        {showAudioModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
+            onClick={() => setShowAudioModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.9 }}
+              className="relative w-full max-w-md bg-gray-800 rounded-lg p-6"
+              onClick={e => e.stopPropagation()}
+            >
+              <h3 className="text-lg font-medium text-white mb-4 text-center">Chọn phiên bản âm thanh</h3>
+              <div className="flex flex-col gap-4">
+                {movieLinks.vietsub && (
+                  <button
+                    className="px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+                    onClick={() => { 
+                      console.log('🎵 Selected audio version: Vietsub');
+                      setSelectedAudio('vietsub'); 
+                      setShowAudioModal(false); 
+                      setShowMovie(true); 
+                    }}
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                    </svg>
+                    Vietsub (Phụ đề tiếng Việt)
+                  </button>
+                )}
+                {movieLinks.dubbed && (
+                  <button
+                    className="px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
+                    onClick={() => { 
+                      console.log('🎵 Selected audio version: Dubbed');
+                      setSelectedAudio('dubbed'); 
+                      setShowAudioModal(false); 
+                      setShowMovie(true); 
+                    }}
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                    </svg>
+                    Lồng tiếng Việt (Thuyết minh/Lồng tiếng)
+                  </button>
+                )}
+                <button
+                  className="mt-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                  onClick={() => setShowAudioModal(false)}
+                >
+                  Hủy
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
         {showMovie && movie && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black z-50 flex items-center justify-center"
-            onClick={() => { setShowMovie(false); setSelectedServer(null); }}
+            onClick={() => { setShowMovie(false); setSelectedServer(null); setSelectedAudio(null); }}
           >
             <motion.div
               initial={{ scale: 0.9 }}
@@ -584,10 +980,21 @@ export default function MovieDetail() {
               onClick={e => e.stopPropagation()}
             >
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-white text-xl font-semibold">{title}</h3>
+                <div className="flex items-center gap-3">
+                  <h3 className="text-white text-xl font-semibold">{title}</h3>
+                  {selectedAudio && (
+                    <span className={`px-2 py-1 text-xs font-semibold rounded ${
+                      selectedAudio === 'vietsub' 
+                        ? 'bg-blue-600 text-white' 
+                        : 'bg-green-600 text-white'
+                    }`}>
+                      {selectedAudio === 'vietsub' ? 'Vietsub' : 'Lồng tiếng Việt'}
+                    </span>
+                  )}
+                </div>
                 <button
                   className="text-white bg-black/50 rounded-full p-2 hover:bg-black/80 transition-colors"
-                  onClick={() => { setShowMovie(false); setSelectedServer(null); }}
+                  onClick={() => { setShowMovie(false); setSelectedServer(null); setSelectedAudio(null); }}
                 >
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -600,15 +1007,33 @@ export default function MovieDetail() {
                     <div className="flex items-center justify-center h-full text-white text-lg font-semibold">
                       Loading video link...
                     </div>
-                  ) : movieLinks.m3u8 ? (
-                    <MoviePlayer
-                      ref={videoRef}
-                      src={movieLinks.m3u8}
-                      poster={poster}
-                    />
-                  ) : (
-                    null
-                  )
+                  ) : (() => {
+                    // Determine which link to use based on selected audio or availability
+                    let videoSrc = '';
+                    if (selectedAudio === 'vietsub' && movieLinks.vietsub) {
+                      videoSrc = movieLinks.vietsub;
+                    } else if (selectedAudio === 'dubbed' && movieLinks.dubbed) {
+                      videoSrc = movieLinks.dubbed;
+                    } else if (movieLinks.vietsub) {
+                      videoSrc = movieLinks.vietsub; // Default to vietsub if available
+                    } else if (movieLinks.dubbed) {
+                      videoSrc = movieLinks.dubbed; // Fallback to dubbed
+                    } else {
+                      videoSrc = movieLinks.m3u8; // Fallback to original m3u8
+                    }
+                    
+                    return videoSrc ? (
+                      <MoviePlayer
+                        ref={videoRef}
+                        src={videoSrc}
+                        poster={poster}
+                      />
+                    ) : (
+                      <div className="flex items-center justify-center h-full text-white text-lg font-semibold">
+                        No video source available
+                      </div>
+                    );
+                  })()
                 )}
                 {selectedServer === 'server2' && (
                   <iframe
