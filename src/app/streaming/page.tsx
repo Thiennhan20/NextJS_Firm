@@ -704,6 +704,7 @@ export default function StreamingPage() {
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                     allowFullScreen
                     className="absolute top-0 left-0 w-full h-full"
+                    referrerPolicy="origin"
                   />
                 )}
                 <div className="absolute top-4 left-4 bg-red-600 text-white px-3 py-1 rounded-full text-sm font-bold animate-pulse">

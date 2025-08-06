@@ -617,6 +617,7 @@ export default function MovieDetail() {
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     allowFullScreen
                     title={title + ' - Server 2'}
+                    referrerPolicy="origin"
                   />
                 )}
                 {!selectedServer && (
