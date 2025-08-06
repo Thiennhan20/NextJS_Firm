@@ -11,6 +11,7 @@ import AuthChecker from '../components/AuthChecker';
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
+  referrer: "origin",
   title: "Entertainment Galaxy – Explore Movies, Games & Beyond",
   description: "Dive into a universe of entertainment: stream movies, play games, and enjoy AI-powered recommendations in one seamless platform.",
   other: {
