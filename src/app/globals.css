@@ -206,6 +206,26 @@ body::-webkit-scrollbar {
   display: none;  /* Safari and Chrome */
 }
 
+/* Select dropdown scrollbar hide */
+select.scrollbar-hide {
+  -ms-overflow-style: none;  /* Internet Explorer 10+ */
+  scrollbar-width: none;  /* Firefox */
+}
+
+select.scrollbar-hide::-webkit-scrollbar {
+  display: none;  /* Safari and Chrome */
+}
+
+/* Custom select dropdown styles */
+select::-webkit-scrollbar {
+  display: none;  /* Safari and Chrome */
+}
+
+select {
+  -ms-overflow-style: none;  /* Internet Explorer 10+ */
+  scrollbar-width: none;  /* Firefox */
+}
+
 /* Search dropdown scroll styles */
 .search-dropdown-scroll {
   overflow-x: auto;

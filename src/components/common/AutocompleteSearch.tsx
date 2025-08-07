@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -21,7 +21,17 @@ interface TVShow {
   type: 'tv';
 }
 
-type SearchResult = Movie | TVShow;
+interface Season {
+  id: number;
+  name: string;
+  poster_path: string | null;
+  season_number: number;
+  tvShowId: number;
+  tvShowName: string;
+  type: 'season';
+}
+
+type SearchResult = Movie | TVShow | Season;
 
 // API response interfaces
 interface TMDBMovieResult {
@@ -34,6 +44,13 @@ interface TMDBTVResult {
   id: number;
   name: string;
   poster_path: string | null;
+}
+
+interface TMDBSeasonResult {
+  id: number;
+  name: string;
+  poster_path: string | null;
+  season_number: number;
 }
 
 interface AutocompleteSearchProps {
@@ -54,6 +71,65 @@ export default function AutocompleteSearch({ menu, onSelectMovie, inputClassName
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
+  // Function to parse search query for season information
+  const parseSearchQuery = (query: string) => {
+    const seasonMatch = query.match(/(.*?)\s*(?:season|s)\s*(\d+)/i);
+    if (seasonMatch) {
+      return {
+        showName: seasonMatch[1].trim(),
+        seasonNumber: parseInt(seasonMatch[2]),
+        isSeasonSearch: true
+      };
+    }
+    return {
+      showName: query,
+      seasonNumber: null,
+      isSeasonSearch: false
+    };
+  };
+
+  // Function to get seasons for a TV show
+  const getSeasonsForTVShow = async (tvShowId: number, tvShowName: string): Promise<Season[]> => {
+    try {
+      const response = await axios.get(`https://api.themoviedb.org/3/tv/${tvShowId}?api_key=${API_KEY}`);
+      const seasons = response.data.seasons || [];
+      
+      return seasons.slice(0, 5).map((season: TMDBSeasonResult) => ({
+        id: season.id,
+        name: season.name,
+        poster_path: season.poster_path,
+        season_number: season.season_number,
+        tvShowId,
+        tvShowName,
+        type: 'season' as const
+      }));
+    } catch {
+      return [];
+    }
+  };
+
+  // Function to search for specific season
+  const searchForSpecificSeason = useCallback(async (showName: string, seasonNumber: number): Promise<Season[]> => {
+    try {
+      // First, search for the TV show
+      const tvResponse = await axios.get(`https://api.themoviedb.org/3/search/tv?api_key=${API_KEY}&query=${encodeURIComponent(showName)}`);
+      const tvShows = tvResponse.data.results || [];
+      
+      if (tvShows.length === 0) return [];
+
+      // Get the first (most relevant) TV show
+      const tvShow = tvShows[0];
+      
+      // Get seasons for this TV show
+      const seasons = await getSeasonsForTVShow(tvShow.id, tvShow.name);
+      
+      // Filter for the specific season number
+      return seasons.filter(season => season.season_number === seasonNumber);
+    } catch {
+      return [];
+    }
+  }, []);
+
   useEffect(() => {
     if (!query) {
       setResults([]);
@@ -61,8 +137,8 @@ export default function AutocompleteSearch({ menu, onSelectMovie, inputClassName
       return;
     }
 
-    // Don't search if query is less than 4 characters
-    if (query.length < 4) {
+    // Don't search if query is less than 2 characters
+    if (query.length < 2) {
       setResults([]);
       setShowDropdown(true);
       setLoading(false);
@@ -72,28 +148,63 @@ export default function AutocompleteSearch({ menu, onSelectMovie, inputClassName
     setLoading(true);
     const timeout = setTimeout(async () => {
       try {
-        // Search both movies and TV shows simultaneously
-        const [moviesRes, tvShowsRes] = await Promise.all([
-          axios.get(`https://api.themoviedb.org/3/search/movie?api_key=${API_KEY}&query=${encodeURIComponent(query)}`),
-          axios.get(`https://api.themoviedb.org/3/search/tv?api_key=${API_KEY}&query=${encodeURIComponent(query)}`)
-        ]);
+        // Parse the search query
+        const { showName, seasonNumber, isSeasonSearch } = parseSearchQuery(query);
+        
+        let movies: Movie[] = [];
+        let tvShows: TVShow[] = [];
+        let seasons: Season[] = [];
 
-        const movies = (moviesRes.data.results || []).slice(0, 10).map((movie: TMDBMovieResult) => ({
-          id: movie.id,
-          title: movie.title,
-          poster_path: movie.poster_path,
-          type: 'movie' as const
-        }));
+        if (isSeasonSearch && seasonNumber) {
+          // If searching for a specific season, prioritize that
+          const specificSeasons = await searchForSpecificSeason(showName, seasonNumber);
+          seasons = specificSeasons;
+          
+          // Also search for the TV show itself
+          const tvResponse = await axios.get(`https://api.themoviedb.org/3/search/tv?api_key=${API_KEY}&query=${encodeURIComponent(showName)}`);
+          tvShows = (tvResponse.data.results || []).slice(0, 3).map((tvShow: TMDBTVResult) => ({
+            id: tvShow.id,
+            name: tvShow.name,
+            poster_path: tvShow.poster_path,
+            type: 'tv' as const
+          }));
+        } else {
+          // Regular search for movies and TV shows
+          const [moviesRes, tvShowsRes] = await Promise.all([
+            axios.get(`https://api.themoviedb.org/3/search/movie?api_key=${API_KEY}&query=${encodeURIComponent(showName)}`),
+            axios.get(`https://api.themoviedb.org/3/search/tv?api_key=${API_KEY}&query=${encodeURIComponent(showName)}`)
+          ]);
 
-        const tvShows = (tvShowsRes.data.results || []).slice(0, 10).map((tvShow: TMDBTVResult) => ({
-          id: tvShow.id,
-          name: tvShow.name,
-          poster_path: tvShow.poster_path,
-          type: 'tv' as const
-        }));
+          movies = (moviesRes.data.results || []).slice(0, 8).map((movie: TMDBMovieResult) => ({
+            id: movie.id,
+            title: movie.title,
+            poster_path: movie.poster_path,
+            type: 'movie' as const
+          }));
 
-        // Combine and sort results (movies first, then TV shows)
-        const combinedResults = [...movies, ...tvShows];
+          tvShows = (tvShowsRes.data.results || []).slice(0, 6).map((tvShow: TMDBTVResult) => ({
+            id: tvShow.id,
+            name: tvShow.name,
+            poster_path: tvShow.poster_path,
+            type: 'tv' as const
+          }));
+
+          // Get seasons for the first few TV shows
+          const seasonsPromises = tvShows.slice(0, 3).map((tvShow: TVShow) => 
+            getSeasonsForTVShow(tvShow.id, tvShow.name)
+          );
+          const seasonsArrays = await Promise.all(seasonsPromises);
+          seasons = seasonsArrays.flat();
+        }
+
+        // Combine and sort results (seasons first if season search, then movies, then TV shows)
+        let combinedResults: SearchResult[] = [];
+        if (isSeasonSearch) {
+          combinedResults = [...seasons, ...tvShows, ...movies];
+        } else {
+          combinedResults = [...movies, ...tvShows, ...seasons];
+        }
+        
         setResults(combinedResults);
         setShowDropdown(true);
       } catch {
@@ -103,7 +214,7 @@ export default function AutocompleteSearch({ menu, onSelectMovie, inputClassName
       setLoading(false);
     }, 400); // debounce
     return () => clearTimeout(timeout);
-  }, [query]);
+  }, [query, searchForSpecificSeason]);
 
   // Đóng dropdown khi click ngoài
   useEffect(() => {
@@ -126,21 +237,52 @@ export default function AutocompleteSearch({ menu, onSelectMovie, inputClassName
     // Navigate to appropriate page based on type
     if (item.type === 'movie') {
       router.push(`/movies/${item.id}`);
-    } else {
+    } else if (item.type === 'tv') {
       router.push(`/tvshows/${item.id}`);
+    } else if (item.type === 'season') {
+      // Navigate to TV show detail with specific season selected
+      router.push(`/tvshows/${item.tvShowId}?season=${item.season_number}`);
     }
   };
 
   const getTitle = (item: SearchResult) => {
-    return item.type === 'movie' ? item.title : item.name;
+    if (item.type === 'movie') return item.title;
+    if (item.type === 'tv') return item.name;
+    if (item.type === 'season') return `${item.tvShowName} - ${item.name}`;
+    return '';
   };
 
-  const getTypeIcon = (type: 'movie' | 'tv') => {
-    return type === 'movie' ? '🎬' : '📺';
+  const getTypeIcon = (type: 'movie' | 'tv' | 'season') => {
+    if (type === 'movie') return '🎬';
+    if (type === 'tv') return '📺';
+    if (type === 'season') return '📋';
+    return '🎬';
   };
 
-  const getTypeLabel = (type: 'movie' | 'tv') => {
-    return type === 'movie' ? 'Movie' : 'TV Show';
+  const getTypeLabel = (type: 'movie' | 'tv' | 'season') => {
+    if (type === 'movie') return 'Movie';
+    if (type === 'tv') return 'TV Show';
+    if (type === 'season') return 'Season';
+    return 'Movie';
+  };
+
+  const getDisplayTitle = (item: SearchResult) => {
+    if (item.type === 'season') {
+      return (
+        <div>
+          <div className="font-medium text-sm leading-tight">{item.tvShowName}</div>
+          <div className="text-xs text-gray-500">{item.name}</div>
+        </div>
+      );
+    }
+    return (
+      <div 
+        className="font-medium text-sm leading-tight line-clamp-2 hover:line-clamp-none transition-all duration-200"
+        title={getTitle(item)}
+      >
+        {getTitle(item)}
+      </div>
+    );
   };
 
   return (
@@ -154,7 +296,7 @@ export default function AutocompleteSearch({ menu, onSelectMovie, inputClassName
               ? 'w-full bg-gray-800 text-white border-2 border-red-400 placeholder-gray-300 focus:bg-gray-900 pr-16'
               : 'w-full sm:w-48 sm:focus:w-64 bg-gray-200 text-gray-900 placeholder-gray-600 focus:bg-gray-900/50 focus:text-white focus:placeholder-gray-400 backdrop-blur-sm pr-16'
           } ${inputClassName || ''}`}
-          placeholder={menu ? "Search..." : "Search movies & TV shows..."}
+          placeholder={menu ? "Search..." : "Search movies, TV shows & seasons (e.g. 'Game of Thrones season 2')..."}
           value={query}
           onChange={e => setQuery(e.target.value)}
           onFocus={() => { setIsFocused(true); if (results.length > 0) setShowDropdown(true); }}
@@ -216,7 +358,7 @@ export default function AutocompleteSearch({ menu, onSelectMovie, inputClassName
                   </motion.div>
                   Loading...
                 </motion.div>
-              ) : query.length < 4 ? (
+              ) : query.length < 2 ? (
                 <motion.div
                   key="encourage"
                   initial={{ opacity: 0, y: 10 }}
@@ -252,12 +394,8 @@ export default function AutocompleteSearch({ menu, onSelectMovie, inputClassName
                       />
                     </motion.div>
                     <div className="space-y-1">
-                      <p className="text-gray-700 font-medium text-sm leading-tight">
-                        Keep typing to find<br />
-                        amazing movies & TV shows!
-                      </p>
                       <p className="text-gray-500 text-xs">
-                        Enter at least 4 characters
+                        Enter at least 2 characters
                       </p>
                     </div>
                     <motion.div 
@@ -327,12 +465,7 @@ export default function AutocompleteSearch({ menu, onSelectMovie, inputClassName
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start gap-2">
                             <div className="flex-1 min-w-0">
-                              <div 
-                                className="font-medium text-sm leading-tight line-clamp-2 hover:line-clamp-none transition-all duration-200"
-                                title={getTitle(item)}
-                              >
-                                {getTitle(item)}
-                              </div>
+                              {getDisplayTitle(item)}
                             </div>
                             <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded flex-shrink-0 mt-0.5">
                               {getTypeLabel(item.type)}

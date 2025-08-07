@@ -159,8 +159,32 @@ export default function MovieDetail() {
   });
   const [movieLinksLoading, setMovieLinksLoading] = useState(false);
   const [apiSearchCompleted, setApiSearchCompleted] = useState(false);
-  const [showAudioModal, setShowAudioModal] = useState(false);
   const [selectedAudio, setSelectedAudio] = useState<'vietsub' | 'dubbed' | null>(null);
+  
+  // State cho server 2
+  const [server2Link, setServer2Link] = useState('');
+  const [server2Status, setServer2Status] = useState<'checking' | 'available' | 'unavailable'>('checking');
+
+  // Check server 2 availability
+  useEffect(() => {
+    if (typeof id === 'string' && id) {
+      const server2Url = `https://vidsrc.me/embed/movie?tmdb=${id}&ds_lang=vi&sub_url=https%3A%2F%2Fvidsrc.me%2Fsample.srt&autoplay=1`;
+      setServer2Link(server2Url);
+      setServer2Status('checking');
+      
+      // Simulate checking server 2 availability
+      const checkServer2 = async () => {
+        try {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          setServer2Status('available');
+        } catch {
+          setServer2Status('unavailable');
+        }
+      };
+      
+      checkServer2();
+    }
+  }, [id, movie?.title, movie?.year]);
 
   useEffect(() => {
     if (movie?.title && movie?.year) {
@@ -217,72 +241,51 @@ useEffect(() => {
     setMovieLinksLoading(true);
     setApiSearchCompleted(false);
     timeoutId = setTimeout(() => {
-      console.log('⏰ Timeout reached for movie link fetching');
+      // Timeout reached
     }, 60000);
 
     try {
       if (typeof id !== 'string') {
-        console.log('❌ Invalid movie ID:', id);
         return;
       }
 
-      console.log('🎬 Starting movie link fetch for:', {
-        tmdbId: id,
-        title: movie?.title,
-        year: movie?.year
-      });
-
       let slug = null;
-      let matchedMovie = null;
 
       if (movie?.title) {
         // Strategy 1: Search by exact title with year
-        console.log('🔍 Strategy 1: Searching by exact title with year');
         const searchResults1 = await searchPhimApi(movie.title, movie.year as number);
         const match1 = findBestMatch(searchResults1, movie.title, movie.year as number, id);
         if (match1) {
           slug = match1.slug;
-          matchedMovie = match1;
-          console.log('✅ Strategy 1 SUCCESS:', match1);
         }
 
         // Strategy 2: Search by exact title without year
         if (!slug) {
-          console.log('🔍 Strategy 2: Searching by exact title without year');
           const searchResults2 = await searchPhimApi(movie.title);
-          const match2 = findBestMatch(searchResults2, movie.title, movie.year as number, id);
-          if (match2) {
-            slug = match2.slug;
-            matchedMovie = match2;
-            console.log('✅ Strategy 2 SUCCESS:', match2);
-          }
+                  const match2 = findBestMatch(searchResults2, movie.title, movie.year as number, id);
+        if (match2) {
+          slug = match2.slug;
+        }
         }
 
         // Strategy 3: Search by title with special characters removed
         if (!slug) {
-          console.log('🔍 Strategy 3: Searching with normalized title');
           const normalizedTitle = normalizeTitle(movie.title);
           const searchResults3 = await searchPhimApi(normalizedTitle, movie.year as number);
           const match3 = findBestMatch(searchResults3, movie.title, movie.year as number, id);
           if (match3) {
             slug = match3.slug;
-            matchedMovie = match3;
-            console.log('✅ Strategy 3 SUCCESS:', match3);
           }
         }
 
         // Strategy 4: Search by keywords from title
         if (!slug) {
-          console.log('🔍 Strategy 4: Searching by title keywords');
           const keywords = extractKeywords(movie.title);
           for (const keyword of keywords) {
-            console.log(`  🔎 Trying keyword: "${keyword}"`);
             const searchResults4 = await searchPhimApi(keyword, movie.year as number);
             const match4 = findBestMatch(searchResults4, movie.title, movie.year as number, id);
             if (match4) {
               slug = match4.slug;
-              matchedMovie = match4;
-              console.log('✅ Strategy 4 SUCCESS:', match4);
               break;
             }
           }
@@ -290,16 +293,12 @@ useEffect(() => {
 
         // Strategy 5: Search by year range (±1 year)
         if (!slug && movie.year) {
-          console.log('🔍 Strategy 5: Searching with year range');
           const years = [movie.year - 1, movie.year + 1];
           for (const yearVariant of years) {
-            console.log(`  📅 Trying year: ${yearVariant}`);
             const searchResults5 = await searchPhimApi(movie.title, yearVariant);
             const match5 = findBestMatch(searchResults5, movie.title, movie.year as number, id);
             if (match5) {
               slug = match5.slug;
-              matchedMovie = match5;
-              console.log('✅ Strategy 5 SUCCESS:', match5);
               break;
             }
           }
@@ -307,23 +306,18 @@ useEffect(() => {
 
         // Strategy 6: Search by origin_name field (for movies with English titles)
         if (!slug) {
-          console.log('🔍 Strategy 6: Searching by origin_name field');
-          // Try searching with common English title variations
           const englishTitleVariations = [
             movie.title,
-            movie.title.replace(/[^\w\s]/g, ''), // Remove special characters
+            movie.title.replace(/[^\w\s]/g, ''),
             movie.title.toLowerCase(),
-            movie.title.split(' ').slice(0, 3).join(' ') // First 3 words
+            movie.title.split(' ').slice(0, 3).join(' ')
           ];
           
           for (const variation of englishTitleVariations) {
-            console.log(`  🌍 Trying origin_name variation: "${variation}"`);
             const searchResults6 = await searchPhimApi(variation, movie.year as number);
             const match6 = findBestMatch(searchResults6, movie.title, movie.year as number, id);
             if (match6) {
               slug = match6.slug;
-              matchedMovie = match6;
-              console.log('✅ Strategy 6 SUCCESS:', match6);
               break;
             }
           }
@@ -331,24 +325,12 @@ useEffect(() => {
       }
 
       if (!slug) {
-        console.log('❌ No movie found after all search strategies');
         return;
       }
 
-      console.log('🎯 Found movie slug:', slug);
-      console.log('📊 Matched movie details:', matchedMovie);
-
       // Get movie details and extract embed link
-      console.log('📥 Fetching movie details from PhimAPI...');
       const detailRes = await fetch(`https://phimapi.com/phim/${slug}`);
       const detailData = await detailRes.json();
-
-      console.log('📋 Movie detail response status:', detailData.status);
-      console.log('🔗 Available embed sources:', {
-        direct_link_embed: detailData.link_embed || 'None',
-        episodes_available: detailData.episodes ? detailData.episodes.length : 0,
-        first_episode_servers: detailData.episodes?.[0]?.server_data?.length || 0
-      });
 
       let vietsubLink = '';
       let dubbedLink = '';
@@ -359,54 +341,21 @@ useEffect(() => {
         detailData.episodes.forEach((episode: PhimApiEpisode) => {
           const serverName = episode.server_name?.toLowerCase() || '';
           
-          // Check each server_data item for more precise audio version detection
           if (episode.server_data && episode.server_data.length > 0) {
-            episode.server_data.forEach((serverData) => {
-              const dataName = serverData.name?.toLowerCase() || '';
-              const dataSlug = serverData.slug?.toLowerCase() || '';
-              const linkEmbed = serverData.link_embed || '';
+            // Check server_name first to determine audio type
+            const isVietsub = serverName.includes('vietsub');
+            const isDubbed = serverName.includes('thuyết minh') || serverName.includes('lồng tiếng') || serverName.includes('dubbed');
+            
+            // If server_name matches, take the first available link from server_data
+            if ((isVietsub || isDubbed) && episode.server_data[0]?.link_embed) {
+              const linkEmbed = episode.server_data[0].link_embed;
               
-              console.log('🔍 Checking server data:', {
-                serverName,
-                dataName,
-                dataSlug,
-                hasLink: !!linkEmbed
-              });
-              
-              // Check for Vietsub/Full version
-              if (linkEmbed && (
-                serverName.includes('vietsub') ||
-                dataName.includes('full') ||
-                dataName.includes('vietsub') ||
-                dataSlug.includes('full') ||
-                dataSlug.includes('vietsub')
-              )) {
+              if (isVietsub && !vietsubLink) {
                 vietsubLink = linkEmbed;
-                console.log('🎬 Found Vietsub/Full link:', vietsubLink, {
-                  matchedBy: {
-                    serverName: serverName.includes('vietsub'),
-                    dataName: dataName.includes('full') || dataName.includes('vietsub'),
-                    dataSlug: dataSlug.includes('full') || dataSlug.includes('vietsub')
-                  }
-                });
-              }
-              
-              // Check for Dubbed/Lồng Tiếng/Thuyết Minh version (independent check)
-              if (linkEmbed && (
-                serverName.includes('thuyết minh') || serverName.includes('lồng tiếng') || serverName.includes('dubbed') ||
-                dataName.includes('lồng tiếng') || dataName.includes('thuyết minh') || dataName.includes('dubbed') ||
-                dataSlug.includes('long-tieng') || dataSlug.includes('thuyet-minh') || dataSlug.includes('dubbed')
-              )) {
+              } else if (isDubbed && !dubbedLink) {
                 dubbedLink = linkEmbed;
-                console.log('🎬 Found Dubbed/Lồng Tiếng link:', dubbedLink, {
-                  matchedBy: {
-                    serverName: serverName.includes('thuyết minh') || serverName.includes('lồng tiếng') || serverName.includes('dubbed'),
-                    dataName: dataName.includes('lồng tiếng') || dataName.includes('thuyết minh') || dataName.includes('dubbed'),
-                    dataSlug: dataSlug.includes('long-tieng') || dataSlug.includes('thuyet-minh') || dataSlug.includes('dubbed')
-                  }
-                });
               }
-            });
+            }
           }
         });
       }
@@ -414,14 +363,12 @@ useEffect(() => {
       // Try to get embed from direct link as fallback
       if (detailData.link_embed) {
         defaultEmbed = detailData.link_embed;
-        console.log('🎬 Using direct embed link as fallback:', defaultEmbed);
       } 
-      // Try to get embed from first episode as fallback (prioritize vietsub/full over dubbed)
+      // Try to get embed from first episode as fallback
       else if (detailData.episodes && detailData.episodes[0]?.server_data) {
         const firstEpisode = detailData.episodes[0];
         let foundFallback = false;
         
-        // First try to find vietsub/full version
         for (const serverData of firstEpisode.server_data) {
           const dataName = serverData.name?.toLowerCase() || '';
           const dataSlug = serverData.slug?.toLowerCase() || '';
@@ -431,29 +378,20 @@ useEffect(() => {
             dataSlug.includes('full') || dataSlug.includes('vietsub')
           )) {
             defaultEmbed = serverData.link_embed;
-            console.log('🎬 Using vietsub/full episode embed link as fallback:', defaultEmbed);
             foundFallback = true;
             break;
           }
         }
         
-        // If no vietsub found, use any available link
         if (!foundFallback && firstEpisode.server_data[0]?.link_embed) {
           defaultEmbed = firstEpisode.server_data[0].link_embed;
-          console.log('🎬 Using first available episode embed link as fallback:', defaultEmbed);
         }
       }
 
       // Clean up URLs if they contain ?url= parameter
       const cleanUrl = (url: string) => {
         if (url && url.includes('?url=')) {
-          const originalUrl = url;
-          const cleanedUrl = url.split('?url=')[1];
-          console.log('🧹 Cleaned URL:', {
-            original: originalUrl,
-            cleaned: cleanedUrl
-          });
-          return cleanedUrl;
+          return url.split('?url=')[1];
         }
         return url;
       };
@@ -464,52 +402,23 @@ useEffect(() => {
 
       // Set the appropriate link based on availability
       if (vietsubLink || dubbedLink) {
-        console.log('✅ SUCCESS: Multiple audio versions found');
-        console.log('📊 Audio versions available:', {
-          vietsub: !!vietsubLink,
-          dubbed: !!dubbedLink
-        });
-        console.log('🔗 Audio links:', {
-          vietsub: vietsubLink,
-          dubbed: dubbedLink
-        });
-
+        const finalLink = vietsubLink || dubbedLink || defaultEmbed;
         setMovieLinks(links => ({ 
           ...links, 
           vietsub: vietsubLink,
           dubbed: dubbedLink,
-          m3u8: vietsubLink || dubbedLink || defaultEmbed // Default to vietsub if available
+          m3u8: finalLink
         }));
         setMovieLinksLoading(false);
         setApiSearchCompleted(true);
       } else if (defaultEmbed) {
-        console.log('✅ SUCCESS: Single movie link found and set');
-        console.log('📊 Final result:', {
-          tmdbId: id,
-          title: movie?.title,
-          year: movie?.year,
-          foundTitle: matchedMovie?.name || matchedMovie?.title,
-          foundYear: matchedMovie?.year,
-          slug: slug,
-          finalEmbedUrl: defaultEmbed
-        });
-
         setMovieLinks(links => ({ ...links, m3u8: defaultEmbed }));
         setMovieLinksLoading(false);
         setApiSearchCompleted(true);
-      } else {
-        console.log('❌ No embed link found in movie details');
-        console.log('📋 Full movie details:', detailData);
       }
 
-    } catch (e) {
-      console.error('💥 Error in fetchPhimApiEmbed:', e);
-      console.log('📊 Error context:', {
-        tmdbId: id,
-        title: movie?.title,
-        year: movie?.year,
-        error: e instanceof Error ? e.message : 'Unknown error'
-      });
+    } catch {
+      // Error occurred
     } finally {
       clearTimeout(timeoutId);
       setMovieLinksLoading(false);
@@ -523,29 +432,15 @@ useEffect(() => {
       let url = `https://phimapi.com/v1/api/tim-kiem?keyword=${encodeURIComponent(keyword)}`;
       if (year) url += `&year=${year}`;
       
-      console.log(`  🌐 API Request: ${url}`);
-      
       const res = await fetch(url);
       const data = await res.json();
-      
-      console.log(`  📥 API Response:`, {
-        status: data.status,
-        itemCount: data.data?.items?.length || 0,
-        items: data.data?.items?.map((item: PhimApiMovie) => ({
-          name: item.name,
-          slug: item.slug,
-          year: item.year,
-          tmdbId: item.tmdb?.id
-        })) || []
-      });
 
       if (data.status === 'success' && data.data && Array.isArray(data.data.items)) {
         return data.data.items;
       }
       
       return [];
-    } catch (error) {
-      console.error(`  ❌ Search API error:`, error);
+    } catch {
       return [];
     }
   }
@@ -554,14 +449,11 @@ useEffect(() => {
   function findBestMatch(items: PhimApiMovie[], targetTitle: string, targetYear: number, tmdbId: string): PhimApiMovie | null {
     if (!items || items.length === 0) return null;
 
-    console.log(`  🎯 Finding best match for "${targetTitle}" (${targetYear}) in ${items.length} results`);
-
     // Priority 1: Exact TMDB ID match
     const tmdbMatch = items.find(item => 
       item.tmdb && item.tmdb.id && item.tmdb.id.toString() === tmdbId.toString()
     );
     if (tmdbMatch) {
-      console.log(`  ✅ TMDB ID match found:`, tmdbMatch);
       return tmdbMatch;
     }
 
@@ -572,7 +464,6 @@ useEffect(() => {
       return titleMatch && yearMatch;
     });
     if (exactMatch) {
-      console.log(`  ✅ Exact title+year match found:`, exactMatch);
       return exactMatch;
     }
 
@@ -586,7 +477,6 @@ useEffect(() => {
       return similarity > 0.7 && yearDiff <= 2;
     });
     if (originNameMatch) {
-      console.log(`  ✅ Origin name match found:`, originNameMatch);
       return originNameMatch;
     }
 
@@ -597,7 +487,6 @@ useEffect(() => {
       return titleMatch && yearDiff <= 1;
     });
     if (titleMatchWithYearTolerance) {
-      console.log(`  ✅ Title match with year tolerance found:`, titleMatchWithYearTolerance);
       return titleMatchWithYearTolerance;
     }
 
@@ -610,11 +499,9 @@ useEffect(() => {
       return similarity > 0.8 && yearDiff <= 2;
     });
     if (fuzzyMatch) {
-      console.log(`  ✅ Fuzzy match found:`, fuzzyMatch);
       return fuzzyMatch;
     }
 
-    console.log(`  ❌ No suitable match found`);
     return null;
   }
 
@@ -976,21 +863,40 @@ useEffect(() => {
                   onClick={() => { 
                     setSelectedServer('server1'); 
                     setShowServerModal(false); 
-                    // Check if both audio versions are available
-                    if (movieLinks.vietsub && movieLinks.dubbed) {
-                      setShowAudioModal(true);
-                    } else {
-                      setShowMovie(true);
-                    }
+                    setShowMovie(true);
                   }}
                 >
                   Server 1
                 </button>
                 <button
-                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors relative flex flex-col items-center"
-                  onClick={() => { setSelectedServer('server2'); setShowServerModal(false); setShowMovie(true); }}
+                  className={`px-4 py-2 rounded-lg transition-colors relative flex flex-col items-center ${
+                    server2Status === 'checking' 
+                      ? 'bg-gray-600 text-gray-300 cursor-not-allowed' 
+                      : server2Status === 'available'
+                      ? 'bg-green-600 text-white hover:bg-green-700'
+                      : 'bg-red-600 text-white cursor-not-allowed'
+                  }`}
+                  onClick={() => { 
+                    if (server2Status === 'available') {
+                      setSelectedServer('server2'); 
+                      setShowServerModal(false); 
+                      setShowMovie(true); 
+                    }
+                  }}
+                  disabled={server2Status !== 'available'}
                 >
-                  Server 2
+                  <div className="flex items-center gap-2">
+                    {server2Status === 'checking' && (
+                      <motion.div 
+                        animate={{ rotate: 360 }}
+                        transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
+                        className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full"
+                      />
+                    )}
+                    Server 2
+                    {server2Status === 'checking' && <span className="text-xs">(Checking...)</span>}
+                    {server2Status === 'unavailable' && <span className="text-xs">(Unavailable)</span>}
+                  </div>
                   <span className="mt-2 flex items-center gap-1 text-yellow-900 bg-yellow-200 rounded px-2 py-1 text-xs font-semibold">
                     <svg className="w-4 h-4 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -1010,67 +916,7 @@ useEffect(() => {
         )}
       </AnimatePresence>
 
-      <AnimatePresence>
-        {showAudioModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
-            onClick={() => setShowAudioModal(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.9 }}
-              animate={{ scale: 1 }}
-              exit={{ scale: 0.9 }}
-              className="relative w-full max-w-md bg-gray-800 rounded-lg p-6"
-              onClick={e => e.stopPropagation()}
-            >
-              <h3 className="text-lg font-medium text-white mb-4 text-center">Select Audio Version</h3>
-              <div className="flex flex-col gap-4">
-                {movieLinks.vietsub && (
-                  <button
-                    className="px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
-                    onClick={() => { 
-                      console.log('🎵 Selected audio version: Vietsub');
-                      setSelectedAudio('vietsub'); 
-                      setShowAudioModal(false); 
-                      setShowMovie(true); 
-                    }}
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-                    </svg>
-                    Vietsub (Vietnamese Subtitles)
-                  </button>
-                )}
-                {movieLinks.dubbed && (
-                  <button
-                    className="px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
-                    onClick={() => { 
-                      console.log('🎵 Selected audio version: Dubbed');
-                      setSelectedAudio('dubbed'); 
-                      setShowAudioModal(false); 
-                      setShowMovie(true); 
-                    }}
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-                    </svg>
-                    Vietnamese Dubbed (Dubbed/Narrated)
-                  </button>
-                )}
-                <button
-                  className="mt-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
-                  onClick={() => setShowAudioModal(false)}
-                >
-                  Cancel
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+
 
       <AnimatePresence>
         {showMovie && movie && (
@@ -1100,6 +946,17 @@ useEffect(() => {
                       {selectedAudio === 'vietsub' ? 'Vietsub' : 'Vietnamese Dubbed'}
                     </span>
                   )}
+                  {selectedAudio && (
+                    <button
+                      className="text-white bg-gray-600 rounded-full p-1 hover:bg-gray-700 transition-colors"
+                      onClick={() => setSelectedAudio(null)}
+                      title="Change audio version"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                    </button>
+                  )}
                 </div>
                 <button
                   className="text-white bg-black/50 rounded-full p-2 hover:bg-black/80 transition-colors"
@@ -1123,8 +980,55 @@ useEffect(() => {
                               transition={{ repeat: Infinity, duration: 1.5, ease: 'linear' }}
                               className="w-12 h-12 border-4 border-red-500 border-t-transparent rounded-full"
                             />
-                            <p className="text-lg font-semibold">Searching for video...</p>
                             <p className="text-sm text-gray-400">Please wait a moment</p>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    // Check if we have any video source available
+                    const hasVideoSource = movieLinks.vietsub || movieLinks.dubbed || movieLinks.m3u8;
+                    
+                    if (!hasVideoSource) {
+                      return (
+                        <div className="flex items-center justify-center h-full text-white">
+                          <div className="flex flex-col items-center gap-4">
+                            <svg className="w-12 h-12 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <p className="text-lg font-semibold">No video source available</p>
+                            <p className="text-sm text-gray-400">Please try another server</p>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    // If we have multiple audio options, show audio selection
+                    if (movieLinks.vietsub && movieLinks.dubbed && !selectedAudio) {
+                      return (
+                        <div className="flex items-center justify-center h-full text-white">
+                          <div className="flex flex-col items-center gap-6 max-w-md">
+                            <h3 className="text-xl font-semibold">Select Audio Version</h3>
+                            <div className="flex flex-col gap-4 w-full">
+                              <button
+                                className="px-6 py-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-3"
+                                onClick={() => setSelectedAudio('vietsub')}
+                              >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                                </svg>
+                                Vietsub (Vietnamese Subtitles)
+                              </button>
+                              <button
+                                className="px-6 py-4 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-3"
+                                onClick={() => setSelectedAudio('dubbed')}
+                              >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                                </svg>
+                                Vietnamese Dubbed (Dubbed/Narrated)
+                              </button>
+                            </div>
                           </div>
                         </div>
                       );
@@ -1159,7 +1063,7 @@ useEffect(() => {
                 )}
                 {selectedServer === 'server2' && (
                   <iframe
-                    src={`https://vidsrc.me/embed/movie/${id}?ds_lang=vi`}
+                    src={server2Link}
                     className="w-full h-full"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     allowFullScreen

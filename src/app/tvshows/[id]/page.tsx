@@ -14,7 +14,7 @@ import axios from 'axios'
 import { useParams } from 'next/navigation'
 import useAuthStore from '@/store/useAuthStore'
 import api from '@/lib/axios'
-// import MoviePlayer from '@/components/common/MoviePlayer' // Temporarily disabled
+import MoviePlayer from '@/components/common/MoviePlayer'
 
 // Định nghĩa kiểu TVShow rõ ràng
 interface TVShow {
@@ -37,8 +37,6 @@ interface TVShow {
   totalEpisodes?: number
 }
 
-// Temporarily disabled - Episode interface
-/*
 interface Episode {
   id: number
   name: string
@@ -48,7 +46,6 @@ interface Episode {
   overview?: string
   air_date?: string
 }
-*/
 
 
 
@@ -122,7 +119,7 @@ export default function TVShowDetail() {
   const [loading, setLoading] = useState<boolean>(true)
   const [activeScene, setActiveScene] = useState<number | null>(null)
   const [showTrailer, setShowTrailer] = useState<boolean>(false)
-  // const [showTVShow, setShowTVShow] = useState<boolean>(false) // Temporarily disabled
+  const [showTVShow, setShowTVShow] = useState<boolean>(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const { scrollYProgress } = useScroll({
     target: containerRef,
@@ -170,36 +167,45 @@ export default function TVShowDetail() {
     }
   }
 
-  {/* Temporarily disabled - Episode-related state and functions
-  const [showEpisodeModal, setShowEpisodeModal] = useState(false)
-  const [selectedEpisode, setSelectedEpisode] = useState<number>(1)
+  const [selectedSeason, setSelectedSeason] = useState<number>(1)
+  const [selectedEpisode, setSelectedEpisode] = useState<number>(0)
   const [episodes, setEpisodes] = useState<Episode[]>([])
   const [episodesLoading, setEpisodesLoading] = useState(false)
   const [showServerModal, setShowServerModal] = useState(false)
   const [selectedServer, setSelectedServer] = useState<string | null>(null)
+  const [seasons, setSeasons] = useState<{ id: number; name: string; season_number: number; episode_count: number; poster_path?: string; overview?: string; air_date?: string }[]>([])
 
   const handleWatchTVShow = async () => {
-    if (!tvShow) return
-    setShowEpisodeModal(true)
+    if (!tvShow || selectedEpisode === 0) {
+      toast.error('Please select an episode first!')
+      return
+    }
+    setShowServerModal(true)
+  }
+
+  const handleSeasonSelect = (season: number) => {
+    setSelectedSeason(season)
+    setSelectedEpisode(0) // Reset episode khi đổi season
+    setVidsrcUrl('') // Reset vidsrc URL
   }
 
   const handleEpisodeSelect = (episode: number) => {
     setSelectedEpisode(episode)
-    setShowEpisodeModal(false)
-    setShowServerModal(true)
+    // Tạo URL vidsrc cho tập phim được chọn với season hiện tại
+    const vidsrcUrl = `https://vidsrc.xyz/embed/tv?tmdb=${tvShow?.id}&season=${selectedSeason}&episode=${episode}&ds_lang=vi&sub_url=https%3A%2F%2Fvidsrc.me%2Fsample.srt&autoplay=1&autonext=1`
+    setVidsrcUrl(vidsrcUrl)
   }
-  */}
+
+
 
   const y = useTransform(scrollYProgress, [0, 1], [0, -100])
   const opacity = useTransform(scrollYProgress, [0, 0.5], [1, 0])
 
-  {/* Temporarily disabled - TV show links state
   const [tvShowLinks, setTVShowLinks] = useState({
     embed: '',
     m3u8: '',
   })
-  const [tvShowLinksLoading, setTVShowLinksLoading] = useState(false)
-  */}
+  const [vidsrcUrl, setVidsrcUrl] = useState<string>('')
 
   useEffect(() => {
     const fetchTVShow = async () => {
@@ -240,6 +246,9 @@ export default function TVShowDetail() {
         )
         const credits = creditsResponse.data
         
+        // Set seasons data
+        setSeasons(data.seasons || [])
+        
         const tvShowData = {
           id: data.id,
           name: data.name,
@@ -269,59 +278,61 @@ export default function TVShowDetail() {
     fetchTVShow()
   }, [id, API_KEY])
 
-  {/* Temporarily disabled - Fetch episodes when TV show data is loaded
   useEffect(() => {
     if (tvShow?.id) {
       setEpisodesLoading(true)
       const fetchEpisodes = async () => {
         try {
           const response = await axios.get(
-            `https://api.themoviedb.org/3/tv/${tvShow.id}/season/1?api_key=${API_KEY}`
+            `https://api.themoviedb.org/3/tv/${tvShow.id}/season/${selectedSeason}?api_key=${API_KEY}`
           )
           const data = response.data
           if (data.episodes) {
             setEpisodes(data.episodes)
           }
-        } catch (error) {
-          console.error('Error fetching episodes:', error)
+        } catch {
+          setEpisodes([])
         } finally {
           setEpisodesLoading(false)
         }
       }
       fetchEpisodes()
     }
-  }, [tvShow?.id, API_KEY])
-  */}
+  }, [tvShow?.id, selectedSeason, API_KEY])
 
-  {/* Temporarily disabled - Subtitles fetch
+  // Check URL parameters for season selection
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const seasonParam = urlParams.get('season');
+    if (seasonParam && !isNaN(Number(seasonParam))) {
+      setSelectedSeason(Number(seasonParam));
+    }
+  }, []);
+
   useEffect(() => {
     if (tvShow?.name && tvShow?.year) {
-      setTVShowLinksLoading(true)
+
       fetch(`/api/subtitles?query=${encodeURIComponent(tvShow.name)}&year=${tvShow.year.toString()}`)
         .then(res => res.json())
         .then(() => {})
         .catch(() => {})
-        .finally(() => setTVShowLinksLoading(false))
+
     }
   }, [tvShow?.name, tvShow?.year])
-  */}
 
-  // const videoRef = useRef<HTMLVideoElement>(null) // Temporarily disabled
 
-  {/* Temporarily disabled - TV show watching state
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       (window as { isWatchingFullTVShow?: boolean }).isWatchingFullTVShow = showTVShow
     }
   }, [showTVShow])
-  */}
 
-  {/* Temporarily disabled - Fetch PhimAPI embed
   useEffect(() => {
     let timeoutId: NodeJS.Timeout
     async function fetchPhimApiEmbed() {
       if (tvShowLinks.m3u8) return
-      setTVShowLinksLoading(true)
+
       timeoutId = setTimeout(() => {}, 60000)
       try {
         if (typeof id !== 'string') {
@@ -372,17 +383,15 @@ export default function TVShowDetail() {
         }
         if (embed) {
           setTVShowLinks(links => ({ ...links, m3u8: embed }))
-          setTVShowLinksLoading(false)
         }
-      } catch (e) {
-        console.error('Lỗi khi fetch phimapi:', e)
+      } catch {
+        // Error handling
       } finally {
         clearTimeout(timeoutId)
       }
     }
     fetchPhimApiEmbed()
   }, [id, tvShow?.name, tvShow?.year, tvShowLinks.m3u8])
-  */}
 
   if (loading || !tvShow) {
     return (
@@ -490,6 +499,37 @@ export default function TVShowDetail() {
                   {totalSeasons} Season{totalSeasons > 1 ? 's' : ''} • {totalEpisodes} Episode{totalEpisodes > 1 ? 's' : ''}
                 </p>
               )}
+              {/* Current Season Info */}
+              {seasons.length > 0 && selectedSeason && (
+                <div className="bg-gray-800/50 rounded-lg p-3">
+                  <div className="flex items-center gap-3">
+                    {seasons[selectedSeason - 1]?.poster_path && (
+                      <Image
+                        src={`https://image.tmdb.org/t/p/w92${seasons[selectedSeason - 1].poster_path}`}
+                        alt={`Season ${selectedSeason}`}
+                        width={46}
+                        height={69}
+                        className="rounded"
+                      />
+                    )}
+                    <div>
+                      <h4 className="text-white font-semibold">
+                        Season {selectedSeason}: {seasons[selectedSeason - 1]?.name || `Season ${selectedSeason}`}
+                      </h4>
+                      {seasons[selectedSeason - 1]?.air_date && (
+                        <p className="text-gray-400 text-sm">
+                          Air Date: {new Date(seasons[selectedSeason - 1].air_date!).toLocaleDateString()}
+                        </p>
+                      )}
+                      {seasons[selectedSeason - 1]?.episode_count && (
+                        <p className="text-gray-400 text-sm">
+                          {seasons[selectedSeason - 1].episode_count} Episode{seasons[selectedSeason - 1].episode_count > 1 ? 's' : ''}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
               <div className="flex flex-wrap gap-2">
                 {cast.map((actor: string, index: number) => (
                   <span key={index} className="px-3 py-1 bg-gray-800 rounded-full text-sm">
@@ -514,19 +554,22 @@ export default function TVShowDetail() {
                 Watch Trailer
               </motion.button>
               
-              {/* Temporarily disabled - Watch Episodes functionality
-              <div className="flex items-center gap-2">
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={handleWatchTVShow}
-                  className="px-6 py-3 bg-red-500 text-white rounded-lg font-semibold hover:bg-red-600 transition-colors flex items-center gap-2"
-                >
-                  <PlayIcon className="h-5 w-5" />
-                  Watch Episodes
-                </motion.button>
-              </div>
-              */}
+                             <div className="flex items-center gap-2">
+                 <motion.button
+                   whileHover={{ scale: 1.05 }}
+                   whileTap={{ scale: 0.95 }}
+                   onClick={handleWatchTVShow}
+                   className={`px-6 py-3 rounded-lg font-semibold transition-colors flex items-center gap-2 ${
+                     selectedEpisode > 0 
+                       ? 'bg-red-500 text-white hover:bg-red-600' 
+                       : 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                   }`}
+                   disabled={selectedEpisode === 0}
+                 >
+                   <PlayIcon className="h-5 w-5" />
+                                       {selectedEpisode > 0 ? `Watch S${selectedSeason} E${selectedEpisode}` : 'Select Episode First'}
+                 </motion.button>
+               </div>
 
               <motion.button
                 whileHover={{ scale: 1.05 }}
@@ -546,26 +589,117 @@ export default function TVShowDetail() {
         </motion.div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 text-white">
-        <h2 className="text-3xl font-bold mb-6">About This TV Show</h2>
-        <p className="text-gray-300 mb-6">
-          Experience this amazing TV series in full HD quality. Click the &quot;Watch Episodes&quot; button above to select and stream your favorite episodes.
-        </p>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <div className="bg-gray-800 p-6 rounded-lg">
-            <h3 className="text-xl font-semibold mb-2">Episode Selection</h3>
-            <p className="text-gray-300">Choose from multiple seasons and episodes with detailed information.</p>
+                           {/* Episodes Section */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 text-white">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-3xl font-bold">Episodes</h2>
+            {totalSeasons && totalSeasons > 1 && (
+              <div className="flex items-center gap-2">
+                <span className="text-gray-300">Season:</span>
+                <div className="flex gap-1">
+                  {Array.from({ length: totalSeasons }, (_, i) => i + 1).map((season) => (
+                    <button
+                      key={season}
+                      onClick={() => handleSeasonSelect(season)}
+                      className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                        selectedSeason === season
+                          ? 'bg-red-500 text-white'
+                          : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                      }`}
+                    >
+                      {season}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
-          <div className="bg-gray-800 p-6 rounded-lg">
-            <h3 className="text-xl font-semibold mb-2">High Quality</h3>
-            <p className="text-gray-300">Stream in crisp HD quality with optimal loading speeds.</p>
-          </div>
-          <div className="bg-gray-800 p-6 rounded-lg">
-            <h3 className="text-xl font-semibold mb-2">Instant Access</h3>
-            <p className="text-gray-300">No downloads required. Watch immediately in your browser.</p>
-          </div>
-        </div>
-      </div>
+         {episodesLoading ? (
+           <div className="flex justify-center">
+             <div className="w-16 h-16 border-4 border-red-500 border-t-transparent rounded-full animate-spin"></div>
+           </div>
+         ) : episodes.length > 0 ? (
+           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-3 sm:gap-4">
+             {episodes.map((episode) => (
+               <motion.div
+                 key={episode.id}
+                 initial={{ opacity: 0, y: 20 }}
+                 animate={{ opacity: 1, y: 0 }}
+                 transition={{ delay: episode.episode_number * 0.05 }}
+                 className={`relative bg-gray-800/50 backdrop-blur-sm rounded-xl overflow-hidden cursor-pointer transition-all duration-300 group ${
+                   selectedEpisode === episode.episode_number 
+                     ? 'ring-2 ring-red-500 ring-offset-2 ring-offset-gray-900 scale-105 shadow-lg shadow-red-500/25' 
+                     : 'hover:scale-105 hover:shadow-lg hover:shadow-gray-500/25'
+                 }`}
+                 onClick={() => handleEpisodeSelect(episode.episode_number)}
+               >
+                 {episode.still_path ? (
+                   <div className="relative aspect-[4/3]">
+                     <Image
+                       src={`https://image.tmdb.org/t/p/w500${episode.still_path}`}
+                       alt={episode.name}
+                       fill
+                       className="object-cover transition-transform duration-300 group-hover:scale-110"
+                     />
+                                           <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
+                        <div className="bg-gray-300/10 text-red-600 px-3 py-1 rounded-full text-sm font-semibold">
+                          S{selectedSeason} E{episode.episode_number}
+                        </div>
+                      </div>
+                   </div>
+                 ) : (
+                   <div className="aspect-[4/3] bg-gradient-to-br from-gray-700 to-gray-800 flex items-center justify-center">
+                     <div className="text-center">
+                       <div className="text-2xl sm:text-3xl mb-1">📺</div>
+                                               <div className="bg-gray-300/10 text-red-600 px-3 py-1 rounded-full text-sm font-semibold">
+                          S{selectedSeason} E{episode.episode_number}
+                        </div>
+                     </div>
+                   </div>
+                 )}
+                                   <div className="p-2 sm:p-3">
+                    <h3 className="font-semibold text-xs sm:text-sm text-center leading-tight truncate" title={episode.name}>
+                      {episode.name}
+                    </h3>
+                  </div>
+                 {selectedEpisode === episode.episode_number && (
+                   <div className="absolute top-2 right-2">
+                     <div className="bg-red-500 text-white rounded-full w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center text-xs sm:text-sm font-bold shadow-lg">
+                       ✓
+                     </div>
+                   </div>
+                 )}
+               </motion.div>
+             ))}
+           </div>
+         ) : (
+           <div className="text-center py-12">
+             <div className="text-6xl mb-4">📺</div>
+             <p className="text-gray-400">No episodes available yet.</p>
+           </div>
+         )}
+       </div>
+
+       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 text-white">
+         <h2 className="text-3xl font-bold mb-6">About This TV Show</h2>
+         <p className="text-gray-300 mb-6">
+           Experience this amazing TV series in full HD quality. Select an episode above and click the &quot;Watch Episodes&quot; button to start streaming.
+         </p>
+         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+           <div className="bg-gray-800 p-6 rounded-lg">
+             <h3 className="text-xl font-semibold mb-2">Episode Selection</h3>
+             <p className="text-gray-300">Choose from multiple seasons and episodes with detailed information.</p>
+           </div>
+           <div className="bg-gray-800 p-6 rounded-lg">
+             <h3 className="text-xl font-semibold mb-2">High Quality</h3>
+             <p className="text-gray-300">Stream in crisp HD quality with optimal loading speeds.</p>
+           </div>
+           <div className="bg-gray-800 p-6 rounded-lg">
+             <h3 className="text-xl font-semibold mb-2">Instant Access</h3>
+             <p className="text-gray-300">No downloads required. Watch immediately in your browser.</p>
+           </div>
+         </div>
+       </div>
 
       <AnimatePresence>
         {showTrailer && (
@@ -602,11 +736,132 @@ export default function TVShowDetail() {
         )}
       </AnimatePresence>
 
-      {/* Temporarily disabled - Episode Selection Modal */}
+      
 
-      {/* Temporarily disabled - Server Selection Modal */}
+      {/* Server Selection Modal */}
+      <AnimatePresence>
+        {showServerModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
+            onClick={() => setShowServerModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.9 }}
+              className="relative w-full max-w-md bg-gray-800 rounded-lg p-6"
+              onClick={e => e.stopPropagation()}
+            >
+              <h3 className="text-lg font-medium text-white mb-4 text-center">Select a video server</h3>
+              <div className="flex flex-col gap-4">
+                <button
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  onClick={() => {
+                    setSelectedServer('server1')
+                    setShowServerModal(false)
+                    setShowTVShow(true)
+                  }}
+                >
+                  Server 1 (PhimAPI)
+                </button>
+                <button
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors relative flex flex-col items-center"
+                  onClick={() => {
+                    setSelectedServer('server2')
+                    setShowServerModal(false)
+                    setShowTVShow(true)
+                  }}
+                >
+                  <div className="flex items-center gap-2">
+                    Server 2 (VidSrc)
+                  </div>
+                  <span className="mt-2 flex items-center gap-1 text-yellow-900 bg-yellow-200 rounded px-2 py-1 text-xs font-semibold">
+                    <svg className="w-4 h-4 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Note: This server has many ads, please close ads to watch the TV show.
+                  </span>
+                </button>
+                <button
+                  className="mt-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                  onClick={() => setShowServerModal(false)}
+                >
+                  Cancel
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      {/* Temporarily disabled - TV Show Player Modal */}
+             {/* TV Show Player Modal */}
+       <AnimatePresence>
+         {showTVShow && tvShow && (
+           <motion.div
+             initial={{ opacity: 0 }}
+             animate={{ opacity: 1 }}
+             exit={{ opacity: 0 }}
+             className="fixed inset-0 bg-black z-50 flex items-center justify-center"
+             onClick={() => { setShowTVShow(false); setSelectedServer(null); }}
+           >
+             <motion.div
+               initial={{ scale: 0.9 }}
+               animate={{ scale: 1 }}
+               exit={{ scale: 0.9 }}
+               className="relative w-full h-full max-w-7xl max-h-screen p-4"
+               onClick={e => e.stopPropagation()}
+             >
+               <div className="flex justify-between items-center mb-4">
+                 <div className="flex items-center gap-3">
+                   <h3 className="text-white text-xl font-semibold">
+                    Season {selectedSeason} Episode {selectedEpisode}: {episodes.find(ep => ep.episode_number === selectedEpisode)?.name || ''}
+                   </h3>
+                   {selectedEpisode > 0 && (
+                     <span className="px-2 py-1 text-xs font-semibold rounded bg-red-600 text-white">
+                       S{selectedSeason} E{selectedEpisode}
+                     </span>
+                   )}
+                 </div>
+                 <button
+                   className="text-white bg-black/50 rounded-full p-2 hover:bg-black/80 transition-colors"
+                   onClick={() => { setShowTVShow(false); setSelectedServer(null); }}
+                 >
+                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                   </svg>
+                 </button>
+               </div>
+               <div className="w-full h-[calc(100%-4rem)] rounded-lg overflow-hidden">
+                 {selectedServer === 'server1' && tvShowLinks.m3u8 ? (
+                   <MoviePlayer
+                     src={tvShowLinks.m3u8}
+                     poster={tvShow?.poster}
+                   />
+                 ) : selectedServer === 'server2' && vidsrcUrl ? (
+                   <iframe
+                     src={vidsrcUrl}
+                     className="w-full h-full"
+                     allowFullScreen
+                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                     title={`${tvShow.name} - Season ${selectedSeason} Episode ${selectedEpisode} - Server 2`}
+                     referrerPolicy="origin"
+                   />
+                 ) : (
+                   <div className="flex items-center justify-center h-full">
+                     <div className="text-white text-center">
+                       <div className="w-16 h-16 border-4 border-red-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                       <p>Loading TV show...</p>
+                     </div>
+                   </div>
+                 )}
+               </div>
+             </motion.div>
+           </motion.div>
+         )}
+       </AnimatePresence>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <h2 className="text-3xl font-bold text-white mb-8">TV Show Scenes</h2>

@@ -46,6 +46,7 @@ function MoviesPageContent() {
   const [selectedYear, setSelectedYear] = useState<string | number>(urlYear)
   const [page, setPage] = useState(urlPage)
   const [loading, setLoading] = useState(false)
+  const [isYearDropdownOpen, setIsYearDropdownOpen] = useState(false)
   
   // Cache các trang đã load: { [year]: { [page]: Movie[] } }
   const [pagesCache, setPagesCache] = useState<{ [year: string]: { [page: number]: Movie[] } }>({})
@@ -85,6 +86,24 @@ function MoviesPageContent() {
   // Track previous values to avoid infinite loops
   const prevPageRef = useRef(page);
   const prevYearRef = useRef(selectedYear);
+  
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element;
+      if (!target.closest('.year-dropdown-container')) {
+        setIsYearDropdownOpen(false);
+      }
+    };
+
+    if (isYearDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isYearDropdownOpen]);
 
   // Sync state với URL parameters khi URL thay đổi (browser navigation)
   useEffect(() => {
@@ -167,7 +186,7 @@ function MoviesPageContent() {
   const currentYear = new Date().getFullYear();
   const years = useMemo(() => {
     const yearArr = [];
-    for (let y = currentYear; y >= 2020; y--) {
+    for (let y = currentYear; y >= 2000; y--) {
       yearArr.push(y);
     }
     return ['All', ...yearArr];
@@ -333,6 +352,14 @@ function MoviesPageContent() {
   // Xử lý khi thay đổi year filter
   const handleYearChange = (year: string | number) => {
     setSelectedYear(year);
+    // Reset page về 1 khi thay đổi năm
+    setPage(1);
+    // Clear cache cho năm cũ nếu cần thiết để tiết kiệm memory
+    if (Object.keys(pagesCache).length > 10) {
+      const currentYearKey = String(selectedYear);
+      const newCache = { [currentYearKey]: pagesCache[currentYearKey] || {} };
+      setPagesCache(newCache);
+    }
   }
 
   return (
@@ -350,24 +377,57 @@ function MoviesPageContent() {
         <div className="flex flex-col gap-4 mb-10">
           <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
             <div className="flex flex-wrap gap-4">
-              <div className="relative">
-                <select
-                  value={selectedYear}
-                  onChange={(e) => handleYearChange(e.target.value === 'All' ? 'All' : Number(e.target.value))}
-                  className="appearance-none px-4 py-2 rounded-full bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer pr-8"
+              <div className="relative year-dropdown-container">
+                <button
+                  onClick={() => setIsYearDropdownOpen(!isYearDropdownOpen)}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-800 text-white hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all duration-200"
                 >
-                  {years.map((y) => (
-                    <option key={y} value={y}>
-                      {y}
-                    </option>
-                  ))}
-                </select>
-                {/* Custom dropdown arrow */}
-                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 dado-gray-400">
-                  <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                    <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
-                  </svg>
-                </div>
+                  <span className="font-medium text-sm">
+                    {selectedYear === 'All' ? 'All Years' : selectedYear}
+                  </span>
+                  <motion.svg 
+                    className="w-4 h-4 text-gray-400"
+                    animate={{ rotate: isYearDropdownOpen ? 180 : 0 }}
+                    transition={{ duration: 0.2 }}
+                    fill="none" 
+                    stroke="currentColor" 
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </motion.svg>
+                </button>
+                
+                {/* Custom Dropdown */}
+                <AnimatePresence>
+                  {isYearDropdownOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                      transition={{ duration: 0.2 }}
+                      className="absolute top-full left-0 mt-1 w-27 bg-gray-800 rounded-lg shadow-xl border border-gray-700 z-50 max-h-36 overflow-y-auto scrollbar-hide"
+                    >
+                      <div className="py-1">
+                        {years.map((year) => (
+                          <button
+                            key={year}
+                            onClick={() => {
+                              handleYearChange(year === 'All' ? 'All' : Number(year));
+                              setIsYearDropdownOpen(false);
+                            }}
+                            className={`w-full px-2 py-1.5 text-left hover:bg-gray-700 transition-colors duration-150 text-sm ${
+                              String(selectedYear) === String(year)
+                                ? 'bg-purple-600 text-white font-medium' 
+                                : 'text-gray-300 hover:text-white'
+                            }`}
+                          >
+                            {year === 'All' ? 'All Years' : year}
+                          </button>
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             </div>
           </div>

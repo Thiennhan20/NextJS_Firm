@@ -15,12 +15,13 @@ interface TVShow {
   name: string;
   poster_path: string;
   image?: string;
-
   year?: number;
   genre?: string;
   first_air_date?: string;
   country?: string;
   status?: 'Full HD' | 'Full HD/CAM' | 'Coming Soon' | 'Non';
+  totalSeasons?: number;
+  totalEpisodes?: number;
 }
 
 // Type for TMDB API TV response
@@ -31,6 +32,8 @@ interface TMDBTV {
   vote_average: number;
   first_air_date?: string;
   original_language?: string;
+  number_of_seasons?: number;
+  number_of_episodes?: number;
 }
 
 function TVShowsPageContent() {
@@ -46,6 +49,7 @@ function TVShowsPageContent() {
   const [selectedYear, setSelectedYear] = useState<string | number>(urlYear)
   const [page, setPage] = useState(urlPage)
   const [loading, setLoading] = useState(false)
+  const [isYearDropdownOpen, setIsYearDropdownOpen] = useState(false)
   
   // Cache các trang đã load: { [year]: { [page]: TVShow[] } }
   const [pagesCache, setPagesCache] = useState<{ [year: string]: { [page: number]: TVShow[] } }>({})
@@ -85,6 +89,24 @@ function TVShowsPageContent() {
   // Track previous values to avoid infinite loops
   const prevPageRef = useRef(page);
   const prevYearRef = useRef(selectedYear);
+  
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element;
+      if (!target.closest('.year-dropdown-container')) {
+        setIsYearDropdownOpen(false);
+      }
+    };
+
+    if (isYearDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isYearDropdownOpen]);
 
   // Sync state với URL parameters khi URL thay đổi (browser navigation)
   useEffect(() => {
@@ -167,7 +189,7 @@ function TVShowsPageContent() {
   const currentYear = new Date().getFullYear();
   const years = useMemo(() => {
     const yearArr = [];
-    for (let y = currentYear; y >= 2020; y--) {
+    for (let y = currentYear; y >= 2000; y--) {
       yearArr.push(y);
     }
     return ['All', ...yearArr];
@@ -232,19 +254,20 @@ function TVShowsPageContent() {
       url += `&first_air_date_year=${selectedYear}`;
     }
     const response = await axios.get(url);
-    let fetchedTVShows = response.data.results
-    fetchedTVShows = fetchedTVShows.map((tvShow: TMDBTV) => ({
+    const fetchedTVShows = response.data.results;
+    
+    return fetchedTVShows.map((tvShow: TMDBTV) => ({
       id: tvShow.id,
       name: tvShow.name,
-      
       year: tvShow.first_air_date ? Number(tvShow.first_air_date.slice(0, 4)) : '',
       image: tvShow.poster_path ? `https://image.tmdb.org/t/p/w500${tvShow.poster_path}` : '',
       genre: [],
       first_air_date: tvShow.first_air_date,
       country: getCountryName(tvShow.original_language),
       status: generateTVShowStatus(tvShow.first_air_date),
-    }))
-    return fetchedTVShows
+      totalSeasons: tvShow.number_of_seasons || 0,
+      totalEpisodes: tvShow.number_of_episodes || 0
+    }));
   }
 
   // Khi page thay đổi, nếu chưa có trong cache thì fetch
@@ -333,6 +356,14 @@ function TVShowsPageContent() {
   // Xử lý khi thay đổi year filter
   const handleYearChange = (year: string | number) => {
     setSelectedYear(year);
+    // Reset page về 1 khi thay đổi năm
+    setPage(1);
+    // Clear cache cho năm cũ nếu cần thiết để tiết kiệm memory
+    if (Object.keys(pagesCache).length > 10) {
+      const currentYearKey = String(selectedYear);
+      const newCache = { [currentYearKey]: pagesCache[currentYearKey] || {} };
+      setPagesCache(newCache);
+    }
   }
 
   return (
@@ -349,24 +380,57 @@ function TVShowsPageContent() {
         <div className="flex flex-col gap-4 mb-10">
           <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
             <div className="flex flex-wrap gap-4">
-              <div className="relative">
-                <select
-                  value={selectedYear}
-                  onChange={(e) => handleYearChange(e.target.value === 'All' ? 'All' : Number(e.target.value))}
-                  className="appearance-none px-4 py-2 rounded-full bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer pr-8"
+              <div className="relative year-dropdown-container">
+                <button
+                  onClick={() => setIsYearDropdownOpen(!isYearDropdownOpen)}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-800 text-white hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all duration-200"
                 >
-                  {years.map((y) => (
-                    <option key={y} value={y}>
-                      {y}
-                    </option>
-                  ))}
-                </select>
-                {/* Custom dropdown arrow */}
-                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-400">
-                  <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                    <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
-                  </svg>
-                </div>
+                  <span className="font-medium text-sm">
+                    {selectedYear === 'All' ? 'All Years' : selectedYear}
+                  </span>
+                  <motion.svg 
+                    className="w-4 h-4 text-gray-400"
+                    animate={{ rotate: isYearDropdownOpen ? 180 : 0 }}
+                    transition={{ duration: 0.2 }}
+                    fill="none" 
+                    stroke="currentColor" 
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </motion.svg>
+                </button>
+                
+                {/* Custom Dropdown */}
+                <AnimatePresence>
+                  {isYearDropdownOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                      transition={{ duration: 0.2 }}
+                      className="absolute top-full left-0 mt-1 w-27 bg-gray-800 rounded-lg shadow-xl border border-gray-700 z-50 max-h-36 overflow-y-auto scrollbar-hide"
+                    >
+                      <div className="py-1">
+                        {years.map((year) => (
+                          <button
+                            key={year}
+                            onClick={() => {
+                              handleYearChange(year === 'All' ? 'All' : Number(year));
+                              setIsYearDropdownOpen(false);
+                            }}
+                            className={`w-full px-2 py-1.5 text-left hover:bg-gray-700 transition-colors duration-150 text-sm ${
+                              String(selectedYear) === String(year)
+                                ? 'bg-purple-600 text-white font-medium' 
+                                : 'text-gray-300 hover:text-white'
+                            }`}
+                          >
+                            {year === 'All' ? 'All Years' : year}
+                          </button>
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             </div>
           </div>
@@ -410,61 +474,77 @@ function TVShowsPageContent() {
                   No TV shows found.
                 </motion.div>
               )}
-                             {pagedTVShows.map((tvShow: TVShow) => (
-                 <motion.div
-                   key={tvShow.id}
-                   variants={itemVariants}
-                   whileHover={{ scale: 1.05 }}
-                   transition={{ type: 'spring', stiffness: 200, damping: 20 }}
-                 >
-                                       <Link key={tvShow.id} href={`/tvshows/${tvShow.id}?page=${page}&year=${selectedYear}`} className="block">
-                     <div className="border rounded-lg overflow-hidden relative group">
-                                               {/* Poster Image */}
-                        <div className="relative">
-                          <Image
-                            src={tvShow.image ?? ''}
-                            alt={tvShow.name}
-                            width={500}
-                            height={750}
-                            className="w-full"
-                          />
-                          
-                                                     {/* Status Badge */}
-                           <div className="absolute top-2 left-2">
-                             <span className={`px-2 py-1 text-xs font-bold rounded-md ${
-                               tvShow.status === 'Full HD' ? 'bg-green-500 text-white' :
-                               tvShow.status === 'Full HD/CAM' ? 'bg-red-500 text-white' :
-                               tvShow.status === 'Coming Soon' ? 'bg-yellow-500 text-black' :
-                               tvShow.status === 'Non' ? 'bg-gray-500 text-white' :
-                               'bg-yellow-500 text-black'
-                             }`}>
-                               {tvShow.status}
-                             </span>
-                           </div>
+              {pagedTVShows.map((tvShow: TVShow) => (
+                <motion.div
+                  key={tvShow.id}
+                  variants={itemVariants}
+                  whileHover={{ scale: 1.05 }}
+                  transition={{ type: 'spring', stiffness: 200, damping: 20 }}
+                >
+                  <Link key={tvShow.id} href={`/tvshows/${tvShow.id}?page=${page}&year=${selectedYear}`} className="block">
+                    <div className="border rounded-lg overflow-hidden relative group">
+                      {/* Poster Image */}
+                      <div className="relative">
+                        <Image
+                          src={tvShow.image ?? ''}
+                          alt={tvShow.name}
+                          width={500}
+                          height={750}
+                          className="w-full"
+                        />
+                        
+                        {/* Status Badge */}
+                        <div className="absolute top-2 left-2">
+                          <span className={`px-2 py-1 text-xs font-bold rounded-md ${
+                            tvShow.status === 'Full HD' ? 'bg-green-500 text-white' :
+                            tvShow.status === 'Full HD/CAM' ? 'bg-red-500 text-white' :
+                            tvShow.status === 'Coming Soon' ? 'bg-yellow-500 text-black' :
+                            tvShow.status === 'Non' ? 'bg-gray-500 text-white' :
+                            'bg-yellow-500 text-black'
+                          }`}>
+                            {tvShow.status}
+                          </span>
                         </div>
+                      </div>
 
-                        {/* TV Show Info */}
-                        <div className="p-3 bg-gray-900">
-                          <h3 className="text-white font-semibold text-sm mb-2 truncate">
+                      {/* TV Show Info */}
+                      <div className="p-3 bg-gray-900">
+                        <div className="flex items-start justify-between mb-2">
+                          <h3 className="text-white font-semibold text-sm truncate">
                             {tvShow.name}
                           </h3>
-                          
-                          {/* Date and Country */}
-                          <div className="flex items-center justify-between text-xs text-gray-400">
-                            <span>
-                              {tvShow.first_air_date ? new Date(tvShow.first_air_date).toLocaleDateString('en-US', {
-                                year: 'numeric',
-                                month: 'short',
-                                day: 'numeric'
-                              }) : 'TBA'}
-                            </span>
-                            <span>{tvShow.country}</span>
-                          </div>
                         </div>
-                     </div>
-                   </Link>
-                 </motion.div>
-               ))}
+                        
+                        {/* Date and Country */}
+                        <div className="flex items-center justify-between text-xs text-gray-400">
+                          <span>
+                            {tvShow.first_air_date ? new Date(tvShow.first_air_date).toLocaleDateString('en-US', {
+                              year: 'numeric',
+                              month: 'short',
+                              day: 'numeric'
+                            }) : 'TBA'}
+                          </span>
+                          <span>{tvShow.country}</span>
+                        </div>
+                        
+                        {/* Seasons and Episodes Info */}
+                        {tvShow.totalSeasons && tvShow.totalSeasons > 0 && (
+                          <div className="flex items-center justify-between text-xs text-gray-400 mt-1">
+                            <span>
+                              {tvShow.totalSeasons} Season{tvShow.totalSeasons > 1 ? 's' : ''}
+                            </span>
+                            {tvShow.totalEpisodes && tvShow.totalEpisodes > 0 && (
+                              <span>
+                                {tvShow.totalEpisodes} Episode{tvShow.totalEpisodes > 1 ? 's' : ''}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </Link>
+                </motion.div>
+              ))}
             </motion.div>
           </AnimatePresence>
         )}
