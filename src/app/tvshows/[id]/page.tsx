@@ -59,7 +59,23 @@ interface Person {
 
 function TVShowPoster3D({ posterUrl }: { posterUrl: string }) {
   const meshRef = useRef<THREE.Mesh>(null)
-  const texture = new THREE.TextureLoader().load(posterUrl)
+  const [texture, setTexture] = useState<THREE.Texture | null>(null)
+
+  useEffect(() => {
+    const loader = new THREE.TextureLoader()
+    let loadedTexture: THREE.Texture | null = null
+    
+    loader.load(posterUrl, (tex) => {
+      loadedTexture = tex
+      setTexture(tex)
+    })
+    
+    return () => {
+      if (loadedTexture) {
+        loadedTexture.dispose()
+      }
+    }
+  }, [posterUrl])
 
   useEffect(() => {
     let frameId: number;
@@ -78,6 +94,10 @@ function TVShowPoster3D({ posterUrl }: { posterUrl: string }) {
     animate();
     return () => cancelAnimationFrame(frameId);
   }, []);
+
+  if (!texture) {
+    return null
+  }
 
   return (
     <mesh ref={meshRef} castShadow>
@@ -465,7 +485,7 @@ export default function TVShowDetail() {
           className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 lg:grid lg:grid-cols-2 lg:gap-8 lg:items-center"
         >
           <div className="relative h-[40vh] md:h-[50vh] lg:h-[60vh] w-full flex items-center justify-center mb-8 lg:mb-0">
-            {displayPoster && displayPoster.startsWith('https://image.tmdb.org') ? (
+            {displayPoster ? (
               <Canvas className="w-full h-full">
                 <PerspectiveCamera makeDefault position={[0, 0, 5]} />
                 <OrbitControls 
@@ -478,17 +498,8 @@ export default function TVShowDetail() {
                 />
                 <ambientLight intensity={0.5} />
                 <spotLight position={[10, 10, 10]} angle={0.15} penumbra={1} />
-                <TVShowPoster3D posterUrl={`/api/cache-image?id=${id}&url=${encodeURIComponent(displayPoster ?? '')}&bust=${Date.now()}`} />
+                <TVShowPoster3D posterUrl={`/api/cache-image?id=${id}&url=${encodeURIComponent(displayPoster ?? '')}`} />
               </Canvas>
-            ) : displayPoster ? (
-              <Image
-                src={displayPoster}
-                alt={name}
-                width={300}
-                height={450}
-                className="rounded-lg shadow-lg object-cover"
-                style={{ maxHeight: '100%', maxWidth: '100%' }}
-              />
             ) : (
               <div className="w-[300px] h-[450px] bg-gray-700 rounded-lg flex items-center justify-center">
                 <span className="text-4xl">📺</span>
