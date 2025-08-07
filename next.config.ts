@@ -2,6 +2,8 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   images: {
+    // Disable Next.js Image Optimization to avoid Vercel image transformation usage
+    unoptimized: true,
     remotePatterns: [
       {
         protocol: 'https',

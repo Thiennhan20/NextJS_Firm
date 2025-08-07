@@ -24,6 +24,7 @@ interface Movie {
 
   duration: string;
   year: number | '';
+  releaseDate?: string;
   director: string;
   cast: string[];
   genre: string;
@@ -609,6 +610,7 @@ useEffect(() => {
 
           duration: data.runtime ? `${Math.floor(data.runtime / 60)}h ${data.runtime % 60}m` : '',
           year: data.release_date ? Number(data.release_date.slice(0, 4)) : '' as number | '',
+          releaseDate: data.release_date || '',
           director: credits.crew?.find((person: { job: string; name: string }) => person.job === 'Director')?.name || '',
           cast: credits.cast?.slice(0, 10).map((person: { name: string }) => person.name) || [],
           genre: data.genres ? data.genres.map((g: { name: string }) => g.name).join(', ') : '',
@@ -629,6 +631,17 @@ useEffect(() => {
     fetchMovie();
   }, [id, API_KEY]);
 
+  // Helper to format date as dd/mm/yyyy (Vietnam locale)
+  const formatDate = (dateStr?: string) => {
+    try {
+      if (!dateStr) return '';
+      const d = new Date(dateStr);
+      return d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    } catch {
+      return dateStr || '';
+    }
+  };
+
   if (loading || !movie) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-gray-900 to-black">
@@ -641,7 +654,7 @@ useEffect(() => {
     );
   }
 
-  const { title, backdrop, poster, duration, year, genre, director, cast, description, scenes, trailer, status } = movie;
+  const { title, backdrop, poster, duration, year, genre, director, cast, description, scenes, trailer, status, releaseDate } = movie;
 
   return (
     <div ref={containerRef} className="min-h-screen bg-gradient-to-b from-gray-900 to-black">
@@ -675,7 +688,7 @@ useEffect(() => {
                 />
                 <ambientLight intensity={0.5} />
                 <spotLight position={[10, 10, 10]} angle={0.15} penumbra={1} />
-                <MoviePoster3D posterUrl={`/api/proxy-image?url=${encodeURIComponent(poster ?? '')}`} />
+                <MoviePoster3D posterUrl={`/api/cache-image?id=${id}&url=${encodeURIComponent(poster ?? '')}&bust=${Date.now()}`} />
               </Canvas>
             ) : poster ? (
               <Image
@@ -694,25 +707,27 @@ useEffect(() => {
           </div>
           
           <div className="text-white space-y-6">
-            <div className="flex items-center gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
               <motion.h1 
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="text-4xl md:text-5xl font-bold"
+                className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold leading-tight"
               >
                 {title}
               </motion.h1>
-                             {status && (
-                 <span className={`px-3 py-1 text-sm font-bold rounded-md ${
-                   status === 'Full HD' ? 'bg-green-500 text-white' :
-                   status === 'Full HD/CAM' ? 'bg-red-500 text-white' :
-                   status === 'Coming Soon' ? 'bg-yellow-500 text-black' :
-                   status === 'Non' ? 'bg-gray-500 text-white' :
-                   'bg-yellow-500 text-black'
-                 }`}>
-                   {status}
-                 </span>
-               )}
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                {status && (
+                  <span className={`px-2 py-1 text-xs sm:text-sm font-bold rounded-md whitespace-nowrap ${
+                    status === 'Full HD' ? 'bg-green-500 text-white' :
+                    status === 'Full HD/CAM' ? 'bg-red-500 text-white' :
+                    status === 'Coming Soon' ? 'bg-yellow-500 text-black' :
+                    status === 'Non' ? 'bg-gray-500 text-white' :
+                    'bg-yellow-500 text-black'
+                  }`}>
+                    {status}
+                  </span>
+                )}
+              </div>
             </div>
             
             <div className="flex flex-wrap gap-4">
@@ -723,13 +738,15 @@ useEffect(() => {
               </div>
               <div className="flex items-center space-x-2">
                 <CalendarIcon className="h-6 w-6 text-gray-400" />
-                <span className="text-gray-400">{year}</span>
+                <span className="text-gray-400">{releaseDate ? formatDate(releaseDate) : year}</span>
               </div>
             </div>
 
             <div className="space-y-2">
               <p className="text-gray-300">{genre}</p>
-              <p className="text-gray-300">Director: {director}</p>
+              {director && (
+                <p className="text-gray-300">Director: {director}</p>
+              )}
               <div className="flex flex-wrap gap-2">
                 {cast.map((actor: string, index: number) => (
                   <span key={index} className="px-3 py-1 bg-gray-800 rounded-full text-sm">
@@ -1147,7 +1164,6 @@ useEffect(() => {
 function MoviePoster3D({ posterUrl }: { posterUrl: string }) {
   const meshRef = useRef<THREE.Mesh>(null)
   const texture = new THREE.TextureLoader().load(posterUrl)
-
   useEffect(() => {
     let frameId: number;
     const start = Date.now();

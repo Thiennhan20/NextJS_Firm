@@ -14,7 +14,6 @@ import {
   PhoneIcon
 } from '@heroicons/react/24/outline'
 import { FaFacebook, FaInstagram, FaYoutube } from 'react-icons/fa'
-import { TbBrandX } from 'react-icons/tb'
 import Logo from '@/components/common/Logo'
 
 const footerNavItems = [
@@ -29,7 +28,6 @@ const footerNavItems = [
 
 const socialLinks = [
   { name: 'Facebook', href: 'https://www.facebook.com/ntnnhan203', icon: FaFacebook },
-  { name: 'X', href: 'https://x.com/Nhanntn2203', icon: TbBrandX },
   { name: 'Instagram', href: 'https://www.instagram.com/t.nhan_03/', icon: FaInstagram },
   { name: 'YouTube', href: '#', icon: FaYoutube },
 ]

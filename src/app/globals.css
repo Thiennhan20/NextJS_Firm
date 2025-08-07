@@ -412,3 +412,44 @@ select {
   -webkit-line-clamp: unset;
   line-clamp: unset;
 }
+
+/* Season dropdown specific styles */
+.season-dropdown {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.season-dropdown::-webkit-scrollbar {
+  display: none;
+}
+
+.season-dropdown option {
+  background-color: #374151;
+  color: white;
+  padding: 8px 12px;
+}
+
+.season-dropdown option:hover {
+  background-color: #4b5563;
+}
+
+.season-dropdown option:checked {
+  background-color: #ef4444;
+}
+
+/* Limit dropdown height to show max 5 options */
+.season-dropdown {
+  max-height: 200px; /* Height for approximately 5 options */
+}
+
+/* For webkit browsers, limit the dropdown list height */
+.season-dropdown:focus {
+  max-height: 200px;
+}
+
+/* Ensure options are properly sized */
+.season-dropdown option {
+  height: 40px; /* Fixed height for each option */
+  line-height: 24px;
+  padding: 8px 12px;
+}

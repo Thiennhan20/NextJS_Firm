@@ -6,7 +6,7 @@ import { Canvas } from '@react-three/fiber'
 import { OrbitControls, PerspectiveCamera } from '@react-three/drei'
 import * as THREE from 'three'
 import Image from 'next/image'
-import { ClockIcon, CalendarIcon, PlayIcon } from '@heroicons/react/24/solid'
+import { ClockIcon, CalendarIcon, PlayIcon, ChevronDownIcon } from '@heroicons/react/24/solid'
 import { BookmarkIcon } from '@heroicons/react/24/outline'
 import { useWatchlistStore } from '@/store/store'
 import toast from 'react-hot-toast'
@@ -23,6 +23,7 @@ interface TVShow {
 
   duration: string
   year: number | ''
+  firstAirDate?: string
   creator: string
   cast: string[]
   genre: string
@@ -174,6 +175,8 @@ export default function TVShowDetail() {
   const [showServerModal, setShowServerModal] = useState(false)
   const [selectedServer, setSelectedServer] = useState<string | null>(null)
   const [seasons, setSeasons] = useState<{ id: number; name: string; season_number: number; episode_count: number; poster_path?: string; overview?: string; air_date?: string }[]>([])
+  const [isSeasonDropdownOpen, setIsSeasonDropdownOpen] = useState(false)
+  const seasonDropdownRef = useRef<HTMLDivElement>(null)
 
   const handleWatchTVShow = async () => {
     if (!tvShow || selectedEpisode === 0) {
@@ -256,6 +259,7 @@ export default function TVShowDetail() {
           duration: data.episode_run_time && data.episode_run_time.length > 0 
             ? `${data.episode_run_time[0]}m` : '',
           year: data.first_air_date ? Number(data.first_air_date.slice(0, 4)) : '' as number | '',
+          firstAirDate: data.first_air_date || '',
           creator: credits.crew?.find((person: Person) => person.job === 'Creator')?.name || '',
           cast: credits.cast?.slice(0, 10).map((person: Person) => person.name) || [],
           genre: data.genres ? data.genres.map((g: { name: string }) => g.name).join(', ') : '',
@@ -277,6 +281,17 @@ export default function TVShowDetail() {
     }
     fetchTVShow()
   }, [id, API_KEY])
+
+  // Helper to format date as dd/mm/yyyy (Vietnam locale)
+  const formatDate = (dateStr?: string) => {
+    try {
+      if (!dateStr) return ''
+      const d = new Date(dateStr)
+      return d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+    } catch {
+      return dateStr || ''
+    }
+  }
 
   useEffect(() => {
     if (tvShow?.id) {
@@ -327,6 +342,23 @@ export default function TVShowDetail() {
       (window as { isWatchingFullTVShow?: boolean }).isWatchingFullTVShow = showTVShow
     }
   }, [showTVShow])
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (seasonDropdownRef.current && !seasonDropdownRef.current.contains(event.target as Node)) {
+        setIsSeasonDropdownOpen(false)
+      }
+    }
+
+    if (isSeasonDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isSeasonDropdownOpen])
 
   useEffect(() => {
     let timeoutId: NodeJS.Timeout
@@ -405,7 +437,14 @@ export default function TVShowDetail() {
     )
   }
 
-  const { name, backdrop, poster, duration, year, genre, creator, cast, description, scenes, trailer, status, totalSeasons, totalEpisodes } = tvShow
+  const { name, backdrop, poster, duration, year, genre, creator, cast, description, scenes, trailer, status, totalSeasons, totalEpisodes, firstAirDate } = tvShow
+
+  // Season-aware visuals
+  const currentSeason = seasons.find((s) => s.season_number === selectedSeason) || seasons[selectedSeason - 1]
+  const displayPoster = currentSeason?.poster_path
+    ? `https://image.tmdb.org/t/p/w500${currentSeason.poster_path}`
+    : poster
+  const seasonAirDate = currentSeason?.air_date
 
   return (
     <div ref={containerRef} className="min-h-screen bg-gradient-to-b from-gray-900 to-black">
@@ -426,7 +465,7 @@ export default function TVShowDetail() {
           className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 lg:grid lg:grid-cols-2 lg:gap-8 lg:items-center"
         >
           <div className="relative h-[40vh] md:h-[50vh] lg:h-[60vh] w-full flex items-center justify-center mb-8 lg:mb-0">
-            {poster && poster.startsWith('https://image.tmdb.org') ? (
+            {displayPoster && displayPoster.startsWith('https://image.tmdb.org') ? (
               <Canvas className="w-full h-full">
                 <PerspectiveCamera makeDefault position={[0, 0, 5]} />
                 <OrbitControls 
@@ -439,11 +478,11 @@ export default function TVShowDetail() {
                 />
                 <ambientLight intensity={0.5} />
                 <spotLight position={[10, 10, 10]} angle={0.15} penumbra={1} />
-                <TVShowPoster3D posterUrl={`/api/proxy-image?url=${encodeURIComponent(poster ?? '')}`} />
+                <TVShowPoster3D posterUrl={`/api/cache-image?id=${id}&url=${encodeURIComponent(displayPoster ?? '')}&bust=${Date.now()}`} />
               </Canvas>
-            ) : poster ? (
+            ) : displayPoster ? (
               <Image
-                src={poster}
+                src={displayPoster}
                 alt={name}
                 width={300}
                 height={450}
@@ -458,25 +497,30 @@ export default function TVShowDetail() {
           </div>
           
           <div className="text-white space-y-6">
-            <div className="flex items-center gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
               <motion.h1 
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="text-4xl md:text-5xl font-bold"
+                className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold leading-tight"
               >
                 {name}
               </motion.h1>
-              {status && (
-                <span className={`px-3 py-1 text-sm font-bold rounded-md ${
-                  status === 'Full HD' ? 'bg-green-500 text-white' :
-                  status === 'Full HD/CAM' ? 'bg-red-500 text-white' :
-                  status === 'Coming Soon' ? 'bg-yellow-500 text-black' :
-                  status === 'Non' ? 'bg-gray-500 text-white' :
-                  'bg-yellow-500 text-black'
-                }`}>
-                  {status}
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                <span className="px-2 py-1 text-xs sm:text-sm font-bold rounded-md bg-blue-600 text-white whitespace-nowrap">
+                  Season {selectedSeason}
                 </span>
-              )}
+                {status && (
+                  <span className={`px-2 py-1 text-xs sm:text-sm font-bold rounded-md whitespace-nowrap ${
+                    status === 'Full HD' ? 'bg-green-500 text-white' :
+                    status === 'Full HD/CAM' ? 'bg-red-500 text-white' :
+                    status === 'Coming Soon' ? 'bg-yellow-500 text-black' :
+                    status === 'Non' ? 'bg-gray-500 text-white' :
+                    'bg-yellow-500 text-black'
+                  }`}>
+                    {status}
+                  </span>
+                )}
+              </div>
             </div>
             
             <div className="flex flex-wrap gap-4">
@@ -487,49 +531,17 @@ export default function TVShowDetail() {
               </div>
               <div className="flex items-center space-x-2">
                 <CalendarIcon className="h-6 w-6 text-gray-400" />
-                <span className="text-gray-400">{year}</span>
+                <span className="text-gray-400">{seasonAirDate ? formatDate(seasonAirDate) : (firstAirDate ? formatDate(firstAirDate) : year)}</span>
               </div>
             </div>
 
             <div className="space-y-2">
               <p className="text-gray-300">{genre}</p>
-              <p className="text-gray-300">Creator: {creator}</p>
-              {totalSeasons && totalEpisodes && (
-                <p className="text-gray-300">
-                  {totalSeasons} Season{totalSeasons > 1 ? 's' : ''} • {totalEpisodes} Episode{totalEpisodes > 1 ? 's' : ''}
-                </p>
+              {creator && (
+                <p className="text-gray-300">Director: {creator}</p>
               )}
-              {/* Current Season Info */}
-              {seasons.length > 0 && selectedSeason && (
-                <div className="bg-gray-800/50 rounded-lg p-3">
-                  <div className="flex items-center gap-3">
-                    {seasons[selectedSeason - 1]?.poster_path && (
-                      <Image
-                        src={`https://image.tmdb.org/t/p/w92${seasons[selectedSeason - 1].poster_path}`}
-                        alt={`Season ${selectedSeason}`}
-                        width={46}
-                        height={69}
-                        className="rounded"
-                      />
-                    )}
-                    <div>
-                      <h4 className="text-white font-semibold">
-                        Season {selectedSeason}: {seasons[selectedSeason - 1]?.name || `Season ${selectedSeason}`}
-                      </h4>
-                      {seasons[selectedSeason - 1]?.air_date && (
-                        <p className="text-gray-400 text-sm">
-                          Air Date: {new Date(seasons[selectedSeason - 1].air_date!).toLocaleDateString()}
-                        </p>
-                      )}
-                      {seasons[selectedSeason - 1]?.episode_count && (
-                        <p className="text-gray-400 text-sm">
-                          {seasons[selectedSeason - 1].episode_count} Episode{seasons[selectedSeason - 1].episode_count > 1 ? 's' : ''}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
+            </div>
+
               <div className="flex flex-wrap gap-2">
                 {cast.map((actor: string, index: number) => (
                   <span key={index} className="px-3 py-1 bg-gray-800 rounded-full text-sm">
@@ -537,7 +549,6 @@ export default function TVShowDetail() {
                   </span>
                 ))}
               </div>
-            </div>
 
             <p className="text-gray-300 leading-relaxed">
               {description}
@@ -591,27 +602,47 @@ export default function TVShowDetail() {
 
                            {/* Episodes Section */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 text-white">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-3xl font-bold">Episodes</h2>
-            {totalSeasons && totalSeasons > 1 && (
-              <div className="flex items-center gap-2">
-                <span className="text-gray-300">Season:</span>
-                <div className="flex gap-1">
-                  {Array.from({ length: totalSeasons }, (_, i) => i + 1).map((season) => (
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="text-3xl font-bold">Episodes</h2>
+              {totalSeasons && totalSeasons > 1 && (
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-300 text-sm">Season:</span>
+                  <div className="relative" ref={seasonDropdownRef}>
                     <button
-                      key={season}
-                      onClick={() => handleSeasonSelect(season)}
-                      className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
-                        selectedSeason === season
-                          ? 'bg-red-500 text-white'
-                          : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                      }`}
+                      onClick={() => setIsSeasonDropdownOpen(!isSeasonDropdownOpen)}
+                      className="flex items-center justify-between bg-gray-700 text-white text-sm px-3 py-1.5 pr-2 rounded-md border border-gray-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent cursor-pointer hover:bg-gray-600 transition-colors min-w-[80px] max-w-[120px]"
                     >
-                      {season}
+                      <span>{selectedSeason}</span>
+                      <ChevronDownIcon className={`w-4 h-4 text-gray-400 transition-transform ${isSeasonDropdownOpen ? 'rotate-180' : ''}`} />
                     </button>
-                  ))}
+                    
+                    {isSeasonDropdownOpen && (
+                      <div className="absolute top-full left-0 right-0 mt-1 bg-gray-700 border border-gray-600 rounded-md shadow-lg z-50 max-h-[200px] overflow-y-auto scrollbar-hide">
+                        {Array.from({ length: totalSeasons || 0 }, (_, i) => i + 1).map((season) => (
+                          <button
+                            key={season}
+                            onClick={() => {
+                              handleSeasonSelect(season);
+                              setIsSeasonDropdownOpen(false);
+                            }}
+                            className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-600 transition-colors ${
+                              selectedSeason === season ? 'bg-red-500 text-white' : 'text-white'
+                            }`}
+                          >
+                            {season}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
+            </div>
+            {totalSeasons && totalEpisodes && (
+              <p className="text-gray-300 text-sm">
+                {totalSeasons} Season{(totalSeasons || 0) > 1 ? 's' : ''} • {totalEpisodes} Episode{(totalEpisodes || 0) > 1 ? 's' : ''}
+              </p>
             )}
           </div>
          {episodesLoading ? (
@@ -846,7 +877,7 @@ export default function TVShowDetail() {
                      className="w-full h-full"
                      allowFullScreen
                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                     title={`${tvShow.name} - Season ${selectedSeason} Episode ${selectedEpisode} - Server 2`}
+                                           title={`${tvShow?.name || 'TV Show'} - Season ${selectedSeason} Episode ${selectedEpisode} - Server 2`}
                      referrerPolicy="origin"
                    />
                  ) : (
@@ -906,8 +937,8 @@ export default function TVShowDetail() {
               onClick={e => e.stopPropagation()}
             >
               <Image
-                src={scenes[activeScene]}
-                alt={`Scene ${activeScene + 1}`}
+                src={scenes[activeScene || 0]}
+                alt={`Scene ${(activeScene || 0) + 1}`}
                 fill
                 className="object-contain"
               />

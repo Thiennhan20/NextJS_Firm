@@ -127,7 +127,7 @@ export default function MovieDetail() {
           <spotLight position={[10, 10, 10]} angle={0.2} penumbra={1} intensity={2} castShadow />
           <pointLight position={[-10, -10, -10]} intensity={1} />
           <Float speed={1.2} rotationIntensity={0.25} floatIntensity={0.3}>
-            <MoviePoster3D posterUrl={movie.poster ?? ''} />
+            <MoviePoster3D posterUrl={`/api/cache-image?id=${movie.id}&url=${encodeURIComponent(movie.poster ?? '')}&bust=${Date.now()}`} />
           </Float>
           {/* Glow effect */}
           <mesh position={[0, 0, -0.1]}>
