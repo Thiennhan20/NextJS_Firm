@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useMemo } from 'react'
 import { motion, useScroll, useTransform, AnimatePresence } from 'framer-motion'
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls, PerspectiveCamera } from '@react-three/drei'
@@ -11,10 +11,10 @@ import { BookmarkIcon } from '@heroicons/react/24/outline'
 import { useWatchlistStore } from '@/store/store'
 import toast from 'react-hot-toast'
 import axios from 'axios'
-import { useParams } from 'next/navigation'
+import { useParams, useSearchParams, useRouter } from 'next/navigation'
 import useAuthStore from '@/store/useAuthStore'
 import api from '@/lib/axios'
-import MoviePlayer from '@/components/common/MoviePlayer';
+import EnhancedMoviePlayer from '@/components/common/EnhancedMoviePlayer';
 import { setupAudioNodes, cleanupAudioNodes, AudioNodes } from '@/lib/audioUtils';
 
 // Định nghĩa kiểu Movie rõ ràng
@@ -64,6 +64,8 @@ interface PhimApiMovie {
 export default function MovieDetail() {
   const API_KEY = process.env.NEXT_PUBLIC_TMDB_API_KEY;
   const { id } = useParams();
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const [movie, setMovie] = useState<Movie | null>(null);
   
   // Hàm tạo status cho phim dựa trên ngày phát hành
@@ -93,12 +95,57 @@ export default function MovieDetail() {
   const [loading, setLoading] = useState<boolean>(true);
   const [activeScene, setActiveScene] = useState<number | null>(null)
   const [showTrailer, setShowTrailer] = useState<boolean>(false)
-  const [showMovie, setShowMovie] = useState<boolean>(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const { scrollYProgress } = useScroll({
     target: containerRef,
     offset: ["start start", "end start"]
-  })
+  });
+
+  const [selectedServer, setSelectedServer] = useState<'server1' | 'server2'>('server1');
+  const hasInitialized = useRef(false);
+
+  // Cập nhật URL khi thay đổi server
+  const updateServerInUrl = (server: 'server1' | 'server2') => {
+    const params = new URLSearchParams(searchParams.toString());
+    const currentServer = searchParams.get('server');
+    
+    // Chỉ cập nhật nếu server thực sự thay đổi
+    if (currentServer !== server) {
+      params.set('server', server);
+      const newUrl = `${window.location.pathname}${params.toString() ? '?' + params.toString() : ''}`;
+      
+      // Nếu đang từ server2 về server1, sử dụng replace để không tạo history entry mới
+      if (currentServer === 'server2' && server === 'server1') {
+        router.replace(newUrl, { scroll: false });
+      } else {
+        router.push(newUrl, { scroll: false });
+      }
+    }
+  };
+
+  // Cập nhật server và URL
+  const handleServerChange = (server: 'server1' | 'server2') => {
+    if (selectedServer !== server) {
+      setSelectedServer(server);
+      updateServerInUrl(server);
+    }
+  };
+
+  // Đọc server từ URL khi component mount hoặc URL thay đổi
+  useEffect(() => {
+    const serverFromUrl = searchParams.get('server');
+    if (serverFromUrl === 'server1' || serverFromUrl === 'server2') {
+      setSelectedServer(serverFromUrl);
+      hasInitialized.current = true;
+    } else {
+      // Nếu không có tham số server, mặc định về server1
+      setSelectedServer('server1');
+      hasInitialized.current = true;
+    }
+  }, [searchParams]);
+
+  const y = useTransform(scrollYProgress, [0, 1], [0, -100])
+  const opacity = useTransform(scrollYProgress, [0, 0.5], [1, 0])
 
   const { addToWatchlist, removeFromWatchlist, isInWatchlist, fetchWatchlistFromServer } = useWatchlistStore();
   const { isAuthenticated, token } = useAuthStore();
@@ -141,17 +188,6 @@ export default function MovieDetail() {
     }
   };
 
-  const [showServerModal, setShowServerModal] = useState(false);
-  const [selectedServer, setSelectedServer] = useState<string | null>(null);
-
-  const handleWatchMovie = async () => {
-    if (!movie) return;
-    setShowServerModal(true);
-  };
-
-  const y = useTransform(scrollYProgress, [0, 1], [0, -100])
-  const opacity = useTransform(scrollYProgress, [0, 0.5], [1, 0])
-
   const [movieLinks, setMovieLinks] = useState({
     embed: '',
     m3u8: '',
@@ -164,26 +200,12 @@ export default function MovieDetail() {
   
   // State cho server 2
   const [server2Link, setServer2Link] = useState('');
-  const [server2Status, setServer2Status] = useState<'checking' | 'available' | 'unavailable'>('checking');
 
   // Check server 2 availability
   useEffect(() => {
     if (typeof id === 'string' && id) {
       const server2Url = `https://vidsrc.me/embed/movie?tmdb=${id}&ds_lang=vi&sub_url=https%3A%2F%2Fvidsrc.me%2Fsample.srt&autoplay=1`;
       setServer2Link(server2Url);
-      setServer2Status('checking');
-      
-      // Simulate checking server 2 availability
-      const checkServer2 = async () => {
-        try {
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          setServer2Status('available');
-        } catch {
-          setServer2Status('unavailable');
-        }
-      };
-      
-      checkServer2();
     }
   }, [id, movie?.title, movie?.year]);
 
@@ -198,13 +220,29 @@ export default function MovieDetail() {
     }
   }, [movie?.title, movie?.year]);
 
+  // Mặc định chọn Vietsub khi có đủ 2 phiên bản và chưa chọn gì
+  useEffect(() => {
+    if (movieLinks.vietsub && movieLinks.dubbed && !selectedAudio) {
+      setSelectedAudio('vietsub');
+    }
+  }, [movieLinks.vietsub, movieLinks.dubbed, selectedAudio]);
+
+  // Audio hiệu lực để hiển thị ngoài player
+  const effectiveAudio = useMemo<('vietsub' | 'dubbed' | null)>(() => {
+    if (selectedAudio === 'vietsub' && movieLinks.vietsub) return 'vietsub';
+    if (selectedAudio === 'dubbed' && movieLinks.dubbed) return 'dubbed';
+    if (movieLinks.vietsub) return 'vietsub';
+    if (movieLinks.dubbed) return 'dubbed';
+    return null;
+  }, [selectedAudio, movieLinks.vietsub, movieLinks.dubbed]);
+
   const videoRef = useRef<HTMLVideoElement>(null);
   // State cho các bộ lọc âm thanh (không hiển thị trong UI)
   const audioNodesRef = useRef<AudioNodes | null>(null);
 
-  // Khởi tạo AudioContext và các bộ lọc
+  // Khởi tạo AudioContext cho trình phát inline của server 1
   useEffect(() => {
-    if (!showMovie || !videoRef.current) return;
+    if (selectedServer !== 'server1' || !videoRef.current) return;
     let cancelled = false;
     const videoEl = videoRef.current;
     if (!videoEl) return;
@@ -223,13 +261,9 @@ export default function MovieDetail() {
         audioNodesRef.current = null;
       }
     };
-  }, [showMovie]);
+  }, [selectedServer]);
 
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      (window as { isWatchingFullMovie?: boolean }).isWatchingFullMovie = showMovie;
-    }
-  }, [showMovie]);
+  // Bỏ trạng thái xem modal
 
   // Replace the existing fetchPhimApiEmbed function in your useEffect with this improved version
 
@@ -759,20 +793,10 @@ useEffect(() => {
                 className="px-6 py-3 bg-gray-700 text-white rounded-lg font-semibold hover:bg-gray-600 transition-colors flex items-center gap-2"
               >
                 <PlayIcon className="h-5 w-5" />
-                Watch Trailer
+                Trailer
               </motion.button>
               
-              <div className="flex items-center gap-2">
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={handleWatchMovie}
-                  className="px-6 py-3 bg-red-500 text-white rounded-lg font-semibold hover:bg-red-600 transition-colors flex items-center gap-2"
-                >
-                  <PlayIcon className="h-5 w-5" />
-                  Watch Full Movie
-                </motion.button>
-              </div>
+              <div className="flex items-center gap-2" />
 
               <motion.button
                 whileHover={{ scale: 1.05 }}
@@ -793,23 +817,141 @@ useEffect(() => {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 text-white">
-        <h2 className="text-3xl font-bold mb-6">About This Movie</h2>
-        <p className="text-gray-300 mb-6">
-          Experience this cinematic masterpiece in full HD quality. Click the &quot;Watch Full Movie&quot; button above to start streaming instantly.
-        </p>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <div className="bg-gray-800 p-6 rounded-lg">
-            <h3 className="text-xl font-semibold mb-2">High Quality</h3>
-            <p className="text-gray-300">Stream in crisp HD quality with optimal loading speeds.</p>
+        <h2 className="text-3xl font-bold mb-6">Watch Now</h2>
+        <div className="mb-4 flex flex-wrap items-start gap-3">
+          <div className="flex flex-col gap-2">
+            <button
+              className={`whitespace-nowrap px-4 py-2 rounded-md text-sm font-semibold transition-colors ${selectedServer === 'server1' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-200 hover:bg-gray-600'}`}
+              onClick={() => handleServerChange('server1')}
+            >
+              Server 1 
+            </button>
+            {selectedServer === 'server1' && movieLinks.vietsub && movieLinks.dubbed && (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-300">Audio:</span>
+                <button
+                  className={`px-3 py-1 rounded text-xs font-semibold transition-colors ${selectedAudio === 'vietsub' ? 'bg-gradient-to-r from-fuchsia-600 to-pink-600 text-white' : 'bg-gray-700 text-gray-200 hover:bg-gray-600'}`}
+                  onClick={() => setSelectedAudio('vietsub')}
+                >
+                  Vietsub
+                </button>
+                <button
+                  className={`px-3 py-1 rounded text-xs font-semibold transition-colors ${selectedAudio === 'dubbed' ? 'bg-gradient-to-r from-fuchsia-600 to-pink-600 text-white' : 'bg-gray-700 text-gray-200 hover:bg-gray-600'}`}
+                  onClick={() => setSelectedAudio('dubbed')}
+                >
+                  Dubbed
+                </button>
+              </div>
+            )}
           </div>
-          <div className="bg-gray-800 p-6 rounded-lg">
-            <h3 className="text-xl font-semibold mb-2">Instant Access</h3>
-            <p className="text-gray-300">No downloads required. Watch immediately in your browser.</p>
+          <div className="flex flex-col gap-2">
+            <button
+              className={`whitespace-nowrap px-4 py-2 rounded-md text-sm font-semibold transition-colors ${selectedServer === 'server2' ? 'bg-green-600 text-white' : 'bg-gray-700 text-gray-200 hover:bg-gray-600'}`}
+              onClick={() => handleServerChange('server2')}
+            >
+              Server 2 
+            </button>
+            {selectedServer === 'server2' && (
+              <span className="text-xs text-yellow-300 bg-yellow-900/40 px-2 py-1 rounded w-max">
+                This server may contain ads.
+              </span>
+            )}
           </div>
-          <div className="bg-gray-800 p-6 rounded-lg">
-            <h3 className="text-xl font-semibold mb-2">Full Experience</h3>
-            <p className="text-gray-300">Complete movie with original audio and subtitles.</p>
+        </div>
+
+        {/* Header ngoài player, co giãn theo khung hình */}
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <h3 className="text-white text-xs sm:text-sm md:text-base font-semibold truncate" title={title}>{title}</h3>
+            {selectedServer === 'server1' && effectiveAudio && (
+              <span className="px-2 py-0.5 text-[10px] sm:text-xs font-semibold rounded bg-gradient-to-r from-fuchsia-600 to-pink-600 text-white whitespace-nowrap">
+                {effectiveAudio === 'vietsub' ? 'Vietsub' : 'Vietnamese Dubbed'}
+              </span>
+            )}
           </div>
+        </div>
+
+        <div className="relative w-full rounded-lg overflow-hidden bg-black/50 aspect-video">
+          {selectedServer === 'server1' && (
+            (() => {
+              if (!apiSearchCompleted || movieLinksLoading) {
+                return (
+                  <div className="flex items-center justify-center h-full text-white">
+                    <div className="flex flex-col items-center gap-4">
+                      <motion.div 
+                        animate={{ rotate: 360 }}
+                        transition={{ repeat: Infinity, duration: 1.5, ease: 'linear' }}
+                        className="w-12 h-12 border-4 border-red-500 border-t-transparent rounded-full"
+                      />
+                      <p className="text-sm text-gray-400">Please wait a moment</p>
+                    </div>
+                  </div>
+                );
+              }
+
+              const hasVideoSource = movieLinks.vietsub || movieLinks.dubbed || movieLinks.m3u8;
+              if (!hasVideoSource) {
+                return (
+                  <div className="flex items-center justify-center h-full text-white">
+                    <div className="flex flex-col items-center gap-4">
+                      <svg className="w-12 h-12 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <p className="text-lg font-semibold">No video source available</p>
+                      <p className="text-sm text-gray-400">Please try another server</p>
+                    </div>
+                  </div>
+                );
+              }
+
+
+              let videoSrc = '';
+              let effectiveAudio: 'vietsub' | 'dubbed' | null = null;
+              if (selectedAudio === 'vietsub' && movieLinks.vietsub) {
+                videoSrc = movieLinks.vietsub;
+                effectiveAudio = 'vietsub';
+              } else if (selectedAudio === 'dubbed' && movieLinks.dubbed) {
+                videoSrc = movieLinks.dubbed;
+                effectiveAudio = 'dubbed';
+              } else if (movieLinks.vietsub) {
+                videoSrc = movieLinks.vietsub;
+                effectiveAudio = 'vietsub';
+              } else if (movieLinks.dubbed) {
+                videoSrc = movieLinks.dubbed;
+                effectiveAudio = 'dubbed';
+              } else {
+                videoSrc = movieLinks.m3u8;
+                effectiveAudio = null;
+              }
+
+              return videoSrc ? (
+                <EnhancedMoviePlayer
+                  key={videoSrc}
+                  ref={videoRef}
+                  src={videoSrc}
+                  poster={poster}
+                  autoPlay={false}
+                  movieId={movie.id}
+                  server={selectedServer}
+                  audio={effectiveAudio || undefined}
+                />
+              ) : (
+                <div className="flex items-center justify-center h-full text-white text-lg font-semibold">
+                  No video source available
+                </div>
+              );
+            })()
+          )}
+          {selectedServer === 'server2' && (
+            <iframe
+              src={server2Link}
+              className="w-full h-full"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+              title={title + ' - Server 2'}
+              referrerPolicy="origin"
+            />
+          )}
         </div>
       </div>
 
@@ -848,14 +990,15 @@ useEffect(() => {
         )}
       </AnimatePresence>
 
-      <AnimatePresence>
-        {showServerModal && (
+      {/* Legacy server modal removed */}
+      {/*
+      {false && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
-            onClick={() => setShowServerModal(false)}
+             onClick={() => {}}
           >
             <motion.div
               initial={{ scale: 0.9 }}
@@ -868,11 +1011,7 @@ useEffect(() => {
               <div className="flex flex-col gap-4">
                 <button
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                  onClick={() => { 
-                    setSelectedServer('server1'); 
-                    setShowServerModal(false); 
-                    setShowMovie(true);
-                  }}
+                   onClick={() => { handleServerChange('server1'); }}
                 >
                   Server 1
                 </button>
@@ -884,13 +1023,7 @@ useEffect(() => {
                       ? 'bg-green-600 text-white hover:bg-green-700'
                       : 'bg-red-600 text-white cursor-not-allowed'
                   }`}
-                  onClick={() => { 
-                    if (server2Status === 'available') {
-                      setSelectedServer('server2'); 
-                      setShowServerModal(false); 
-                      setShowMovie(true); 
-                    }
-                  }}
+                   onClick={() => { if (server2Status === 'available') { handleServerChange('server2'); } }}
                   disabled={server2Status !== 'available'}
                 >
                   <div className="flex items-center gap-2">
@@ -914,7 +1047,7 @@ useEffect(() => {
                 </button>
                 <button
                   className="mt-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
-                  onClick={() => setShowServerModal(false)}
+                  onClick={() => {}}
                 >
                   Cancel
                 </button>
@@ -922,18 +1055,20 @@ useEffect(() => {
             </motion.div>
           </motion.div>
         )}
-      </AnimatePresence>
+      )}
+      */}
 
 
 
-      <AnimatePresence>
-        {showMovie && movie && (
+      {/* Legacy full-screen player modal removed */}
+      {/*
+      {false && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black z-50 flex items-center justify-center"
-            onClick={() => { setShowMovie(false); setSelectedServer(null); setSelectedAudio(null); }}
+             onClick={() => {}}
           >
             <motion.div
               initial={{ scale: 0.9 }}
@@ -957,7 +1092,7 @@ useEffect(() => {
                   {selectedAudio && (
                     <button
                       className="text-white bg-gray-600 rounded-full p-1 hover:bg-gray-700 transition-colors"
-                      onClick={() => setSelectedAudio(null)}
+                  onClick={() => setSelectedAudio(null)}
                       title="Change audio version"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -968,7 +1103,7 @@ useEffect(() => {
                 </div>
                 <button
                   className="text-white bg-black/50 rounded-full p-2 hover:bg-black/80 transition-colors"
-                  onClick={() => { setShowMovie(false); setSelectedServer(null); setSelectedAudio(null); }}
+                  onClick={() => { handleServerChange('server1'); setSelectedAudio(null); }}
                 >
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -1086,7 +1221,8 @@ useEffect(() => {
             </motion.div>
           </motion.div>
         )}
-      </AnimatePresence>
+      )}
+      */}
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <h2 className="text-3xl font-bold text-white mb-8">Movie Scenes</h2>
