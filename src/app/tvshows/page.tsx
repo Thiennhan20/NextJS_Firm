@@ -481,7 +481,7 @@ function TVShowsPageContent() {
                   whileHover={{ scale: 1.05 }}
                   transition={{ type: 'spring', stiffness: 200, damping: 20 }}
                 >
-                  <Link key={tvShow.id} href={`/tvshows/${tvShow.id}?page=${page}&year=${selectedYear}`} className="block">
+                  <Link key={tvShow.id} href={`/tvshows/${tvShow.id}?page=${page}&year=${selectedYear}&season=1`} className="block">
                     <div className="border rounded-lg overflow-hidden relative group">
                       {/* Poster Image */}
                       <div className="relative">

@@ -210,13 +210,26 @@ export default function TVShowDetail() {
     setSelectedSeason(season)
     setSelectedEpisode(0) // Reset episode khi đổi season
     setVidsrcUrl('') // Reset vidsrc URL
+
+    // Update URL: set season, remove episode
+    const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '')
+    params.set('season', String(season))
+    params.delete('episode')
+    if (typeof window !== 'undefined') {
+      window.history.pushState({}, '', `${window.location.pathname}?${params.toString()}`)
+    }
   }
 
   const handleEpisodeSelect = (episode: number) => {
     setSelectedEpisode(episode)
-    // Tạo URL vidsrc cho tập phim được chọn với season hiện tại
-    const vidsrcUrl = `https://vidsrc.xyz/embed/tv?tmdb=${tvShow?.id}&season=${selectedSeason}&episode=${episode}&ds_lang=vi&sub_url=https%3A%2F%2Fvidsrc.me%2Fsample.srt&autoplay=1&autonext=1`
-    setVidsrcUrl(vidsrcUrl)
+
+    // Update URL: set season and episode
+    const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '')
+    params.set('season', String(selectedSeason))
+    params.set('episode', String(episode))
+    if (typeof window !== 'undefined') {
+      window.history.pushState({}, '', `${window.location.pathname}?${params.toString()}`)
+    }
   }
 
 
@@ -302,6 +315,16 @@ export default function TVShowDetail() {
     fetchTVShow()
   }, [id, API_KEY])
 
+  // Reset selections when navigating to a different TV show id
+  useEffect(() => {
+    setSelectedSeason(1)
+    setSelectedEpisode(0)
+    setEpisodes([])
+    setVidsrcUrl('')
+    setShowTVShow(false)
+    setSelectedServer(null)
+  }, [id])
+
   // Helper to format date as dd/mm/yyyy (Vietnam locale)
   const formatDate = (dateStr?: string) => {
     try {
@@ -335,14 +358,37 @@ export default function TVShowDetail() {
     }
   }, [tvShow?.id, selectedSeason, API_KEY])
 
-  // Check URL parameters for season selection
+  // Sync selected season and episode from URL on mount and browser navigation without route reload
   useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const seasonParam = urlParams.get('season');
-    if (seasonParam && !isNaN(Number(seasonParam))) {
-      setSelectedSeason(Number(seasonParam));
+    const syncFromUrl = () => {
+      const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '')
+      const seasonParam = params.get('season')
+      const episodeParam = params.get('episode')
+
+      const seasonNum = seasonParam && !isNaN(Number(seasonParam)) ? Number(seasonParam) : 1
+      const episodeNum = episodeParam && !isNaN(Number(episodeParam)) ? Number(episodeParam) : 0
+
+      // Always set from URL; React will skip state update if value is unchanged
+      setSelectedSeason(seasonNum)
+      setSelectedEpisode(episodeNum)
     }
-  }, []);
+
+    syncFromUrl()
+    if (typeof window !== 'undefined') {
+      window.addEventListener('popstate', syncFromUrl)
+      return () => window.removeEventListener('popstate', syncFromUrl)
+    }
+  }, [id])
+
+  // Keep vidsrc URL in sync with selected season/episode and current TV show
+  useEffect(() => {
+    if (tvShow?.id && selectedEpisode > 0) {
+      const url = `https://vidsrc.xyz/embed/tv?tmdb=${tvShow.id}&season=${selectedSeason}&episode=${selectedEpisode}&ds_lang=vi&sub_url=https%3A%2F%2Fvidsrc.me%2Fsample.srt&autoplay=1&autonext=1`
+      setVidsrcUrl(url)
+    } else {
+      setVidsrcUrl('')
+    }
+  }, [tvShow?.id, selectedSeason, selectedEpisode])
 
   useEffect(() => {
     if (tvShow?.name && tvShow?.year) {
