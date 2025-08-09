@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useRef, useState, forwardRef } from "react";
 import Hls, { Level } from "hls.js";
-import { PlayIcon, PauseIcon, SpeakerWaveIcon, SpeakerXMarkIcon, ArrowsPointingOutIcon, Cog6ToothIcon } from "@heroicons/react/24/solid";
+import { PlayIcon, PauseIcon, ArrowsPointingOutIcon, Cog6ToothIcon } from "@heroicons/react/24/solid";
 
 type AvailableSpeed = 0.5 | 0.75 | 1 | 1.25 | 1.5 | 1.75 | 2;
 
@@ -38,9 +38,6 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
     const [isPlaying, setIsPlaying] = useState<boolean>(false);
     const [duration, setDuration] = useState<number>(0);
     const [currentTime, setCurrentTime] = useState<number>(0);
-         const [volume, setVolume] = useState<number>(1);
-     const [isMuted, setIsMuted] = useState<boolean>(false);
-     const [showVolumeSlider, setShowVolumeSlider] = useState<boolean>(false);
          const [speed, setSpeed] = useState<AvailableSpeed>(1);
      const [qualities, setQualities] = useState<Array<{ index: number; label: string }>>([]);
      const [currentQuality, setCurrentQuality] = useState<number>(-1); // -1: auto
@@ -137,6 +134,59 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
        };
      }, []);
 
+    // Safari-specific fixes
+    useEffect(() => {
+      const video = (ref && typeof ref === "object" && ref !== null
+        ? (ref as React.MutableRefObject<HTMLVideoElement | null>).current
+        : innerRef.current) as HTMLVideoElement | null;
+      
+      if (!video) return;
+
+      // Safari-specific fixes
+      const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent) || 
+                      /iPad|iPhone|iPod/.test(navigator.userAgent);
+      
+      if (isSafari) {
+        // Prevent Safari from showing native controls
+        video.setAttribute('webkit-playsinline', 'true');
+        video.setAttribute('playsinline', 'true');
+        video.setAttribute('x5-playsinline', 'true');
+        video.setAttribute('x5-video-player-type', 'h5');
+        video.setAttribute('x5-video-player-fullscreen', 'true');
+        
+        // Disable default video controls on Safari
+        video.controls = false;
+        
+        // Prevent Safari from showing native fullscreen controls
+        const preventDefault = (e: Event) => {
+          e.preventDefault();
+          e.stopPropagation();
+        };
+        
+        video.addEventListener('webkitbeginfullscreen', preventDefault);
+        video.addEventListener('webkitendfullscreen', preventDefault);
+        
+        // Additional Safari fixes
+        video.style.appearance = 'none';
+        video.style.webkitAppearance = 'none';
+        video.style.userSelect = 'none';
+        video.style.webkitUserSelect = 'none';
+        (video.style as CSSStyleDeclaration & { 
+          webkitTouchCallout?: string; 
+          webkitTapHighlightColor?: string; 
+        }).webkitTouchCallout = 'none';
+        (video.style as CSSStyleDeclaration & { 
+          webkitTouchCallout?: string; 
+          webkitTapHighlightColor?: string; 
+        }).webkitTapHighlightColor = 'transparent';
+        
+        return () => {
+          video.removeEventListener('webkitbeginfullscreen', preventDefault);
+          video.removeEventListener('webkitendfullscreen', preventDefault);
+        };
+      }
+    }, [ref]);
+
     // Initialize HLS/media
     useEffect(() => {
       const video = (ref && typeof ref === "object" && ref !== null
@@ -193,8 +243,8 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
          setIsSeeking(false); // Reset seeking when paused
        };
       const onVolume = () => {
-        setVolume(video.volume);
-        setIsMuted(video.muted);
+        // setVolume(video.volume); // Removed
+        // setIsMuted(video.muted); // Removed
       };
       video.addEventListener("loadedmetadata", onLoadedMetadata);
       video.addEventListener("timeupdate", onTimeUpdate);
@@ -205,8 +255,8 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
       video.addEventListener("canplay", onCanPlay);
       video.addEventListener("seeking", onSeeking);
       video.addEventListener("seeked", onSeeked);
-      setVolume(video.volume);
-      setIsMuted(video.muted);
+      // setVolume(video.volume); // Removed
+      // setIsMuted(video.muted); // Removed
 
       // RAF for smoother progress on some browsers
       const loop = () => {
@@ -301,20 +351,6 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
       setCurrentTime(value);
     }, [ref]);
 
-    const onVolumeChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-      const v = (ref && typeof ref === "object" && ref !== null ? ref.current : innerRef.current) as HTMLVideoElement | null;
-      if (!v) return;
-      const value = Number(e.target.value);
-      v.volume = value;
-      v.muted = value === 0;
-    }, [ref]);
-
-    const toggleMute = useCallback(() => {
-      const v = (ref && typeof ref === "object" && ref !== null ? ref.current : innerRef.current) as HTMLVideoElement | null;
-      if (!v) return;
-      v.muted = !v.muted;
-    }, [ref]);
-
     const changeSpeed = useCallback((s: AvailableSpeed) => {
       const v = (ref && typeof ref === "object" && ref !== null ? ref.current : innerRef.current) as HTMLVideoElement | null;
       if (!v) return;
@@ -390,9 +426,6 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
               e.preventDefault();
               togglePlay();
               break;
-            case "m":
-              toggleMute();
-              break;
             case "arrowright":
               {
                 const v = (ref && typeof ref === "object" && ref !== null ? ref.current : innerRef.current) as HTMLVideoElement | null;
@@ -410,38 +443,34 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
               break;
             case "escape":
               setShowSettings(false);
-              setShowVolumeSlider(false);
               break;
           }
         };
         window.addEventListener("keydown", handler);
         return () => window.removeEventListener("keydown", handler);
-      }, [togglePlay, toggleMute, toggleFullscreen, ref]);
+      }, [togglePlay, toggleFullscreen, ref]);
 
-      // Close volume slider when clicking anywhere in player except volume controls
-      useEffect(() => {
-        const handleClickInPlayer = (e: MouseEvent) => {
-          if (showVolumeSlider && innerContainerRef.current) {
-            const target = e.target as HTMLElement;
-            const volumeButton = target.closest('button[aria-label*="volume"]');
-            const volumeSlider = target.closest('input[aria-label="Volume"]');
-            const volumeContainer = target.closest('.volume-slider-container');
-            
-            // Only close if click is not on volume-related elements
-            if (!volumeButton && !volumeSlider && !volumeContainer) {
-              setShowVolumeSlider(false);
-            }
+    // Thêm các ref cho speed và quality
+    const speedRefs = useRef<(HTMLButtonElement | null)[]>([]);
+    const qualityRefs = useRef<(HTMLButtonElement | null)[]>([]);
+
+    // Scroll tới item đang chọn khi showSettings hoặc đổi tab
+    useEffect(() => {
+      if (!showSettings) return;
+      setTimeout(() => {
+        if (activeTab === 'speed') {
+          const idx = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2].findIndex((s) => s === speed);
+          if (speedRefs.current[idx]) {
+            speedRefs.current[idx]?.scrollIntoView({ block: 'nearest' });
           }
-        };
-
-        if (showVolumeSlider) {
-          document.addEventListener('click', handleClickInPlayer);
+        } else if (activeTab === 'quality') {
+          const idx = qualities.findIndex((q) => q.index === currentQuality);
+          if (qualityRefs.current[idx]) {
+            qualityRefs.current[idx]?.scrollIntoView({ block: 'nearest' });
+          }
         }
-
-        return () => {
-          document.removeEventListener('click', handleClickInPlayer);
-        };
-      }, [showVolumeSlider]);
+      }, 0);
+    }, [showSettings, activeTab, speed, currentQuality, qualities]);
 
     return (
       <div 
@@ -453,6 +482,13 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
         onMouseEnter={handleUserInteraction}
         onMouseLeave={handleMouseLeave}
         onClick={handleUserInteraction}
+        onDoubleClick={toggleFullscreen}
+        style={{
+          // Prevent Safari from showing native controls
+          WebkitUserSelect: 'none',
+          WebkitTouchCallout: 'none',
+          WebkitTapHighlightColor: 'transparent'
+        }}
       >
         <video
           ref={ref || innerRef}
@@ -460,17 +496,28 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
           poster={poster}
           className="w-full h-full bg-black"
           onError={onError}
+          playsInline
+          webkit-playsinline="true"
+          x5-playsinline="true"
+          x5-video-player-type="h5"
+          x5-video-player-fullscreen="true"
+          preload="metadata"
+          disablePictureInPicture={false}
+          controlsList="nodownload nofullscreen noremoteplayback"
+          style={{
+            WebkitUserSelect: 'none',
+            WebkitTouchCallout: 'none',
+            WebkitTapHighlightColor: 'transparent',
+            // Prevent Safari native controls
+            WebkitAppearance: 'none',
+            WebkitOverflowScrolling: 'touch',
+            // Additional Safari fixes
+            objectFit: 'contain',
+            backgroundColor: '#000'
+          }}
         />
 
-                 {/* Clickable overlay for play/pause */}
-         <div 
-           className={`absolute inset-0 ${showControls ? 'cursor-pointer' : 'cursor-none'} bg-transparent`}
-           onClick={togglePlay}
-           onMouseMove={handleUserInteraction}
-           aria-label={isPlaying ? "Pause" : "Play"}
-         />
-
-                            {/* Loading Indicator */}
+         {/* Loading Indicator */}
          {isLoading && (
            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
              <div className="pointer-events-auto flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-black/50 text-white">
@@ -603,48 +650,6 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
                  {isPlaying ? <PauseIcon className="w-4 h-4 sm:w-5 sm:h-5" /> : <PlayIcon className="w-4 h-4 sm:w-5 sm:h-5" />}
                </button>
                
-                               {/* Volume Control */}
-                <div className="relative flex items-center">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation(); // Prevent event bubbling
-                      if (showVolumeSlider) {
-                        // If volume slider is open, toggle mute instead
-                        toggleMute();
-                      } else {
-                        // If volume slider is closed, open it
-                        setShowVolumeSlider(true);
-                      }
-                    }}
-                    className="p-1.5 sm:p-2 rounded bg-white/10 hover:bg-white/20 text-white"
-                    aria-label={showVolumeSlider ? "Mute/Unmute" : "Show volume"}
-                    title={showVolumeSlider ? "Mute/Unmute" : "Show volume"}
-                  >
-                    {isMuted ? <SpeakerXMarkIcon className="w-4 h-4 sm:w-5 sm:h-5" /> : <SpeakerWaveIcon className="w-4 h-4 sm:w-5 sm:h-5" />}
-                  </button>
-                  
-                                     {/* Volume Slider */}
-                   {showVolumeSlider && (
-                     <div 
-                     className="volume-slider-container absolute bottom-full left-1/2 -translate-x-1/2 mb-3 
-                     bg-black/90 rounded-lg p-2 border border-white/20
-                     flex items-center justify-center w-12 h-32"
-                     >
-                       <input
-                         type="range"
-                         min={0}
-                         max={1}
-                         step={0.05}
-                         value={isMuted ? 0 : volume}
-                         onChange={onVolumeChange}
-                         className="w-20 sm:w-24 accent-red-600 cursor-pointer"
-                         aria-label="Volume"
-                         style={{ transform: 'rotate(270deg)' }}
-                       />
-                     </div>
-                   )}
-                </div>
-               
                <span className="text-[10px] sm:text-xs text-gray-200 tabular-nums">
                  {formatTime(currentTime)} / {formatTime(duration)}
                </span>
@@ -665,7 +670,7 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
 
                  {/* Settings Dropdown */}
                  {showSettings && (
-                   <div className="absolute bottom-full right-0 mb-2 bg-black/90 rounded-lg p-2 min-w-[120px] border border-white/20">
+                   <div className="absolute bottom-full right-0 mb-2 bg-black/90 rounded-lg p-2 min-w-[120px] max-h-[200px] border border-white/20">
                      {/* Tab Buttons */}
                      <div className="flex mb-2 border-b border-white/20">
                        <button
@@ -690,10 +695,11 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
 
                      {/* Speed Options */}
                      {activeTab === 'speed' && (
-                       <div className="space-y-1">
-                         {[0.5, 0.75, 1, 1.25, 1.5, 1.75, 2].map((s) => (
+                       <div className="space-y-1 max-h-[56px] overflow-y-auto scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                         {[0.5, 0.75, 1, 1.25, 1.5, 1.75, 2].map((s, idx) => (
                            <button
                              key={s}
+                             ref={el => { speedRefs.current[idx] = el; }}
                              onClick={() => {
                                changeSpeed(s as AvailableSpeed);
                                setShowSettings(false);
@@ -710,10 +716,11 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
 
                      {/* Quality Options */}
                      {activeTab === 'quality' && qualities.length > 0 && (
-                       <div className="space-y-1">
-                         {qualities.map((q) => (
+                       <div className="space-y-1 max-h-[56px] overflow-y-auto scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                         {qualities.map((q, idx) => (
                            <button
                              key={q.label}
+                             ref={el => { qualityRefs.current[idx] = el; }}
                              onClick={() => {
                                changeQuality(q.index);
                                setShowSettings(false);
