@@ -121,18 +121,39 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
          setIsFullscreen(isCurrentlyFullscreen);
        };
 
+       // Safari-specific fullscreen change events
+       const handleSafariFullscreenChange = () => {
+         const video = (ref && typeof ref === "object" && ref !== null
+           ? (ref as React.MutableRefObject<HTMLVideoElement | null>).current
+           : innerRef.current) as HTMLVideoElement | null;
+         
+         if (video) {
+           const isCurrentlyFullscreen = !!(document.fullscreenElement || 
+             (document as Document & { webkitFullscreenElement?: Element }).webkitFullscreenElement || 
+             (document as Document & { mozFullScreenElement?: Element }).mozFullScreenElement || 
+             (document as Document & { msFullscreenElement?: Element }).msFullscreenElement);
+           setIsFullscreen(isCurrentlyFullscreen);
+         }
+       };
+
        document.addEventListener('fullscreenchange', handleFullscreenChange);
        document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
        document.addEventListener('mozfullscreenchange', handleFullscreenChange);
        document.addEventListener('MSFullscreenChange', handleFullscreenChange);
+
+       // Safari-specific events
+       document.addEventListener('webkitbeginfullscreen', handleSafariFullscreenChange);
+       document.addEventListener('webkitendfullscreen', handleSafariFullscreenChange);
 
        return () => {
          document.removeEventListener('fullscreenchange', handleFullscreenChange);
          document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
          document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
          document.removeEventListener('MSFullscreenChange', handleFullscreenChange);
+         document.removeEventListener('webkitbeginfullscreen', handleSafariFullscreenChange);
+         document.removeEventListener('webkitendfullscreen', handleSafariFullscreenChange);
        };
-     }, []);
+     }, [ref]);
 
     // Safari-specific fixes
     useEffect(() => {
@@ -153,6 +174,10 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
         video.setAttribute('x5-playsinline', 'true');
         video.setAttribute('x5-video-player-type', 'h5');
         video.setAttribute('x5-video-player-fullscreen', 'true');
+        
+        // Enable fullscreen support for Safari
+        video.setAttribute('webkit-allow-fullscreen', 'true');
+        video.setAttribute('allowfullscreen', 'true');
         
         // Disable default video controls on Safari
         video.controls = false;
@@ -184,6 +209,30 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
           video.removeEventListener('webkitbeginfullscreen', preventDefault);
           video.removeEventListener('webkitendfullscreen', preventDefault);
         };
+      }
+    }, [ref]);
+
+    // Set fullscreen attributes for all browsers
+    useEffect(() => {
+      const video = (ref && typeof ref === "object" && ref !== null
+        ? (ref as React.MutableRefObject<HTMLVideoElement | null>).current
+        : innerRef.current) as HTMLVideoElement | null;
+      
+      if (!video) return;
+
+      // Set fullscreen attributes
+      video.setAttribute('webkit-allow-fullscreen', 'true');
+      video.setAttribute('allowfullscreen', 'true');
+      
+      // Additional fullscreen support attributes
+      const videoElement = video as HTMLVideoElement & {
+        webkitEnterFullscreen?: () => void;
+        webkitSetPresentationMode?: (mode: string) => void;
+      };
+      
+      // Ensure video element has fullscreen capabilities
+      if (videoElement.webkitEnterFullscreen || videoElement.webkitSetPresentationMode) {
+        video.setAttribute('webkit-allow-fullscreen', 'true');
       }
     }, [ref]);
 
@@ -376,21 +425,65 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
     const toggleFullscreen = useCallback(() => {
       const container = innerContainerRef.current;
       if (!container) return;
-      const doc = document as Document & { 
-        webkitFullscreenElement?: Element; 
-        webkitExitFullscreen?: () => void;
-      };
-      const el = container as HTMLElement & { 
-        webkitRequestFullscreen?: () => void;
-      };
-      if (doc.fullscreenElement || doc.webkitFullscreenElement) {
-        document.exitFullscreen?.();
-        doc.webkitExitFullscreen?.();
+
+      // Check if we're on Safari/iOS
+      const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent) || 
+                      /iPad|iPhone|iPod/.test(navigator.userAgent);
+
+      // Check current fullscreen state
+      const isCurrentlyFullscreen = !!(document.fullscreenElement || 
+        (document as Document & { webkitFullscreenElement?: Element }).webkitFullscreenElement || 
+        (document as Document & { mozFullScreenElement?: Element }).mozFullScreenElement || 
+        (document as Document & { msFullscreenElement?: Element }).msFullscreenElement);
+
+      if (isCurrentlyFullscreen) {
+        // Exit fullscreen
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+        } else if ((document as Document & { webkitExitFullscreen?: () => void }).webkitExitFullscreen) {
+          (document as Document & { webkitExitFullscreen?: () => void }).webkitExitFullscreen?.();
+        } else if ((document as Document & { mozCancelFullScreen?: () => void }).mozCancelFullScreen) {
+          (document as Document & { mozCancelFullScreen?: () => void }).mozCancelFullScreen?.();
+        } else if ((document as Document & { msExitFullscreen?: () => void }).msExitFullscreen) {
+          (document as Document & { msExitFullscreen?: () => void }).msExitFullscreen?.();
+        }
       } else {
-        el.requestFullscreen?.();
-        el.webkitRequestFullscreen?.();
+        // Enter fullscreen
+        const element = container as HTMLElement & { 
+          webkitRequestFullscreen?: () => void;
+          mozRequestFullScreen?: () => void;
+          msRequestFullscreen?: () => void;
+        };
+
+        if (element.requestFullscreen) {
+          element.requestFullscreen();
+        } else if (element.webkitRequestFullscreen) {
+          element.webkitRequestFullscreen();
+        } else if (element.mozRequestFullScreen) {
+          element.mozRequestFullScreen();
+        } else if (element.msRequestFullscreen) {
+          element.msRequestFullscreen();
+        } else if (isSafari) {
+          // Safari-specific fallback - try to use video element directly
+          const video = (ref && typeof ref === "object" && ref !== null
+            ? (ref as React.MutableRefObject<HTMLVideoElement | null>).current
+            : innerRef.current) as HTMLVideoElement | null;
+          
+          if (video) {
+            const videoElement = video as HTMLVideoElement & {
+              webkitEnterFullscreen?: () => void;
+              webkitSetPresentationMode?: (mode: string) => void;
+            };
+            
+            if (videoElement.webkitEnterFullscreen) {
+              videoElement.webkitEnterFullscreen();
+            } else if (videoElement.webkitSetPresentationMode) {
+              videoElement.webkitSetPresentationMode('fullscreen');
+            }
+          }
+        }
       }
-    }, []);
+    }, [ref]);
 
          const changeQuality = useCallback((level: number) => {
        const hls = hlsRef.current;
@@ -494,10 +587,27 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
           ref={ref || innerRef}
           controls={false}
           poster={poster}
+          className="w-full h-full bg-black"
           onError={onError}
           playsInline
           webkit-playsinline="true"
+          x5-playsinline="true"
+          x5-video-player-type="h5"
+          x5-video-player-fullscreen="true"
           preload="metadata"
+          disablePictureInPicture={false}
+          controlsList="nodownload nofullscreen noremoteplayback"
+          style={{
+            WebkitUserSelect: 'none',
+            WebkitTouchCallout: 'none',
+            WebkitTapHighlightColor: 'transparent',
+            // Prevent Safari native controls
+            WebkitAppearance: 'none',
+            WebkitOverflowScrolling: 'touch',
+            // Additional Safari fixes
+            objectFit: 'contain',
+            backgroundColor: '#000'
+          }}
         />
 
          {/* Loading Indicator */}
