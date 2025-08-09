@@ -494,27 +494,10 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
           ref={ref || innerRef}
           controls={false}
           poster={poster}
-          className="w-full h-full bg-black"
           onError={onError}
           playsInline
           webkit-playsinline="true"
-          x5-playsinline="true"
-          x5-video-player-type="h5"
-          x5-video-player-fullscreen="true"
           preload="metadata"
-          disablePictureInPicture={false}
-          controlsList="nodownload nofullscreen noremoteplayback"
-          style={{
-            WebkitUserSelect: 'none',
-            WebkitTouchCallout: 'none',
-            WebkitTapHighlightColor: 'transparent',
-            // Prevent Safari native controls
-            WebkitAppearance: 'none',
-            WebkitOverflowScrolling: 'touch',
-            // Additional Safari fixes
-            objectFit: 'contain',
-            backgroundColor: '#000'
-          }}
         />
 
          {/* Loading Indicator */}
