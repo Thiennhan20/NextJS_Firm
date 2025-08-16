@@ -864,5 +864,3 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
 EnhancedMoviePlayer.displayName = "EnhancedMoviePlayer";
 
 export default EnhancedMoviePlayer;
-
-

@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef, useMemo } from 'react'
 import { motion, useScroll, useTransform, AnimatePresence } from 'framer-motion'
 import { Canvas } from '@react-three/fiber'
-import { OrbitControls, PerspectiveCamera } from '@react-three/drei'
+import { OrbitControls, PerspectiveCamera, Html } from '@react-three/drei'
 import * as THREE from 'three'
 import Image from 'next/image'
 import { ClockIcon, CalendarIcon, PlayIcon } from '@heroicons/react/24/solid'
@@ -1291,22 +1291,58 @@ useEffect(() => {
 function MoviePoster3D({ posterUrl }: { posterUrl: string }) {
   const meshRef = useRef<THREE.Mesh>(null)
   const [texture, setTexture] = useState<THREE.Texture | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     const loader = new THREE.TextureLoader()
     let loadedTexture: THREE.Texture | null = null
+    let cancelled = false
     
-    loader.load(posterUrl, (tex) => {
-      loadedTexture = tex
-      setTexture(tex)
-    })
+    setIsLoading(true)
+    
+    loader.load(
+      posterUrl, 
+      (tex) => {
+        if (!cancelled) {
+          // Set texture properties
+          tex.flipY = true // Để ảnh hiển thị đúng hướng
+          tex.generateMipmaps = true
+          
+          loadedTexture = tex
+          setTexture(tex)
+          setIsLoading(false)
+        }
+      },
+      undefined, // onProgress
+      (error) => {
+        // onError
+        if (!cancelled) {
+          console.error('Texture loading error:', error)
+          setIsLoading(false)
+        }
+      }
+    )
     
     return () => {
+      cancelled = true
       if (loadedTexture) {
         loadedTexture.dispose()
       }
     }
   }, [posterUrl])
+
+  // Debug texture loading
+  useEffect(() => {
+    if (texture) {
+      console.log('Texture loaded successfully:', {
+        uuid: texture.uuid,
+        image: texture.image,
+        width: texture.image?.width,
+        height: texture.image?.height,
+        isLoaded: texture.image?.complete
+      })
+    }
+  }, [texture])
 
   useEffect(() => {
     let frameId: number;
@@ -1326,14 +1362,50 @@ function MoviePoster3D({ posterUrl }: { posterUrl: string }) {
     return () => cancelAnimationFrame(frameId);
   }, []);
 
+  if (isLoading) {
+    return (
+      <mesh>
+        <planeGeometry args={[2, 3]} />
+        <meshBasicMaterial color="#374151" />
+        <Html center>
+          <div className="flex flex-col items-center justify-center text-white">
+            <motion.div 
+              animate={{ rotate: 360 }}
+              transition={{ repeat: Infinity, duration: 1.5, ease: 'linear' }}
+              className="w-8 h-8 border-4 border-red-500 border-t-transparent rounded-full"
+            />
+            <span className="text-xs mt-2 text-gray-300">Loading...</span>
+          </div>
+        </Html>
+      </mesh>
+    )
+  }
+
   if (!texture) {
-    return null
+    return (
+      <mesh>
+        <planeGeometry args={[2, 3]} />
+        <meshBasicMaterial color="#6B7280" />
+        <Html center>
+          <div className="flex flex-col items-center justify-center text-white">
+            <span className="text-xs text-gray-300">No Image</span>
+            </div>
+        </Html>
+      </mesh>
+    )
   }
 
   return (
     <mesh ref={meshRef} castShadow>
       <planeGeometry args={[2, 3]} />
-      <meshBasicMaterial map={texture} toneMapped={false} />
+      <meshBasicMaterial 
+        key={texture.uuid} // Force re-render when texture changes
+        map={texture} 
+        toneMapped={false}
+        transparent={false}
+        opacity={1}
+        side={THREE.DoubleSide}
+      />
     </mesh>
   )
 }

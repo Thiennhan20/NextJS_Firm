@@ -527,19 +527,6 @@ function TVShowsPageContent() {
                           <span>{tvShow.country}</span>
                         </div>
                         
-                        {/* Seasons and Episodes Info */}
-                        {tvShow.totalSeasons && tvShow.totalSeasons > 0 && (
-                          <div className="flex items-center justify-between text-xs text-gray-400 mt-1">
-                            <span>
-                              {tvShow.totalSeasons} Season{tvShow.totalSeasons > 1 ? 's' : ''}
-                            </span>
-                            {tvShow.totalEpisodes && tvShow.totalEpisodes > 0 && (
-                              <span>
-                                {tvShow.totalEpisodes} Episode{tvShow.totalEpisodes > 1 ? 's' : ''}
-                              </span>
-                            )}
-                          </div>
-                        )}
                       </div>
                     </div>
                   </Link>
