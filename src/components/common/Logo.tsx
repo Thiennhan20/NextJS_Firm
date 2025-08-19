@@ -43,7 +43,7 @@ const Logo: React.FC<LogoProps> = ({
 
           {/* Main Logo Container */}
           <motion.div
-            className="relative flex items-center gap-2 px-3 py-2 rounded-xl backdrop-blur-sm border transition-all duration-500 bg-black/50 hover:bg-black/70 border-white/20 shadow-xl"
+            className="relative flex items-center justify-center px-3 py-2 rounded-xl backdrop-blur-sm border transition-all duration-500 bg-black/50 hover:bg-black/70 border-white/20 shadow-xl"
             animate={{
               boxShadow: isHovered 
                 ? '0 20px 40px -12px rgba(59, 130, 246, 0.4), 0 0 0 1px rgba(59, 130, 246, 0.3)'
@@ -88,13 +88,13 @@ const Logo: React.FC<LogoProps> = ({
               </motion.div>
 
               {/* Floating Particles */}
-              {[...Array(2)].map((_, i) => (
+              {[...Array(3)].map((_, i) => (
                 <motion.div
                   key={i}
                   className="absolute w-1 h-1 rounded-full bg-blue-400"
                   style={{
-                    top: `${30 + i * 20}%`,
-                    left: `${80 + i * 10}%`,
+                    top: `${20 + i * 25}%`,
+                    left: `${75 + i * 15}%`,
                   }}
                   animate={{
                     y: isHovered ? [-8, -15, -8] : [0, -3, 0],
@@ -108,41 +108,6 @@ const Logo: React.FC<LogoProps> = ({
                   }}
                 />
               ))}
-            </motion.div>
-
-            {/* Text Logo */}
-            <motion.div className="flex flex-col">
-              <motion.span 
-                className="text-base sm:text-lg font-black tracking-wider leading-none"
-                animate={{
-                  background: isHovered
-                    ? 'linear-gradient(135deg, #2563eb, #7c3aed, #0891b2)'
-                    : 'linear-gradient(135deg,rgb(7, 83, 205), #8b5cf6)',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                  backgroundClip: 'text',
-                }}
-                whileHover={{
-                  scale: 1.02,
-                  letterSpacing: '0.15em',
-                }}
-                transition={{ duration: 0.3 }}
-              >
-                E&G
-              </motion.span>
-              
-              {/* Subtitle */}
-              <motion.span 
-                className="text-[10px] tracking-widest opacity-70 text-gray-300"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ 
-                  opacity: isHovered ? 1 : 0.7, 
-                  y: isHovered ? 0 : 3 
-                }}
-                transition={{ duration: 0.3 }}
-              >
-                Funny
-              </motion.span>
             </motion.div>
 
             {/* Shine Effect */}
@@ -214,7 +179,7 @@ const Logo: React.FC<LogoProps> = ({
 
         {/* Main Logo Container */}
         <motion.div
-          className={`relative flex items-center gap-2 px-3 py-2 rounded-xl backdrop-blur-sm border transition-all duration-500 ${
+          className={`relative flex items-center justify-center px-3 py-2 rounded-xl backdrop-blur-sm border transition-all duration-500 ${
             isScrolled 
               ? 'bg-white/90 hover:bg-white border-gray-200 shadow-lg' 
               : 'bg-black/50 hover:bg-black/70 border-white/20 shadow-xl'
@@ -275,15 +240,15 @@ const Logo: React.FC<LogoProps> = ({
             </motion.div>
 
             {/* Floating Particles */}
-            {[...Array(2)].map((_, i) => (
+            {[...Array(3)].map((_, i) => (
               <motion.div
                 key={i}
                 className={`absolute w-1 h-1 rounded-full ${
                   isScrolled ? 'bg-orange-400' : 'bg-blue-400'
                 }`}
                 style={{
-                  top: `${30 + i * 20}%`,
-                  left: `${80 + i * 10}%`,
+                  top: `${20 + i * 25}%`,
+                  left: `${75 + i * 15}%`,
                 }}
                 animate={{
                   y: isHovered ? [-8, -15, -8] : [0, -3, 0],
@@ -297,49 +262,6 @@ const Logo: React.FC<LogoProps> = ({
                 }}
               />
             ))}
-          </motion.div>
-
-          {/* Text Logo */}
-          <motion.div className="flex flex-col">
-            <motion.span 
-              className={`text-base sm:text-lg font-black tracking-wider leading-none ${
-                isScrolled ? 'text-gray-900' : 'text-white'
-              }`}
-              animate={{
-                background: isHovered
-                  ? isScrolled
-                    ? 'linear-gradient(135deg, #f97316, #dc2626, #be185d)'
-                    : 'linear-gradient(135deg, #2563eb, #7c3aed, #0891b2)'
-                  : isScrolled
-                    ? 'linear-gradient(135deg, #f59e0b, #ef4444)'
-                    : 'linear-gradient(135deg,rgb(7, 83, 205), #8b5cf6)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                backgroundClip: 'text',
-              }}
-              whileHover={{
-                scale: 1.02,
-                letterSpacing: '0.15em',
-              }}
-              transition={{ duration: 0.3 }}
-            >
-              E&G
-            </motion.span>
-            
-            {/* Subtitle */}
-            <motion.span 
-              className={`text-[10px] tracking-widest opacity-70 ${
-                isScrolled ? 'text-gray-600' : 'text-gray-300'
-              }`}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ 
-                opacity: isHovered ? 1 : 0.7, 
-                y: isHovered ? 0 : 3 
-              }}
-              transition={{ duration: 0.3 }}
-            >
-              Funny
-            </motion.span>
           </motion.div>
 
           {/* Shine Effect */}

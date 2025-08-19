@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Pagination from '@/components/Pagination'
+import FilterIcon from '@/components/FilterIcon'
 import axios from 'axios'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
@@ -51,9 +52,7 @@ function MoviesPageContent() {
   const [selectedCountry, setSelectedCountry] = useState<string>(urlCountry)
   const [page, setPage] = useState(urlPage)
   const [loading, setLoading] = useState(false)
-  const [isYearDropdownOpen, setIsYearDropdownOpen] = useState(false)
-  const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false)
-  const [isCountryDropdownOpen, setIsCountryDropdownOpen] = useState(false)
+
   
   // Cache các trang đã load: { [filterKey]: { [page]: Movie[] } }
   const [pagesCache, setPagesCache] = useState<{ [filterKey: string]: { [page: number]: Movie[] } }>({})
@@ -100,29 +99,7 @@ function MoviesPageContent() {
   const prevCategoryRef = useRef(selectedCategory);
   const prevCountryRef = useRef(selectedCountry);
   
-  // Close dropdowns when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as Element;
-      if (!target.closest('.year-dropdown-container')) {
-        setIsYearDropdownOpen(false);
-      }
-      if (!target.closest('.category-dropdown-container')) {
-        setIsCategoryDropdownOpen(false);
-      }
-      if (!target.closest('.country-dropdown-container')) {
-        setIsCountryDropdownOpen(false);
-      }
-    };
 
-    if (isYearDropdownOpen || isCategoryDropdownOpen || isCountryDropdownOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [isYearDropdownOpen, isCategoryDropdownOpen, isCountryDropdownOpen]);
 
   // Sync state với URL parameters khi URL thay đổi (browser navigation)
   useEffect(() => {
@@ -547,173 +524,19 @@ function MoviesPageContent() {
           All Movies
         </motion.h1>
         
-        {/* Filter cho Year, Category và Country */}
-        <div className="flex flex-col gap-4 mb-10">
-          <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
-            <div className="flex flex-wrap gap-4">
-              {/* Year Filter */}
-              <div className="relative year-dropdown-container">
-                <button
-                  onClick={() => setIsYearDropdownOpen(!isYearDropdownOpen)}
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-800 text-white hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all duration-200"
-                >
-                  <span className="font-medium text-sm">
-                    {selectedYear === 'All' ? 'All Years' : selectedYear}
-                  </span>
-                  <motion.svg 
-                    className="w-4 h-4 text-gray-400"
-                    animate={{ rotate: isYearDropdownOpen ? 180 : 0 }}
-                    transition={{ duration: 0.2 }}
-                    fill="none" 
-                    stroke="currentColor" 
-                    viewBox="0 0 24 24"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </motion.svg>
-                </button>
-                
-                {/* Custom Dropdown */}
-                <AnimatePresence>
-                  {isYearDropdownOpen && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -10, scale: 0.95 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                      transition={{ duration: 0.2 }}
-                      className="absolute top-full left-0 mt-1 w-27 bg-gray-800 rounded-lg shadow-xl border border-gray-700 z-50 max-h-36 overflow-y-auto scrollbar-hide"
-                    >
-                      <div className="py-1">
-                        {years.map((year) => (
-                          <button
-                            key={year}
-                            onClick={() => {
-                              handleYearChange(year === 'All' ? 'All' : Number(year));
-                              setIsYearDropdownOpen(false);
-                            }}
-                            className={`w-full px-2 py-1.5 text-left hover:bg-gray-700 transition-colors duration-150 text-sm ${
-                              String(selectedYear) === String(year)
-                                ? 'bg-purple-600 text-white font-medium' 
-                                : 'text-gray-300 hover:text-white'
-                            }`}
-                          >
-                            {year === 'All' ? 'All Years' : year}
-                          </button>
-                        ))}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-
-              {/* Category Filter */}
-              <div className="relative category-dropdown-container">
-                <button
-                  onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-800 text-white hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all duration-200"
-                >
-                  <span className="font-medium text-sm">
-                    {selectedCategory === 'All' ? 'All Categories' : selectedCategory}
-                  </span>
-                  <motion.svg 
-                    className="w-4 h-4 text-gray-400"
-                    animate={{ rotate: isCategoryDropdownOpen ? 180 : 0 }}
-                    transition={{ duration: 0.2 }}
-                    fill="none" 
-                    stroke="currentColor" 
-                    viewBox="0 0 24 24"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </motion.svg>
-                </button>
-                
-                {/* Custom Dropdown */}
-                <AnimatePresence>
-                  {isCategoryDropdownOpen && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -10, scale: 0.95 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                      transition={{ duration: 0.2 }}
-                      className="absolute top-full left-0 mt-1 w-32 bg-gray-800 rounded-lg shadow-xl border border-gray-700 z-50 max-h-36 overflow-y-auto scrollbar-hide"
-                    >
-                      <div className="py-1">
-                        {categories.map((category) => (
-                          <button
-                            key={category}
-                            onClick={() => {
-                              handleCategoryChange(category);
-                              setIsCategoryDropdownOpen(false);
-                            }}
-                            className={`w-full px-2 py-1.5 text-left hover:bg-gray-700 transition-colors duration-150 text-sm ${
-                              selectedCategory === category
-                                ? 'bg-purple-600 text-white font-medium' 
-                                : 'text-gray-300 hover:text-white'
-                            }`}
-                          >
-                            {category === 'All' ? 'All Categories' : category}
-                          </button>
-                        ))}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-
-              {/* Country Filter */}
-              <div className="relative country-dropdown-container">
-                <button
-                  onClick={() => setIsCountryDropdownOpen(!isCountryDropdownOpen)}
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-800 text-white hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all duration-200"
-                >
-                  <span className="font-medium text-sm">
-                    {selectedCountry === 'All' ? 'All Countries' : selectedCountry}
-                  </span>
-                  <motion.svg 
-                    className="w-4 h-4 text-gray-400"
-                    animate={{ rotate: isCountryDropdownOpen ? 180 : 0 }}
-                    transition={{ duration: 0.2 }}
-                    fill="none" 
-                    stroke="currentColor" 
-                    viewBox="0 0 24 24"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </motion.svg>
-                </button>
-                
-                {/* Custom Dropdown */}
-                <AnimatePresence>
-                  {isCountryDropdownOpen && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -10, scale: 0.95 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                      transition={{ duration: 0.2 }}
-                      className="absolute top-full left-0 mt-1 w-28 bg-gray-800 rounded-lg shadow-xl border border-gray-700 z-50 max-h-36 overflow-y-auto scrollbar-hide"
-                    >
-                      <div className="py-1">
-                        {countries.map((country) => (
-                          <button
-                            key={country}
-                            onClick={() => {
-                              handleCountryChange(country);
-                              setIsCountryDropdownOpen(false);
-                            }}
-                            className={`w-full px-2 py-1.5 text-left hover:bg-gray-700 transition-colors duration-150 text-sm ${
-                              selectedCountry === country
-                                ? 'bg-purple-600 text-white font-medium' 
-                                : 'text-gray-300 hover:text-white'
-                            }`}
-                          >
-                            {country === 'All' ? 'All Countries' : country}
-                          </button>
-                        ))}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            </div>
-          </div>
+        {/* Filter Icon */}
+        <div className="flex justify-center mb-8 px-4">
+          <FilterIcon
+            selectedYear={selectedYear}
+            selectedCategory={selectedCategory}
+            selectedCountry={selectedCountry}
+            onYearChange={handleYearChange}
+            onCategoryChange={handleCategoryChange}
+            onCountryChange={handleCountryChange}
+            years={years}
+            categories={categories}
+            countries={countries}
+          />
         </div>
         {/* Movie Grid + Loading + Pagination */}
         {loading ? (
@@ -740,7 +563,7 @@ function MoviesPageContent() {
               initial="hidden"
               animate="show"
               exit="hidden"
-              className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-6"
+              className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4 lg:gap-6 xl:gap-8"
             >
               {/* Sửa điều kiện: chỉ hiện No movies found khi !loading, cache đã có key cho page hiện tại và không có phim */}
               {!loading && getCurrentFilterCache().hasOwnProperty(page) && pagedMovies.length === 0 && (
@@ -762,7 +585,7 @@ function MoviesPageContent() {
                    transition={{ type: 'spring', stiffness: 200, damping: 20 }}
                  >
                    <Link key={movie.id} href={`/movies/${movie.id}?page=${page}&year=${selectedYear}&category=${selectedCategory}&country=${selectedCountry}`} className="block">
-                     <div className="border rounded-lg overflow-hidden relative group">
+                     <div className="border rounded-lg overflow-hidden relative group max-w-[140px] mx-auto md:max-w-none">
                                                {/* Poster Image */}
                         <div className="relative">
                           <Image
@@ -789,12 +612,12 @@ function MoviesPageContent() {
 
                         {/* Movie Info */}
                         <div className="p-3 bg-gray-900">
-                          <h3 className="text-white font-semibold text-sm mb-2 truncate">
+                          <h3 className="text-white font-semibold text-xs md:text-sm mb-2 truncate">
                             {movie.title}
                           </h3>
                           
                           {/* Date and Country */}
-                          <div className="flex items-center justify-between text-xs text-gray-400">
+                          <div className="flex items-center justify-between text-[10px] md:text-xs text-gray-400">
                             <span>
                               {movie.release_date ? new Date(movie.release_date).toLocaleDateString('en-US', {
                                 year: 'numeric',

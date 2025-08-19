@@ -7,6 +7,7 @@ import { Toaster } from 'react-hot-toast';
 import Footer from '@/components/Footer';
 import WatchlistSyncer from '@/components/WatchlistSyncer';
 import AuthChecker from '../components/AuthChecker';
+import SplashWrapper from '@/components/SplashWrapper';
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -18,7 +19,6 @@ export const metadata: Metadata = {
     'translate': 'no',
   },
 };
-
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -37,6 +37,9 @@ export default function RootLayout({
         <meta name="referrer" content="origin" />
       </head>
       <body className={`${inter.className} bg-black text-white min-h-screen flex flex-col`}>
+        {/* Splash Screen */}
+        <SplashWrapper />
+        
         <AuthChecker />
         <Navigation />
         <WatchlistSyncer />

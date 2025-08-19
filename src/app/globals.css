@@ -1,5 +1,21 @@
 @import "tailwindcss";
 
+/* Splash Screen Styles */
+.splash-screen-active {
+  overflow: hidden !important;
+  height: 100vh !important;
+}
+
+.splash-screen-active body {
+  overflow: hidden !important;
+  height: 100vh !important;
+}
+
+.splash-screen-active html {
+  overflow: hidden !important;
+  height: 100vh !important;
+}
+
 /* Prevent translation for logo and brand elements */
 [translate="no"],
 .no-translate {
