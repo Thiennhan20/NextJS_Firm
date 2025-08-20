@@ -511,16 +511,16 @@ function TVShowsPageContent() {
 
   return (
     <div className="min-h-screen bg-black">
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-7xl mx-auto px-2 md:px-4">
         <motion.h1
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-3xl sm:text-5xl font-bold mb-8 bg-gradient-to-r from-red-500 to-blue-500 text-transparent bg-clip-text text-center"
+          className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-6 md:mb-8 bg-gradient-to-r from-red-500 to-blue-500 text-transparent bg-clip-text text-center px-2"
         >
           All TV Shows
         </motion.h1>
         {/* Filter Icon */}
-        <div className="flex justify-center mb-8 px-4">
+        <div className="flex justify-center mb-6 md:mb-8 px-2 md:px-4">
           <FilterIcon
             selectedYear={selectedYear}
             selectedCategory={selectedCategory}
@@ -558,7 +558,7 @@ function TVShowsPageContent() {
               initial="hidden"
               animate="show"
               exit="hidden"
-              className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4 lg:gap-6 xl:gap-8"
+              className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 md:gap-3 lg:gap-4 xl:gap-6 px-2 md:px-0"
             >
               {/* Sửa điều kiện: chỉ hiện No TV shows found khi !loading, cache đã có key cho page hiện tại và không có TV show */}
               {!loading && getCurrentFilterCache().hasOwnProperty(page) && pagedTVShows.length === 0 && (
@@ -580,7 +580,7 @@ function TVShowsPageContent() {
                   transition={{ type: 'spring', stiffness: 200, damping: 20 }}
                 >
                   <Link key={tvShow.id} href={`/tvshows/${tvShow.id}?page=${page}&year=${selectedYear}&category=${selectedCategory}&country=${selectedCountry}&season=1`} className="block">
-                    <div className="border rounded-lg overflow-hidden relative group max-w-[140px] mx-auto md:max-w-none">
+                    <div className="border border-gray-700 rounded-lg overflow-hidden relative group bg-gray-800 hover:bg-gray-700 transition-colors duration-200">
                       {/* Poster Image */}
                       <div className="relative">
                         <Image
@@ -606,23 +606,23 @@ function TVShowsPageContent() {
                       </div>
 
                       {/* TV Show Info */}
-                      <div className="p-3 bg-gray-900">
-                        <div className="flex items-start justify-between mb-2">
-                          <h3 className="text-white font-semibold text-xs md:text-sm truncate">
+                      <div className="p-2 md:p-3 bg-gray-900">
+                        <div className="flex items-start justify-between mb-1 md:mb-2">
+                          <h3 className="text-white font-semibold text-xs md:text-sm truncate leading-tight">
                             {tvShow.name}
                           </h3>
                         </div>
                         
                         {/* Date and Country */}
                         <div className="flex items-center justify-between text-[10px] md:text-xs text-gray-400">
-                          <span>
+                          <span className="truncate">
                             {tvShow.first_air_date ? new Date(tvShow.first_air_date).toLocaleDateString('en-US', {
                               year: 'numeric',
                               month: 'short',
                               day: 'numeric'
                             }) : 'TBA'}
                           </span>
-                          <span>{tvShow.country}</span>
+                          <span className="truncate ml-1">{tvShow.country}</span>
                         </div>
                         
                       </div>
@@ -634,7 +634,7 @@ function TVShowsPageContent() {
           </AnimatePresence>
         )}
         {!loading && getCurrentFilterLoadedPages().length > 0 && (
-          <div className="max-w-7xl mx-auto px-4 pb-12">
+          <div className="max-w-7xl mx-auto px-2 md:px-4 pb-8 md:pb-12">
             <Pagination
               currentPage={page}
               loadedPages={getCurrentFilterLoadedPages()}

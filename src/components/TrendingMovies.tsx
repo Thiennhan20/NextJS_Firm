@@ -164,9 +164,9 @@ export default function TrendingMovies() {
   };
 
   return (
-    <section className="py-16 px-2 sm:px-4 bg-gradient-to-b from-gray-900 to-black">
+    <section className="py-8 sm:py-12 md:py-16 px-2 sm:px-4 bg-gradient-to-b from-gray-900 to-black">
       <div className="max-w-7xl mx-auto">
-        <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold mb-8 bg-gradient-to-r from-yellow-400 to-pink-500 text-transparent bg-clip-text text-center leading-tight px-4">
+        <h2 className="text-lg sm:text-xl md:text-2xl lg:text-3xl xl:text-4xl font-bold mb-4 sm:mb-6 md:mb-8 bg-gradient-to-r from-yellow-400 to-pink-500 text-transparent bg-clip-text text-center leading-tight px-4">
           Top Trending<br />
           Movies & TV Shows
         </h2>
@@ -200,11 +200,17 @@ export default function TrendingMovies() {
             </motion.button>
           
           {/* Scroll indicator */}
-          <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 z-20">
-            <div className="flex space-x-1">
-              <div className="w-2 h-2 bg-white/30 rounded-full animate-pulse"></div>
-              <div className="w-2 h-2 bg-white/30 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
-              <div className="w-2 h-2 bg-white/30 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
+          <div className={`absolute -bottom-2 sm:-bottom-4 md:-bottom-8 left-1/2 transform -translate-x-1/2 z-20 transition-opacity duration-300 ${
+            canScrollLeft ? 'opacity-0 pointer-events-none' : 'opacity-100'
+          }`}>
+            <div className="flex items-center space-x-1 sm:space-x-2 text-white/60">
+              <svg className="w-3 h-3 sm:w-4 sm:h-4 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+              <span className="text-xs sm:text-sm font-medium">Vuốt hoặc bấm &lt; &gt;</span>
+              <svg className="w-3 h-3 sm:w-4 sm:h-4 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
             </div>
           </div>
           
@@ -222,7 +228,7 @@ export default function TrendingMovies() {
               <div className="text-gray-400 text-center py-8">Loading...</div>
             ) : (
               trending.map((item) => (
-                <Link key={item.id} href={getRoute(item)} className="min-w-[220px] sm:min-w-[260px] max-w-[260px]">
+                <Link key={item.id} href={getRoute(item)} className="min-w-[180px] sm:min-w-[220px] md:min-w-[260px] max-w-[260px]">
                   <motion.div
                     whileHover={{ scale: 1.07 }}
                     className="bg-gray-800 rounded-xl overflow-hidden shadow-lg snap-center cursor-pointer group relative"
@@ -233,10 +239,10 @@ export default function TrendingMovies() {
                         alt={getTitle(item)}
                         width={400}
                         height={600}
-                        className="w-full h-72 object-cover group-hover:scale-105 transition-transform duration-300"
+                        className="w-full h-56 sm:h-72 object-cover group-hover:scale-105 transition-transform duration-300"
                       />
                     ) : (
-                      <div className="w-full h-72 flex items-center justify-center bg-gray-700 text-4xl">🎬</div>
+                      <div className="w-full h-56 sm:h-72 flex items-center justify-center bg-gray-700 text-3xl sm:text-4xl">🎬</div>
                     )}
                     {/* Status badge - top left */}
                     <div className="absolute top-3 left-3 bg-red-500/90 px-2 py-1 rounded-full text-xs text-white font-bold">
@@ -246,9 +252,9 @@ export default function TrendingMovies() {
                     <div className="absolute top-3 right-3 bg-black/70 px-2 py-1 rounded-full text-xs text-white font-bold">
                       {item.type === 'movie' ? '🎬 Movie' : '📺 TV Show'}
                     </div>
-                    <div className="p-4">
-                      <div className="font-semibold text-lg text-white mb-1 truncate">{getTitle(item)}</div>
-                      <div className="text-gray-400 text-sm">{item.year}</div>
+                    <div className="p-3 sm:p-4">
+                      <div className="font-semibold text-base sm:text-lg text-white mb-1 truncate">{getTitle(item)}</div>
+                      <div className="text-gray-400 text-xs sm:text-sm">{item.year}</div>
                     </div>
                   </motion.div>
                 </Link>

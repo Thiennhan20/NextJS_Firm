@@ -536,7 +536,7 @@ export default function StreamingPage() {
         id: tempMessageId,
         sender: 'me',
         username: username,
-        text: 'Đang tải ảnh...',
+        text: 'Loading image...',
         timestamp: new Date(),
         type: 'image',
         imageStatus: 'loading',

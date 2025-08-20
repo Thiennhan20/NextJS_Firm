@@ -63,6 +63,22 @@ video::-webkit-media-controls {
   display: none !important;
 }
 
+/* Horizontal scroll container styles */
+.horizontal-scroll-container {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* Internet Explorer 10+ */
+}
+
+.horizontal-scroll-container::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+
+/* Smooth scrolling for horizontal containers */
+.horizontal-scroll-container {
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+
 video::-webkit-media-controls-panel {
   display: none !important;
 }
