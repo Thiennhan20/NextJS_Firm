@@ -2,12 +2,13 @@
 
 import { motion, useScroll, useTransform, MotionValue } from 'framer-motion'
 import { useEffect, useState, useRef, ReactNode } from 'react'
-import axios from 'axios'
+// axios import removed as it's not used
 import { useRouter } from 'next/navigation'
-import Image from 'next/image'
-import Link from 'next/link'
+// Image import removed as it's not used
+// Link import removed as it's not used
 import useAuthStore from '@/store/useAuthStore'
 import TrendingMovies from '@/components/TrendingMovies'
+import ComingSoonMovies from '@/components/ComingSoonMovies'
 // MovieCard import removed as it's not used
 import { 
   PlayIcon, 
@@ -26,29 +27,9 @@ import FeatureCard from '@/components/common/FeatureCard'
 import { MorphingIcon } from '@/components/common/MorphingIcon'
 
 // --- INTERFACES ---
-interface Movie {
-  id: number;
-  title: string;
-  poster_path: string;
-  vote_average?: number;
-  release_date?: string;
-  image?: string;
-  year?: number;
-  genre?: string;
-  backdrop_path?: string;
-  status?: 'Full HD' | 'Full HD/CAM' | 'Coming Soon' | 'Non';
-}
+// Movie interface removed as it's not used
 
-interface ProcessedMovie {
-  id: number;
-  title: string;
-  year: number;
-  image: string;
-  backdrop: string;
-  genre: never[];
-  release_date?: string;
-  status?: 'Full HD' | 'Full HD/CAM' | 'Coming Soon' | 'Non';
-}
+
 
 interface Particle {
   x: number;
@@ -85,30 +66,9 @@ const useResponsiveColumnCount = (config: { base: number; md?: number; lg?: numb
   return count;
 };
 
-// --- STATUS GENERATION FUNCTION ---
-const generateMovieStatus = (releaseDate?: string): 'Full HD' | 'Full HD/CAM' | 'Coming Soon' | 'Non' => {
-  if (!releaseDate) return 'Coming Soon';
+
+
   
-  const releaseDateObj = new Date(releaseDate);
-  const currentDate = new Date();
-  const releaseYear = releaseDateObj.getFullYear();
-  
-  // Trường hợp Non: phim từ 1990 trở về quá khứ
-  if (releaseYear < 1990) return 'Non';
-  
-  // Tính khoảng cách thời gian giữa ngày hiện tại và ngày phát hành (tính bằng tuần)
-  const timeDiffInMs = currentDate.getTime() - releaseDateObj.getTime();
-  const timeDiffInWeeks = timeDiffInMs / (1000 * 60 * 60 * 24 * 7);
-  
-  // Trường hợp Coming Soon: phim chưa phát hành (trước thời điểm hiện tại)
-  if (timeDiffInWeeks < 0) return 'Coming Soon';
-  
-  // Trường hợp Full HD/CAM: phim mới xuất hiện dưới 2 tuần
-  if (timeDiffInWeeks < 2) return 'Full HD/CAM';
-  
-  // Trường hợp Full HD: phim đã xuất hiện hơn 2 tuần
-  return 'Full HD';
-};
 
 // --- REUSABLE COMPONENTS ---
 // ScrollRevealItem component removed as it's not used
@@ -143,13 +103,9 @@ const OriginalScrollRevealItem = ({ children, index, columnCount, scrollProgress
 
 
 export default function Home() {
-  const API_KEY = process.env.NEXT_PUBLIC_TMDB_API_KEY;
-  const [featuredMovies, setFeaturedMovies] = useState<Movie[]>([]);
-  const [loading, setLoading] = useState(true);
-    const [particles, setParticles] = useState<Particle[]>([]);
-  const [lastFetchDate, setLastFetchDate] = useState<string>('');
-  const [canScrollLeftComingSoon, setCanScrollLeftComingSoon] = useState(false);
-  const [canScrollRightComingSoon, setCanScrollRightComingSoon] = useState(false);
+  // API_KEY removed as it's not used
+  const [particles, setParticles] = useState<Particle[]>([]);
+
  
   const router = useRouter();
   const { isAuthenticated, user } = useAuthStore();
@@ -157,8 +113,8 @@ export default function Home() {
   // --- REFS & SCROLL ---
   const heroRef = useRef<HTMLElement>(null)
   const featuresRef = useRef<HTMLElement>(null)
-  const moviesRef = useRef<HTMLElement>(null)
-  const comingSoonScrollRef = useRef<HTMLDivElement>(null)
+  // moviesRef removed as it's not used
+
 
   const { scrollY } = useScroll()
   const heroY = useTransform(scrollY, [0, 800], [0, -200])
@@ -173,27 +129,7 @@ export default function Home() {
   const featuresColumnCount = useResponsiveColumnCount({ base: 1, md: 2, lg: 3 });
   // moviesColumnCount removed as it's not used
 
-  // Check scroll position for Coming Soon section
-  const checkComingSoonScrollPosition = () => {
-    if (comingSoonScrollRef.current) {
-      const { scrollLeft, scrollWidth, clientWidth } = comingSoonScrollRef.current;
-      setCanScrollLeftComingSoon(scrollLeft > 0);
-      setCanScrollRightComingSoon(scrollLeft < scrollWidth - clientWidth - 1);
-    }
-  };
 
-  // Scroll functions for Coming Soon section
-  const scrollComingSoonLeft = () => {
-    if (comingSoonScrollRef.current) {
-      comingSoonScrollRef.current.scrollBy({ left: -300, behavior: 'smooth' });
-    }
-  };
-
-  const scrollComingSoonRight = () => {
-    if (comingSoonScrollRef.current) {
-      comingSoonScrollRef.current.scrollBy({ left: 300, behavior: 'smooth' });
-    }
-  };
 
 
 
@@ -207,122 +143,15 @@ export default function Home() {
     }));
     setParticles(newParticles);
 
-    const fetchMovies = async () => {
-      setLoading(true);
-      try {
-        // Get upcoming movies from current date
-        const currentDate = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
-        const upcomingResponse = await axios.get(`https://api.themoviedb.org/3/movie/upcoming?api_key=${API_KEY}&page=1&region=US`);
-        
-        const processMovies = (movies: Movie[]) => movies.map((movie: Movie) => ({
-          id: movie.id,
-          title: movie.title,
-          year: movie.release_date ? Number(movie.release_date.slice(0, 4)) : 0,
-          image: movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : '',
-          backdrop: movie.backdrop_path ? `https://image.tmdb.org/t/p/w1280${movie.backdrop_path}` : '',
-          genre: [],
-          release_date: movie.release_date || '',
-          status: generateMovieStatus(movie.release_date),
-        }));
 
-        // Filter for Coming Soon movies and take first 12
-        const processedUpcoming = processMovies(upcomingResponse.data.results)
-          .filter((movie: ProcessedMovie) => movie.status === 'Coming Soon')
-          .slice(0, 12)
-          .map((movie: ProcessedMovie) => ({
-            ...movie,
-            poster_path: movie.image ? movie.image.replace('https://image.tmdb.org/t/p/w500', '') : '',
-            release_date: movie.release_date || '',
-          }));
-        
-        setFeaturedMovies(processedUpcoming as unknown as Movie[]);
-        setLastFetchDate(currentDate);
-      } catch (error) {
-        console.error(error);
-        setFeaturedMovies([]);
-      }
-      setLoading(false);
-    };
-    fetchMovies();
-  }, [API_KEY]);
-
-  // Check scroll position for Coming Soon section on mount and scroll
-  useEffect(() => {
-    const container = comingSoonScrollRef.current;
-    if (!container) return;
-
-    checkComingSoonScrollPosition();
-    container.addEventListener('scroll', checkComingSoonScrollPosition);
-    window.addEventListener('resize', checkComingSoonScrollPosition);
-
-    return () => {
-      container.removeEventListener('scroll', checkComingSoonScrollPosition);
-      window.removeEventListener('resize', checkComingSoonScrollPosition);
-    };
-  }, [featuredMovies]);
-
-  // Add wheel event handler for horizontal scrolling (no preventDefault)
-  useEffect(() => {
-    const container = comingSoonScrollRef.current;
-    if (!container) return;
-    const handleWheel = (e: WheelEvent) => {
-      if (Math.abs(e.deltaX) < Math.abs(e.deltaY)) {
-        container.scrollLeft += e.deltaY;
-      }
-    };
-    container.addEventListener('wheel', handleWheel, { passive: true });
-    return () => container.removeEventListener('wheel', handleWheel);
   }, []);
 
+  // Check scroll position for Coming Soon section on mount and scroll
 
 
-  // Check for daily updates
-  useEffect(() => {
-    const checkForDailyUpdate = () => {
-      const currentDate = new Date().toISOString().split('T')[0];
-      if (lastFetchDate && lastFetchDate !== currentDate) {
-        // Date has changed, refetch movies
-        const fetchMovies = async () => {
-          setLoading(true);
-          try {
-            const upcomingResponse = await axios.get(`https://api.themoviedb.org/3/movie/upcoming?api_key=${API_KEY}&page=1&region=US`);
-            
-            const processMovies = (movies: Movie[]) => movies.map((movie: Movie) => ({
-              id: movie.id,
-              title: movie.title,
-              year: movie.release_date ? Number(movie.release_date.slice(0, 4)) : 0,
-              image: movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : '',
-              backdrop: movie.backdrop_path ? `https://image.tmdb.org/t/p/w1280${movie.backdrop_path}` : '',
-              genre: [],
-              release_date: movie.release_date || '',
-              status: generateMovieStatus(movie.release_date),
-            }));
 
-            const processedUpcoming = processMovies(upcomingResponse.data.results)
-              .filter((movie: ProcessedMovie) => movie.status === 'Coming Soon')
-              .slice(0, 12)
-              .map((movie: ProcessedMovie) => ({
-                ...movie,
-                poster_path: movie.image ? movie.image.replace('https://image.tmdb.org/t/p/w500', '') : '',
-                release_date: movie.release_date || '',
-              }));
-            
-            setFeaturedMovies(processedUpcoming as unknown as Movie[]);
-            setLastFetchDate(currentDate);
-          } catch (error) {
-            console.error(error);
-          }
-          setLoading(false);
-        };
-        fetchMovies();
-      }
-    };
 
-    // Check every hour for date changes
-    const interval = setInterval(checkForDailyUpdate, 60 * 60 * 1000); // 1 hour
 
-    return () => clearInterval(interval);
-  }, [lastFetchDate, API_KEY]);
 
   return (
     <main className="min-h-screen overflow-x-hidden bg-black text-white">
@@ -484,111 +313,8 @@ export default function Home() {
       {/* Trending Movies Section */}
       <TrendingMovies />
 
-      {/* Coming Soon Movies Section */}
-      <section ref={moviesRef} className="py-8 sm:py-12 md:py-16 px-2 sm:px-4 bg-gradient-to-b from-gray-900 to-black">
-        <div className="max-w-7xl mx-auto">
-          <h2 className="text-lg sm:text-xl md:text-2xl lg:text-3xl xl:text-4xl font-bold mb-4 sm:mb-6 md:mb-8 bg-gradient-to-r from-yellow-400 to-pink-500 text-transparent bg-clip-text text-center leading-tight px-4">
-            Coming Soon<br />
-            Movies
-          </h2>
-                  <div className="relative">
-            {/* Fade left */}
-            <div className="pointer-events-none absolute left-0 top-0 h-full w-8 z-10 bg-gradient-to-r from-black/90 to-transparent" />
-            {/* Fade right */}
-            <div className="pointer-events-none absolute right-0 top-0 h-full w-8 z-10 bg-gradient-to-l from-black/90 to-transparent" />
-            
-            {/* Navigation arrows */}
-            <motion.button
-              onClick={scrollComingSoonLeft}
-              className={`absolute left-2 top-1/2 -translate-y-1/2 z-20 p-2 rounded-full bg-black/70 text-white hover:bg-black/90 transition-all duration-200 ${
-                canScrollLeftComingSoon ? 'opacity-100' : 'opacity-0 pointer-events-none'
-              }`}
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-            </motion.button>
-            
-            <motion.button
-              onClick={scrollComingSoonRight}
-              className={`absolute right-2 top-1/2 -translate-y-1/2 z-20 p-2 rounded-full bg-black/70 text-white hover:bg-black/90 transition-all duration-200 ${
-                canScrollRightComingSoon ? 'opacity-100' : 'opacity-0 pointer-events-none'
-              }`}
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </motion.button>
-          
-            {/* Scroll indicator */}
-            <div className={`absolute -bottom-2 sm:-bottom-4 md:-bottom-8 left-1/2 transform -translate-x-1/2 z-20 transition-opacity duration-300 ${
-              canScrollLeftComingSoon ? 'opacity-0 pointer-events-none' : 'opacity-100'
-            }`}>
-              <div className="flex items-center space-x-1 sm:space-x-2 text-white/60">
-                <svg className="w-3 h-3 sm:w-4 sm:h-4 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                </svg>
-                <span className="text-xs sm:text-sm font-medium">Vuốt hoặc bấm &lt; &gt;</span>
-                <svg className="w-3 h-3 sm:w-4 sm:h-4 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </div>
-            </div>
-            
-            <div
-              ref={comingSoonScrollRef}
-              className="flex gap-6 overflow-x-auto pb-4 scrollbar-none snap-x snap-mandatory relative horizontal-scroll-container"
-              style={{ 
-                WebkitOverflowScrolling: 'touch', 
-                scrollbarWidth: 'none', 
-                msOverflowStyle: 'none',
-                scrollBehavior: 'smooth'
-              }}
-            >
-              {loading ? (
-                <div className="text-gray-400 text-center py-8">Loading...</div>
-              ) : (
-                featuredMovies.map((movie) => (
-                  <Link key={movie.id} href={`/movies/${movie.id}`} className="min-w-[180px] sm:min-w-[220px] md:min-w-[260px] max-w-[260px]">
-                    <motion.div
-                      whileHover={{ scale: 1.07 }}
-                      className="bg-gray-800 rounded-xl overflow-hidden shadow-lg snap-center cursor-pointer group relative"
-                    >
-                      {movie.image ? (
-                        <Image
-                          src={movie.image}
-                          alt={movie.title}
-                          width={400}
-                          height={600}
-                          className="w-full h-56 sm:h-72 object-cover group-hover:scale-105 transition-transform duration-300"
-                        />
-                      ) : (
-                        <div className="w-full h-56 sm:h-72 flex items-center justify-center bg-gray-700 text-3xl sm:text-4xl">🎬</div>
-                      )}
-                      {/* Status badge - top left */}
-                      <div className="absolute top-3 left-3 bg-yellow-500/90 px-2 py-1 rounded-full text-xs text-white font-bold">
-                        Coming Soon
-                      </div>
-                      {/* Type badge - top right */}
-                      <div className="absolute top-3 right-3 bg-black/70 px-2 py-1 rounded-full text-xs text-white font-bold">
-                        🎬 Movie
-                      </div>
-                      <div className="p-3 sm:p-4">
-                        <div className="font-semibold text-base sm:text-lg text-white mb-1 truncate">{movie.title}</div>
-                        <div className="text-gray-400 text-xs sm:text-sm">{movie.year}</div>
-                      </div>
-                    </motion.div>
-                  </Link>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
-      </section>
+            {/* Coming Soon Movies Section */}
+      <ComingSoonMovies />
 
        {/* Call to Action Section */}
       <section className="py-20 px-4 sm:px-6 lg:px-8 relative overflow-hidden">

@@ -34,7 +34,7 @@ interface Movie {
   trailer: string;
   movieUrl: string;
   scenes: string[];
-  status?: 'Full HD' | 'Full HD/CAM' | 'Coming Soon' | 'Non';
+
 }
 
 interface PhimApiEpisode {
@@ -68,30 +68,7 @@ export default function MovieDetail() {
   const router = useRouter();
   const [movie, setMovie] = useState<Movie | null>(null);
   
-  // Hàm tạo status cho phim dựa trên ngày phát hành
-  const generateMovieStatus = (releaseDate?: string): 'Full HD' | 'Full HD/CAM' | 'Coming Soon' | 'Non' => {
-    if (!releaseDate) return 'Coming Soon';
-    
-    const releaseDateObj = new Date(releaseDate);
-    const currentDate = new Date();
-    const releaseYear = releaseDateObj.getFullYear();
-    
-    // Trường hợp Non: phim từ 1990 trở về quá khứ
-    if (releaseYear < 1990) return 'Non';
-    
-    // Tính khoảng cách thời gian giữa ngày hiện tại và ngày phát hành (tính bằng tuần)
-    const timeDiffInMs = currentDate.getTime() - releaseDateObj.getTime();
-    const timeDiffInWeeks = timeDiffInMs / (1000 * 60 * 60 * 24 * 7);
-    
-    // Trường hợp Coming Soon: phim chưa phát hành (trước thời điểm hiện tại)
-    if (timeDiffInWeeks < 0) return 'Coming Soon';
-    
-    // Trường hợp Full HD/CAM: phim mới xuất hiện dưới 2 tuần
-    if (timeDiffInWeeks < 2) return 'Full HD/CAM';
-    
-    // Trường hợp Full HD: phim đã xuất hiện hơn 2 tuần
-    return 'Full HD';
-  };
+
   const [loading, setLoading] = useState<boolean>(true);
   const [activeScene, setActiveScene] = useState<number | null>(null)
   const [showTrailer, setShowTrailer] = useState<boolean>(false)
@@ -654,7 +631,7 @@ useEffect(() => {
           trailer,
           movieUrl: '',
           scenes,
-          status: generateMovieStatus(data.release_date),
+
         };
         setMovie(movieData);
       } catch {
@@ -688,7 +665,7 @@ useEffect(() => {
     );
   }
 
-  const { title, backdrop, poster, duration, year, genre, director, cast, description, scenes, trailer, status, releaseDate } = movie;
+  const { title, backdrop, poster, duration, year, genre, director, cast, description, scenes, trailer, releaseDate } = movie;
 
   return (
     <div ref={containerRef} className="min-h-screen bg-gradient-to-b from-gray-900 to-black">
@@ -740,19 +717,7 @@ useEffect(() => {
               >
                 {title}
               </motion.h1>
-              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                {status && (
-                  <span className={`px-2 py-1 text-xs sm:text-sm font-bold rounded-md whitespace-nowrap ${
-                    status === 'Full HD' ? 'bg-green-500 text-white' :
-                    status === 'Full HD/CAM' ? 'bg-red-500 text-white' :
-                    status === 'Coming Soon' ? 'bg-yellow-500 text-black' :
-                    status === 'Non' ? 'bg-gray-500 text-white' :
-                    'bg-yellow-500 text-black'
-                  }`}>
-                    {status}
-                  </span>
-                )}
-              </div>
+
             </div>
             
             <div className="flex flex-wrap gap-4">

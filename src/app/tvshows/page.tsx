@@ -20,7 +20,6 @@ interface TVShow {
   genre?: string;
   first_air_date?: string;
   country?: string;
-  status?: 'Full HD' | 'Full HD/CAM' | 'Coming Soon' | 'Non';
   totalSeasons?: number;
   totalEpisodes?: number;
 }
@@ -55,6 +54,9 @@ function TVShowsPageContent() {
   const [selectedCountry, setSelectedCountry] = useState<string>(urlCountry)
   const [page, setPage] = useState(urlPage)
   const [loading, setLoading] = useState(false)
+  const [isRolling, setIsRolling] = useState(false)
+  const [showThoughtBubble, setShowThoughtBubble] = useState(true)
+  const [thoughtText, setThoughtText] = useState("Bored of old shows?\nTry random! 🎲")
 
   
   // Cache các trang đã load: { [filterKey]: { [page]: TVShow[] } }
@@ -264,31 +266,6 @@ function TVShowsPageContent() {
     'Laos'
   ], []);
 
-  // Hàm tạo status cho TV show dựa trên ngày phát hành
-  const generateTVShowStatus = (firstAirDate?: string): 'Full HD' | 'Full HD/CAM' | 'Coming Soon' | 'Non' => {
-    if (!firstAirDate) return 'Coming Soon';
-    
-    const firstAirDateObj = new Date(firstAirDate);
-    const currentDate = new Date();
-    const firstAirYear = firstAirDateObj.getFullYear();
-    
-    // Trường hợp Non: TV show từ 1990 trở về quá khứ
-    if (firstAirYear < 1990) return 'Non';
-    
-    // Tính khoảng cách thời gian giữa ngày hiện tại và ngày phát hành (tính bằng tuần)
-    const timeDiffInMs = currentDate.getTime() - firstAirDateObj.getTime();
-    const timeDiffInWeeks = timeDiffInMs / (1000 * 60 * 60 * 24 * 7);
-    
-    // Trường hợp Coming Soon: TV show chưa phát hành (trước thời điểm hiện tại)
-    if (timeDiffInWeeks < 0) return 'Coming Soon';
-    
-    // Trường hợp Full HD/CAM: TV show mới xuất hiện dưới 1 tháng (4 tuần)
-    if (timeDiffInWeeks < 4) return 'Full HD/CAM';
-    
-    // Trường hợp Full HD: TV show đã xuất hiện hơn 1 tháng (4 tuần)
-    return 'Full HD';
-  };
-
   // Hàm chuyển đổi language code thành tên quốc gia
   const getCountryName = (languageCode?: string): string => {
     const countryMap: { [key: string]: string } = {
@@ -387,7 +364,6 @@ function TVShowsPageContent() {
       genre: [],
       first_air_date: tvShow.first_air_date,
       country: getCountryName(tvShow.original_language),
-      status: generateTVShowStatus(tvShow.first_air_date),
       totalSeasons: tvShow.number_of_seasons || 0,
       totalEpisodes: tvShow.number_of_episodes || 0
     }));
@@ -507,31 +483,115 @@ function TVShowsPageContent() {
       const newCache = { [currentFilterKey]: pagesCache[currentFilterKey] || {} };
       setPagesCache(newCache);
     }
-  }
+  };
+
+  // Random filter function
+  const handleRandomFilter = () => {
+    setIsRolling(true);
+    setShowThoughtBubble(false); // Hide thought bubble when rolling
+    
+    // Random selection
+    const randomYear = years[Math.floor(Math.random() * years.length)];
+    const randomCategory = categories[Math.floor(Math.random() * categories.length)];
+    const randomCountry = countries[Math.floor(Math.random() * countries.length)];
+    
+    // Apply random filters
+    setSelectedYear(randomYear);
+    setSelectedCategory(randomCategory);
+    setSelectedCountry(randomCountry);
+    setPage(1);
+    
+    // Stop rolling animation after delay
+    setTimeout(() => {
+      setIsRolling(false);
+    }, 1000);
+  };
+
+  // Auto-show thought bubble after 5 seconds
+  useEffect(() => {
+    if (!showThoughtBubble) {
+      const timer = setTimeout(() => {
+        setShowThoughtBubble(true);
+        // Change thought text randomly
+        const thoughts = [
+          "Bored of old shows?\nTry random! 🎲",
+          "Don't know what\nto watch? 🎯",
+          "Any show is fine,\ngo random! 🚀",
+          "Out of ideas?\nTry random! 💡",
+          "Test your luck\nwith random! 🍀"
+        ];
+        setThoughtText(thoughts[Math.floor(Math.random() * thoughts.length)]);
+      }, 5000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [showThoughtBubble]);
+
+
 
   return (
     <div className="min-h-screen bg-black">
-      <div className="max-w-7xl mx-auto px-2 md:px-4">
-        <motion.h1
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-6 md:mb-8 bg-gradient-to-r from-red-500 to-blue-500 text-transparent bg-clip-text text-center px-2"
-        >
-          All TV Shows
-        </motion.h1>
-        {/* Filter Icon */}
-        <div className="flex justify-center mb-6 md:mb-8 px-2 md:px-4">
-          <FilterIcon
-            selectedYear={selectedYear}
-            selectedCategory={selectedCategory}
-            selectedCountry={selectedCountry}
-            onYearChange={handleYearChange}
-            onCategoryChange={handleCategoryChange}
-            onCountryChange={handleCountryChange}
-            years={years}
-            categories={categories}
-            countries={countries}
-          />
+      <div className="max-w-7xl mx-auto px-2 md:px-4 pt-4 md:pt-6">
+
+        
+        {/* Filter and Dice Layout */}
+        <div className="flex items-center justify-between gap-1 sm:gap-2 md:gap-4 mb-6 md:mb-8 px-2 md:px-4">
+          {/* Filter Icon - Left Side */}
+          <div className="flex-1 min-w-0">
+            <FilterIcon
+              selectedYear={selectedYear}
+              selectedCategory={selectedCategory}
+              selectedCountry={selectedCountry}
+              onYearChange={handleYearChange}
+              onCategoryChange={handleCategoryChange}
+              onCountryChange={handleCountryChange}
+              years={years}
+              categories={categories}
+              countries={countries}
+            />
+          </div>
+          
+          {/* Dice Button with Thought Bubble - Right Side */}
+          <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+            {/* Thought Bubble */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ 
+                opacity: showThoughtBubble ? 1 : 0,
+                scale: showThoughtBubble ? 1 : 0.8
+              }}
+              transition={{ duration: 0.3 }}
+              className="relative"
+            >
+              {/* Bubble */}
+              <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg px-1.5 py-0.5 shadow-lg">
+                <span className="text-white text-[10px] sm:text-xs font-medium leading-tight whitespace-pre-line">
+                  {thoughtText}
+                </span>
+              </div>
+              
+              {/* Arrow pointing to dice */}
+              <div className="absolute right-0 top-1/2 transform translate-x-1/2 -translate-y-1/2 w-0 h-0 border-l-[4px] sm:border-l-[6px] border-l-white/20 border-t-[3px] sm:border-t-[4px] border-t-transparent border-b-[3px] sm:border-b-[4px] border-b-transparent"></div>
+            </motion.div>
+            
+            <motion.button
+              onClick={handleRandomFilter}
+              className="group relative p-2 sm:p-3 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full shadow-lg hover:shadow-xl transition-all duration-300"
+              whileHover={{ scale: 1.1, rotate: 5 }}
+              whileTap={{ scale: 0.9 }}
+            >
+              <motion.div
+                animate={{ rotate: isRolling ? 360 : 0 }}
+                transition={{ 
+                  duration: isRolling ? 0.8 : 0.3,
+                  ease: "easeInOut"
+                }}
+                className="text-lg sm:text-xl md:text-2xl"
+              >
+                🎲
+              </motion.div>
+            </motion.button>
+          </div>
         </div>
         {/* TV Shows Grid + Loading + Pagination */}
         {loading ? (
@@ -590,19 +650,6 @@ function TVShowsPageContent() {
                           height={750}
                           className="w-full"
                         />
-                        
-                        {/* Status Badge */}
-                        <div className="absolute top-2 left-2">
-                          <span className={`px-2 py-1 text-xs font-bold rounded-md ${
-                            tvShow.status === 'Full HD' ? 'bg-green-500 text-white' :
-                            tvShow.status === 'Full HD/CAM' ? 'bg-red-500 text-white' :
-                            tvShow.status === 'Coming Soon' ? 'bg-yellow-500 text-black' :
-                            tvShow.status === 'Non' ? 'bg-gray-500 text-white' :
-                            'bg-yellow-500 text-black'
-                          }`}>
-                            {tvShow.status}
-                          </span>
-                        </div>
                       </div>
 
                       {/* TV Show Info */}

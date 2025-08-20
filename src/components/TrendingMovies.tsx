@@ -37,6 +37,9 @@ type TrendingItem = (Movie | TVShow) & {
   image: string; 
   type: 'movie' | 'tv';
   status?: string;
+  release_date?: string;
+  first_air_date?: string;
+  original_language?: string;
 };
 
 // Type for TMDB API responses
@@ -46,6 +49,7 @@ interface TMDBMovie {
   poster_path?: string;
   vote_average: number;
   release_date?: string;
+  original_language?: string;
 }
 
 interface TMDBTVShow {
@@ -54,7 +58,35 @@ interface TMDBTVShow {
   poster_path?: string;
   vote_average: number;
   first_air_date?: string;
+  original_language?: string;
 }
+
+// Hàm chuyển đổi language code thành tên quốc gia
+const getCountryName = (languageCode?: string): string => {
+  const countryMap: { [key: string]: string } = {
+    'en': 'USA',
+    'ja': 'Japan',
+    'ko': 'Korea',
+    'zh': 'China',
+    'hi': 'India',
+    'fr': 'France',
+    'de': 'Germany',
+    'es': 'Spain',
+    'it': 'Italy',
+    'pt': 'Brazil',
+    'ru': 'Russia',
+    'ar': 'Egypt',
+    'th': 'Thailand',
+    'vi': 'Vietnam',
+    'id': 'Indonesia',
+    'ms': 'Malaysia',
+    'tl': 'Philippines',
+    'my': 'Myanmar',
+    'km': 'Cambodia',
+    'lo': 'Laos'
+  };
+  return countryMap[languageCode || 'en'] || 'USA';
+};
 
 export default function TrendingMovies() {
   const API_KEY = process.env.NEXT_PUBLIC_TMDB_API_KEY;
@@ -101,7 +133,9 @@ export default function TrendingMovies() {
           image: movie.poster_path ? `https://image.tmdb.org/t/p/w400${movie.poster_path}` : '',
           year: movie.release_date ? Number(movie.release_date.slice(0, 4)) : 0,
           type: 'movie' as const,
-          status: 'Trending'
+          status: 'Trending',
+          release_date: movie.release_date || '',
+          original_language: movie.original_language || 'en'
         }));
 
         const tvShows = tvShowsResponse.data.results.slice(0, 5).map((tvShow: TMDBTVShow) => ({
@@ -110,7 +144,9 @@ export default function TrendingMovies() {
           image: tvShow.poster_path ? `https://image.tmdb.org/t/p/w400${tvShow.poster_path}` : '',
           year: tvShow.first_air_date ? Number(tvShow.first_air_date.slice(0, 4)) : 0,
           type: 'tv' as const,
-          status: 'Trending'
+          status: 'Trending',
+          first_air_date: tvShow.first_air_date || '',
+          original_language: tvShow.original_language || 'en'
         }));
 
         // Combine and shuffle to mix movies and TV shows
@@ -167,8 +203,7 @@ export default function TrendingMovies() {
     <section className="py-8 sm:py-12 md:py-16 px-2 sm:px-4 bg-gradient-to-b from-gray-900 to-black">
       <div className="max-w-7xl mx-auto">
         <h2 className="text-lg sm:text-xl md:text-2xl lg:text-3xl xl:text-4xl font-bold mb-4 sm:mb-6 md:mb-8 bg-gradient-to-r from-yellow-400 to-pink-500 text-transparent bg-clip-text text-center leading-tight px-4">
-          Top Trending<br />
-          Movies & TV Shows
+          Trending Now
         </h2>
                   <div className="relative">
             {/* Fade left */}
@@ -252,10 +287,23 @@ export default function TrendingMovies() {
                     <div className="absolute top-3 right-3 bg-black/70 px-2 py-1 rounded-full text-xs text-white font-bold">
                       {item.type === 'movie' ? '🎬 Movie' : '📺 TV Show'}
                     </div>
-                    <div className="p-3 sm:p-4">
-                      <div className="font-semibold text-base sm:text-lg text-white mb-1 truncate">{getTitle(item)}</div>
-                      <div className="text-gray-400 text-xs sm:text-sm">{item.year}</div>
-                    </div>
+                                          <div className="p-3 sm:p-4">
+                        <div className="font-semibold text-base sm:text-lg text-white mb-1 truncate">{getTitle(item)}</div>
+                        
+                        {/* Date and Country */}
+                        <div className="flex items-center justify-between text-gray-400 text-xs sm:text-sm">
+                          <span className="truncate">
+                            {item.type === 'movie' && item.release_date ? new Date(item.release_date).toLocaleDateString('en-US', {
+                              year: 'numeric',
+                              month: 'short',
+                              day: 'numeric'
+                            }) : item.year}
+                          </span>
+                          <span className="truncate ml-1">
+                            {getCountryName(item.original_language)}
+                          </span>
+                        </div>
+                      </div>
                   </motion.div>
                 </Link>
               ))

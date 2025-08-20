@@ -13,7 +13,7 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
   const [charIndex, setCharIndex] = useState(0);
 
   const loadingTexts = useMemo(() => [
-    "Welcome to Entertainment...",
+    "Welcome to Entertainment",
   ], []);
 
   useEffect(() => {

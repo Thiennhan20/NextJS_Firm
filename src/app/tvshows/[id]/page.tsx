@@ -34,7 +34,7 @@ interface TVShow {
   trailer: string
   tvShowUrl: string
   scenes: string[]
-  status?: 'Full HD' | 'Full HD/CAM' | 'Coming Soon' | 'Non'
+
   totalSeasons?: number
   totalEpisodes?: number
 }
@@ -187,30 +187,7 @@ export default function TVShowDetail() {
   const router = useRouter()
   const [tvShow, setTVShow] = useState<TVShow | null>(null)
   
-  // Hàm tạo status cho TV show dựa trên ngày phát hành
-  const generateTVShowStatus = (firstAirDate?: string): 'Full HD' | 'Full HD/CAM' | 'Coming Soon' | 'Non' => {
-    if (!firstAirDate) return 'Coming Soon'
-    
-    const firstAirDateObj = new Date(firstAirDate)
-    const currentDate = new Date()
-    const firstAirYear = firstAirDateObj.getFullYear()
-    
-    // Trường hợp Non: TV show từ 1990 trở về quá khứ
-    if (firstAirYear < 1990) return 'Non'
-    
-    // Tính khoảng cách thời gian giữa ngày hiện tại và ngày phát hành (tính bằng tuần)
-    const timeDiffInMs = currentDate.getTime() - firstAirDateObj.getTime()
-    const timeDiffInWeeks = timeDiffInMs / (1000 * 60 * 60 * 24 * 7)
-    
-    // Trường hợp Coming Soon: TV show chưa phát hành (trước thời điểm hiện tại)
-    if (timeDiffInWeeks < 0) return 'Coming Soon'
-    
-    // Trường hợp Full HD/CAM: TV show mới xuất hiện dưới 2 tuần
-    if (timeDiffInWeeks < 2) return 'Full HD/CAM'
-    
-    // Trường hợp Full HD: TV show đã xuất hiện hơn 2 tuần
-    return 'Full HD'
-  }
+
   
   const [loading, setLoading] = useState<boolean>(true)
   const [activeScene, setActiveScene] = useState<number | null>(null)
@@ -491,7 +468,7 @@ export default function TVShowDetail() {
           trailer,
           tvShowUrl: '',
           scenes,
-          status: generateTVShowStatus(data.first_air_date),
+
           totalSeasons: data.number_of_seasons,
           totalEpisodes: data.number_of_episodes,
         }
@@ -957,7 +934,7 @@ export default function TVShowDetail() {
     )
   }
 
-  const { name, backdrop, poster, duration, year, genre, creator, cast, description, scenes, trailer, status, totalSeasons, totalEpisodes, firstAirDate } = tvShow
+  const { name, backdrop, poster, duration, year, genre, creator, cast, description, scenes, trailer, totalSeasons, totalEpisodes, firstAirDate } = tvShow
 
   // Season-aware visuals
   const currentSeason = seasons.find((s) => s.season_number === selectedSeason) || seasons[selectedSeason - 1]
@@ -1020,17 +997,7 @@ export default function TVShowDetail() {
                 <span className="px-2 py-1 text-xs sm:text-sm font-bold rounded-md bg-blue-600 text-white whitespace-nowrap">
                   Season {selectedSeason}
                 </span>
-                {status && (
-                  <span className={`px-2 py-1 text-xs sm:text-sm font-bold rounded-md whitespace-nowrap ${
-                    status === 'Full HD' ? 'bg-green-500 text-white' :
-                    status === 'Full HD/CAM' ? 'bg-red-500 text-white' :
-                    status === 'Coming Soon' ? 'bg-yellow-500 text-black' :
-                    status === 'Non' ? 'bg-gray-500 text-white' :
-                    'bg-yellow-500 text-black'
-                  }`}>
-                    {status}
-                  </span>
-                )}
+
               </div>
             </div>
             
