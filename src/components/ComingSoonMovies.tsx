@@ -563,7 +563,7 @@ export default function ComingSoonMovies() {
               <svg className="w-3 h-3 sm:w-4 sm:h-4 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
-              <span className="text-xs sm:text-sm font-medium">Vuốt hoặc bấm &lt; &gt;</span>
+              <span className="text-xs sm:text-sm font-medium">Swipe or click &lt; &gt;</span>
               <svg className="w-3 h-3 sm:w-4 sm:h-4 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
