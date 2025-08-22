@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import Image from 'next/image'
 import axios from 'axios'
 import Link from 'next/link'
-import { ChevronLeftIcon, ChevronRightIcon, PlayIcon, BookmarkIcon, XMarkIcon } from '@heroicons/react/24/outline'
+import { ChevronLeftIcon, ChevronRightIcon, PlayIcon, BookmarkIcon, XMarkIcon, ArrowUpRightIcon } from '@heroicons/react/24/outline'
 import { BookmarkIcon as BookmarkSolidIcon } from '@heroicons/react/24/solid'
 import { useWatchlistStore } from '@/store/store'
 import useAuthStore from '@/store/useAuthStore'
@@ -113,6 +113,159 @@ const formatDate = (dateString: string): string => {
     day: 'numeric'
   });
 };
+
+// Component cho mũi tên và hướng dẫn trên Mobile
+const MobileTrailerHint = () => (
+  <motion.div
+    className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex items-center gap-1 bg-black/60 backdrop-blur-sm px-2 py-1 rounded-full"
+    initial={{ opacity: 0, x: 10 }}
+    animate={{ opacity: 1, x: 0 }}
+    transition={{ duration: 0.5, delay: 0.3 }}
+  >
+    <ArrowUpRightIcon className="w-4 h-4 text-white/80" />
+    <span className="text-xs text-white/80 font-light">Tap for trailer</span>
+  </motion.div>
+);
+
+// Component cho mũi tên và hướng dẫn trên Desktop
+const DesktopTrailerHint = () => (
+  <motion.div
+    className="absolute left-full ml-4 top-1/2 -translate-y-1/2 flex items-center gap-2"
+    initial={{ opacity: 0, x: 10 }}
+    animate={{ opacity: 1, x: 0 }}
+    transition={{ duration: 0.5, delay: 0.3 }}
+  >
+    <ArrowUpRightIcon className="w-5 h-5 text-white/80" />
+    <span className="text-sm text-white/80 font-light">Click for trailer</span>
+  </motion.div>
+);
+
+// Component cho navigation controls trên Desktop
+const DesktopNavigationControls = ({ 
+  prevSlide, 
+  nextSlide, 
+  goToSlide, 
+  heroItems, 
+  currentIndex, 
+  isTransitioning, 
+  showTrailer 
+}: {
+  prevSlide: () => void;
+  nextSlide: () => void;
+  goToSlide: (index: number) => void;
+  heroItems: HeroItem[];
+  currentIndex: number;
+  isTransitioning: boolean;
+  showTrailer: boolean;
+}) => (
+  <div className="hidden lg:flex absolute bottom-8 left-1/2 transform -translate-x-1/2 items-center gap-4">
+    <motion.button
+      onClick={prevSlide}
+      className="w-12 h-12 rounded-full border border-white/30 bg-black/50 backdrop-blur-sm text-white hover:bg-white/20 transition-all duration-300 flex items-center justify-center disabled:opacity-50"
+      whileHover={{ scale: 1.1 }}
+      whileTap={{ scale: 0.9 }}
+      disabled={isTransitioning || showTrailer}
+    >
+      <ChevronLeftIcon className="w-6 h-6" />
+    </motion.button>
+
+    {/* Dots Indicator */}
+    <div className="flex items-center gap-2">
+      {heroItems.map((_, index) => (
+        <motion.button
+          key={index}
+          className={`w-3 h-3 rounded-full transition-all duration-300 ${
+            index === currentIndex 
+              ? 'bg-red-500 w-8' 
+              : 'bg-white/30 hover:bg-white/50'
+          }`}
+          onClick={() => goToSlide(index)}
+          whileHover={{ scale: 1.2 }}
+          whileTap={{ scale: 0.8 }}
+        />
+      ))}
+    </div>
+
+    <motion.button
+      onClick={nextSlide}
+      className="w-12 h-12 rounded-full border border-white/30 bg-black/50 backdrop-blur-sm text-white hover:bg-white/20 transition-all duration-300 flex items-center justify-center disabled:opacity-50"
+      whileHover={{ scale: 1.1 }}
+      whileTap={{ scale: 0.9 }}
+      disabled={isTransitioning || showTrailer}
+    >
+      <ChevronRightIcon className="w-6 h-6" />
+    </motion.button>
+  </div>
+);
+
+// Component cho navigation controls trên Mobile & Tablet
+const MobileNavigationControls = ({ 
+  prevSlide, 
+  nextSlide, 
+  goToSlide, 
+  heroItems, 
+  currentIndex, 
+  isTransitioning, 
+  showTrailer 
+}: {
+  prevSlide: () => void;
+  nextSlide: () => void;
+  goToSlide: (index: number) => void;
+  heroItems: HeroItem[];
+  currentIndex: number;
+  isTransitioning: boolean;
+  showTrailer: boolean;
+}) => (
+  <>
+    {/* Mobile & Tablet Swipe Indicators */}
+    <div className="lg:hidden text-center mt-8 mb-4">
+      <motion.p
+        className="text-gray-400 text-sm"
+        animate={{ opacity: [0.5, 1, 0.5] }}
+        transition={{ duration: 2, repeat: Infinity }}
+      >
+        Swipe or tap arrows to navigate
+      </motion.p>
+    </div>
+
+    {/* Mobile & Tablet Navigation Controls */}
+    <div className="lg:hidden flex justify-center items-center gap-4 mt-2">
+      <motion.button
+        onClick={prevSlide}
+        className="w-10 h-10 rounded-full border border-white/30 bg-black/50 backdrop-blur-sm text-white active:bg-white/20 transition-all duration-300 flex items-center justify-center disabled:opacity-50"
+        whileTap={{ scale: 0.9 }}
+        disabled={isTransitioning || showTrailer}
+      >
+        <ChevronLeftIcon className="w-5 h-5" />
+      </motion.button>
+
+      {/* Mobile Dots Indicator */}
+      <div className="flex items-center gap-2">
+        {heroItems.map((_, index) => (
+          <motion.button
+            key={index}
+            className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${
+              index === currentIndex 
+                ? 'bg-red-500 w-6' 
+                : 'bg-white/30'
+            }`}
+            onClick={() => goToSlide(index)}
+            whileTap={{ scale: 0.8 }}
+          />
+        ))}
+      </div>
+
+      <motion.button
+        onClick={nextSlide}
+        className="w-10 h-10 rounded-full border border-white/30 bg-black/50 backdrop-blur-sm text-white active:bg-white/20 transition-all duration-300 flex items-center justify-center disabled:opacity-50"
+        whileTap={{ scale: 0.9 }}
+        disabled={isTransitioning || showTrailer}
+      >
+        <ChevronRightIcon className="w-5 h-5" />
+      </motion.button>
+    </div>
+  </>
+);
 
 export default function HeroMovies() {
   const API_KEY = process.env.NEXT_PUBLIC_TMDB_API_KEY;
@@ -505,43 +658,38 @@ export default function HeroMovies() {
                   </span>
                 </div>
 
-                                 {/* Mobile Poster */}
-                 <AnimatePresence mode="wait">
-                   <motion.div
-                     key={currentIndex}
-                     className="relative group flex justify-center my-6"
-                     initial={{ opacity: 0, scale: 0.8 }}
-                     animate={{ opacity: 1, scale: 1 }}
-                     exit={{ opacity: 0, scale: 0.8 }}
-                     transition={{ duration: 0.6 }}
-                   >
-                     <div className="w-48 h-64 sm:w-56 sm:h-72 md:w-64 md:h-80 rounded-2xl overflow-hidden shadow-2xl relative">
-                       <Image
-                         src={currentItem.image || '/placeholder-poster.jpg'}
-                         alt={getTitle(currentItem)}
-                         fill
-                         className="object-cover"
-                         sizes="(max-width: 640px) 192px, (max-width: 768px) 224px, 256px"
-                         priority
-                       />
-                       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-                       
-                       {/* Mobile Trailer Button */}
-                       <motion.button
-                         onClick={() => handleTrailerClick(currentItem)}
-                         className="absolute inset-0 flex items-center justify-center bg-black/40 hover:bg-black/60 transition-all duration-300 group-hover:bg-black/60"
-                         whileHover={{ scale: 1.02 }}
-                         whileTap={{ scale: 0.98 }}
-                       >
-                         <div className="w-16 h-16 bg-red-600 hover:bg-red-700 rounded-full flex items-center justify-center shadow-2xl transition-all duration-300 group-hover:scale-110">
-                           <PlayIcon className="w-8 h-8 text-white" />
-                         </div>
-                       </motion.button>
-                     </div>
-                     {/* Mobile Glow effect */}
-                     <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-red-500/20 to-pink-500/20 blur-xl -z-10 opacity-60" />
-                   </motion.div>
-                 </AnimatePresence>
+                {/* Mobile Poster */}
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={currentIndex}
+                    className="relative group flex justify-center my-6"
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    transition={{ duration: 0.6 }}
+                  >
+                    <div 
+                      className="w-48 h-64 sm:w-56 sm:h-72 md:w-64 md:h-80 rounded-2xl overflow-hidden shadow-2xl relative cursor-pointer transition-transform duration-300 hover:scale-105"
+                      onClick={() => handleTrailerClick(currentItem)}
+                    >
+                      <Image
+                        src={currentItem.image || '/placeholder-poster.jpg'}
+                        alt={getTitle(currentItem)}
+                        fill
+                        className="object-cover"
+                        sizes="(max-width: 640px) 192px, (max-width: 768px) 224px, 256px"
+                        priority
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                                             {/* Mobile Trailer Hint */}
+                       <MobileTrailerHint />
+                    </div>
+                    
+                    
+                    
+                    
+                  </motion.div>
+                </AnimatePresence>
 
                 {/* Mobile Description */}
                 <motion.p
@@ -759,7 +907,10 @@ export default function HeroMovies() {
                  transition={{ duration: 0.6 }}
                  whileHover={{ scale: 1.05 }}
                >
-                 <div className="w-80 h-96 rounded-2xl overflow-hidden shadow-2xl relative">
+                                   <div 
+                    className="w-80 h-96 rounded-2xl overflow-hidden shadow-2xl relative cursor-pointer transition-transform duration-300 hover:scale-105"
+                    onClick={() => handleTrailerClick(currentItem)}
+                  >
                    <Image
                      src={currentItem.image || '/placeholder-poster.jpg'}
                      alt={getTitle(currentItem)}
@@ -769,24 +920,14 @@ export default function HeroMovies() {
                    />
                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                    
-                   {/* Desktop Hover Trailer Effect */}
-                   <motion.div
-                     className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-all duration-300"
-                     whileHover={{ scale: 1.02 }}
-                   >
-                     <motion.button
-                       onClick={() => handleTrailerClick(currentItem)}
-                       className="w-20 h-20 bg-red-600 hover:bg-red-700 rounded-full flex items-center justify-center shadow-2xl transition-all duration-300 hover:scale-110"
-                       whileHover={{ scale: 1.1 }}
-                       whileTap={{ scale: 0.95 }}
-                     >
-                       <PlayIcon className="w-10 h-10 text-white" />
-                     </motion.button>
-                   </motion.div>
+                   
                  </div>
                  
                  {/* Glow effect */}
                  <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-red-500/20 to-pink-500/20 blur-xl -z-10 opacity-60" />
+                 
+                                   {/* Desktop Trailer Hint */}
+                  <DesktopTrailerHint />
                </motion.div>
              </AnimatePresence>
 
@@ -823,94 +964,28 @@ export default function HeroMovies() {
           </motion.div>
         </div>
 
-                 {/* Navigation Controls - Hidden on Mobile & Tablet */}
-         <div className="hidden lg:flex absolute bottom-8 left-1/2 transform -translate-x-1/2 items-center gap-4">
-           <motion.button
-             onClick={prevSlide}
-             className="w-12 h-12 rounded-full border border-white/30 bg-black/50 backdrop-blur-sm text-white hover:bg-white/20 transition-all duration-300 flex items-center justify-center disabled:opacity-50"
-             whileHover={{ scale: 1.1 }}
-             whileTap={{ scale: 0.9 }}
-             disabled={isTransitioning || showTrailer}
-           >
-             <ChevronLeftIcon className="w-6 h-6" />
-           </motion.button>
-
-          {/* Dots Indicator */}
-          <div className="flex items-center gap-2">
-            {heroItems.map((_, index) => (
-              <motion.button
-                key={index}
-                className={`w-3 h-3 rounded-full transition-all duration-300 ${
-                  index === currentIndex 
-                    ? 'bg-red-500 w-8' 
-                    : 'bg-white/30 hover:bg-white/50'
-                }`}
-                onClick={() => goToSlide(index)}
-                whileHover={{ scale: 1.2 }}
-                whileTap={{ scale: 0.8 }}
-              />
-            ))}
-          </div>
-
-                     <motion.button
-             onClick={nextSlide}
-             className="w-12 h-12 rounded-full border border-white/30 bg-black/50 backdrop-blur-sm text-white hover:bg-white/20 transition-all duration-300 flex items-center justify-center disabled:opacity-50"
-             whileHover={{ scale: 1.1 }}
-             whileTap={{ scale: 0.9 }}
-             disabled={isTransitioning || showTrailer}
-           >
-             <ChevronRightIcon className="w-6 h-6" />
-           </motion.button>
-        </div>
+        {/* Navigation Controls - Hidden on Mobile & Tablet */}
+        <DesktopNavigationControls 
+          prevSlide={prevSlide} 
+          nextSlide={nextSlide} 
+          goToSlide={goToSlide} 
+          heroItems={heroItems} 
+          currentIndex={currentIndex} 
+          isTransitioning={isTransitioning} 
+          showTrailer={showTrailer} 
+        />
 
         {/* Mobile & Tablet Swipe Indicators */}
-        <div className="lg:hidden text-center mt-8 mb-4">
-          <motion.p
-            className="text-gray-400 text-sm"
-            animate={{ opacity: [0.5, 1, 0.5] }}
-            transition={{ duration: 2, repeat: Infinity }}
-          >
-            Swipe or tap arrows to navigate
-          </motion.p>
-        </div>
-
-                 {/* Mobile & Tablet Navigation Controls */}
-         <div className="lg:hidden flex justify-center items-center gap-4 mt-2">
-           <motion.button
-             onClick={prevSlide}
-             className="w-10 h-10 rounded-full border border-white/30 bg-black/50 backdrop-blur-sm text-white active:bg-white/20 transition-all duration-300 flex items-center justify-center disabled:opacity-50"
-             whileTap={{ scale: 0.9 }}
-             disabled={isTransitioning || showTrailer}
-           >
-             <ChevronLeftIcon className="w-5 h-5" />
-           </motion.button>
-
-          {/* Mobile Dots Indicator */}
-          <div className="flex items-center gap-2">
-            {heroItems.map((_, index) => (
-              <motion.button
-                key={index}
-                className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${
-                  index === currentIndex 
-                    ? 'bg-red-500 w-6' 
-                    : 'bg-white/30'
-                }`}
-                onClick={() => goToSlide(index)}
-                whileTap={{ scale: 0.8 }}
-              />
-            ))}
-          </div>
-
-                     <motion.button
-             onClick={nextSlide}
-             className="w-10 h-10 rounded-full border border-white/30 bg-black/50 backdrop-blur-sm text-white active:bg-white/20 transition-all duration-300 flex items-center justify-center disabled:opacity-50"
-             whileTap={{ scale: 0.9 }}
-             disabled={isTransitioning || showTrailer}
-           >
-             <ChevronRightIcon className="w-6 h-6" />
-           </motion.button>
-                 </div>
-       </div>
+        <MobileNavigationControls 
+          prevSlide={prevSlide} 
+          nextSlide={nextSlide} 
+          goToSlide={goToSlide} 
+          heroItems={heroItems} 
+          currentIndex={currentIndex} 
+          isTransitioning={isTransitioning} 
+          showTrailer={showTrailer} 
+        />
+      </div>
 
        {/* Trailer Modal */}
        <AnimatePresence>

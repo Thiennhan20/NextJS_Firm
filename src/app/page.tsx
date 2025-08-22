@@ -1,24 +1,17 @@
 'use client'
 
-import { motion, useScroll, useTransform, MotionValue } from 'framer-motion'
-import { useEffect, useState, useRef, ReactNode } from 'react'
+import { motion } from 'framer-motion'
+import { useEffect, useState } from 'react'
 import TrendingMovies from '@/components/TrendingMovies'
 import ComingSoonMovies from '@/components/ComingSoonMovies'
 import HeroMovies from '@/components/HeroMovies'
+import EntertainmentFrames from '@/components/EntertainmentFrames'
 import { 
   SparklesIcon,
-  TvIcon,
-  CodeBracketIcon,
   StarIcon,
   HeartIcon,
   EyeIcon
 } from '@heroicons/react/24/outline'
-import FeatureCard from '@/components/common/FeatureCard'
-
-// --- INTERFACES ---
-// Movie interface removed as it's not used
-
-
 
 interface Particle {
   x: number;
@@ -27,88 +20,8 @@ interface Particle {
   duration: number;
 }
 
-// --- CUSTOM HOOKS ---
-const useResponsiveColumnCount = (config: { base: number; md?: number; lg?: number }) => {
-  const [count, setCount] = useState(config.lg || config.md || config.base);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    
-    const getCount = () => {
-      if (config.lg && window.matchMedia(`(min-width: 1024px)`).matches) {
-        return config.lg;
-      }
-      if (config.md && window.matchMedia(`(min-width: 768px)`).matches) {
-        return config.md;
-      }
-      return config.base;
-    };
-
-    const handleResize = () => setCount(getCount());
-
-    window.addEventListener('resize', handleResize);
-    handleResize(); // Initial count
-
-    return () => window.removeEventListener('resize', handleResize);
-  }, [config]);
-
-  return count;
-};
-
-
-
-  
-
-// --- REUSABLE COMPONENTS ---
-// ScrollRevealItem component removed as it's not used
-
-// Original morphing effect for Redefining Entertainment section
-const OriginalScrollRevealItem = ({ children, index, columnCount, scrollProgress }: { children: ReactNode, index: number, columnCount: number, scrollProgress: MotionValue<number> }) => {
-  const column = index % columnCount;
-  const isLeft = column === 0;
-  const isRight = column === columnCount - 1;
-  const isCenter = !isLeft && !isRight;
-
-  const x = useTransform(
-    scrollProgress,
-    [0.1, 0.4, 0.6, 0.9],
-    isLeft ? ['-100%', '0%', '0%', '-100%'] : isRight ? ['100%', '0%', '0%', '100%'] : ['0%', '0%', '0%', '0%']
-  );
-  
-  const opacity = useTransform(scrollProgress, [0.1, 0.4, 0.6, 0.9], [0, 1, 1, 0]);
-  
-  const scale = useTransform(
-    scrollProgress,
-    [0.1, 0.4, 0.6, 0.9],
-    isCenter ? [0.6, 1, 1, 0.6] : [0.9, 1, 1, 0.9]
-  );
-  
-  return (
-    <motion.div style={{ x, opacity, scale }} className="h-full">
-      {children}
-    </motion.div>
-  );
-};
-
-
 export default function Home() {
-  // API_KEY removed as it's not used
   const [particles, setParticles] = useState<Particle[]>([]);
-
-  // --- REFS & SCROLL ---
-  const featuresRef = useRef<HTMLElement>(null)
-
-  const { scrollYProgress: featuresScrollProgress } = useScroll({ 
-    target: featuresRef, 
-    offset: ["start end", "end start"]
-  });
-
-  const featuresColumnCount = useResponsiveColumnCount({ base: 1, md: 2, lg: 3 });
-
-
-
-
-
 
   useEffect(() => {
     const newParticles = Array.from({ length: 50 }).map(() => ({
@@ -118,16 +31,7 @@ export default function Home() {
       duration: Math.random() * 20 + 10,
     }));
     setParticles(newParticles);
-
-
   }, []);
-
-
-
-
-
-
-
 
   return (
     <main className="min-h-screen overflow-x-hidden bg-black text-white">
@@ -161,41 +65,16 @@ export default function Home() {
       {/* Hero Movies Section */}
       <HeroMovies />
 
-      {/* Features Section */}
-      <section ref={featuresRef} className="py-12 sm:py-24 lg:py-32 px-4 sm:px-6 lg:px-8 relative">
-        <div className="text-center mb-8 sm:mb-16 lg:mb-20 px-4">
-            <h2 className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-3 sm:mb-4 bg-gradient-to-r from-purple-400 via-pink-400 to-red-400 text-transparent bg-clip-text leading-tight">
-              Redefining Entertainment
-            </h2>
-            <p className="text-sm sm:text-lg lg:text-xl xl:text-2xl text-gray-300 max-w-4xl mx-auto">
-              Built with cutting-edge technology for an unparalleled viewing experience.
-            </p>
-        </div>
-        <div className="max-w-7xl mx-auto grid grid-cols-3 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-10 lg:gap-12">
-            {[
-              { icon: <TvIcon className="w-10 h-10" />, title: "4K Streaming", description: "NULL", color: "purple" },
-              { icon: <CodeBracketIcon className="w-10 h-10" />, title: "Gaming Hub", description: "NULL", color: "red" },
-              { icon: <SparklesIcon className="w-10 h-10" />, title: "AI Smart", description: "NULL", color: "blue" }
-            ].map((feature, index) => (
-              <OriginalScrollRevealItem key={index} index={index} columnCount={featuresColumnCount} scrollProgress={featuresScrollProgress}>
-                  <FeatureCard
-                    icon={feature.icon}
-                    title={feature.title}
-                    description={feature.description}
-                    color={feature.color as "purple" | "red" | "blue"}
-                  />
-              </OriginalScrollRevealItem>
-            ))}
-        </div>
-      </section>
+      {/* Entertainment Frames Section */}
+      <EntertainmentFrames />
 
       {/* Trending Movies Section */}
       <TrendingMovies />
 
-            {/* Coming Soon Movies Section */}
+      {/* Coming Soon Movies Section */}
       <ComingSoonMovies />
 
-       {/* Call to Action Section */}
+      {/* Call to Action Section */}
       <section className="py-20 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
         <motion.div
             className="absolute inset-0"
