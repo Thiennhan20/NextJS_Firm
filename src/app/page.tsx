@@ -2,29 +2,18 @@
 
 import { motion, useScroll, useTransform, MotionValue } from 'framer-motion'
 import { useEffect, useState, useRef, ReactNode } from 'react'
-// axios import removed as it's not used
-import { useRouter } from 'next/navigation'
-// Image import removed as it's not used
-// Link import removed as it's not used
-import useAuthStore from '@/store/useAuthStore'
 import TrendingMovies from '@/components/TrendingMovies'
 import ComingSoonMovies from '@/components/ComingSoonMovies'
-// MovieCard import removed as it's not used
+import HeroMovies from '@/components/HeroMovies'
 import { 
-  PlayIcon, 
-  UserIcon, 
-  FilmIcon, 
   SparklesIcon,
   TvIcon,
   CodeBracketIcon,
-  VideoCameraIcon,
-  CubeTransparentIcon,
   StarIcon,
   HeartIcon,
   EyeIcon
 } from '@heroicons/react/24/outline'
 import FeatureCard from '@/components/common/FeatureCard'
-import { MorphingIcon } from '@/components/common/MorphingIcon'
 
 // --- INTERFACES ---
 // Movie interface removed as it's not used
@@ -106,28 +95,15 @@ export default function Home() {
   // API_KEY removed as it's not used
   const [particles, setParticles] = useState<Particle[]>([]);
 
- 
-  const router = useRouter();
-  const { isAuthenticated, user } = useAuthStore();
-  
   // --- REFS & SCROLL ---
-  const heroRef = useRef<HTMLElement>(null)
   const featuresRef = useRef<HTMLElement>(null)
-  // moviesRef removed as it's not used
 
-
-  const { scrollY } = useScroll()
-  const heroY = useTransform(scrollY, [0, 800], [0, -200])
-  const heroOpacity = useTransform(scrollY, [0, 300], [1, 0])
-  
   const { scrollYProgress: featuresScrollProgress } = useScroll({ 
     target: featuresRef, 
     offset: ["start end", "end start"]
   });
-  // moviesScrollProgress removed as it's not used
 
   const featuresColumnCount = useResponsiveColumnCount({ base: 1, md: 2, lg: 3 });
-  // moviesColumnCount removed as it's not used
 
 
 
@@ -146,7 +122,7 @@ export default function Home() {
 
   }, []);
 
-  // Check scroll position for Coming Soon section on mount and scroll
+
 
 
 
@@ -182,105 +158,8 @@ export default function Home() {
         ))}
       </div>
 
-      {/* Hero Section */}
-      <motion.section 
-        ref={heroRef}
-        style={{ y: heroY, opacity: heroOpacity }}
-        className="relative min-h-screen flex items-center justify-center overflow-hidden"
-      >
-        <motion.div 
-          className="absolute inset-0"
-          animate={{ backgroundPosition: ["0% 0%", "100% 100%"] }}
-          transition={{ duration: 20, repeat: Infinity, repeatType: "mirror" }}
-          style={{ backgroundImage: "radial-gradient(circle at 20% 50%, #8b5cf620 0%, transparent 40%), radial-gradient(circle at 80% 30%, #ef444420 0%, transparent 40%)"}}
-        />
-        <div className="relative z-10 text-center px-4 max-w-6xl mx-auto">
-          {/* ... Hero Content ... */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8 mb-6">
-            <div className="hidden sm:block">
-              <MorphingIcon direction="left" />
-            </div>
-            <div className="flex flex-col items-center">
-              <h1 className="text-4xl sm:text-5xl lg:text-7xl xl:text-8xl font-black leading-tight text-center">
-                <motion.span
-                  animate={{ backgroundPosition: ["0% 50%", "100% 50%"]}}
-                  transition={{ duration: 4, repeat: Infinity, repeatType: "mirror" }}
-                  className="bg-gradient-to-r from-purple-400 via-pink-400 to-red-400 bg-300% text-transparent bg-clip-text"
-                  style={{ backgroundSize: "300% 300%" }}
-                >
-                  Entertainment Galaxy
-                </motion.span>
-              </h1>
-              {/* Mobile MorphingIcon */}
-              <div className="sm:hidden mt-4">
-                <MorphingIcon direction="left" />
-              </div>
-            </div>
-            <div className="hidden sm:block">
-              <MorphingIcon direction="right" />
-            </div>
-          </div>
-            <div className="flex flex-col sm:flex-row gap-6 justify-center items-center">
-              <motion.button
-                whileHover={{
-                  scale: 1.05,
-                  boxShadow: "0 20px 40px rgba(239, 68, 68, 0.4)",
-                }}
-                whileTap={{ scale: 0.95 }}
-                transition={{ type: "spring", stiffness: 300, damping: 15 }}
-                className="group relative px-8 py-4 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-lg text-lg font-bold shadow-2xl"
-                onClick={() => router.push('/movies')}
-              >
-                <div className="flex items-center gap-3">
-                  <PlayIcon className="w-6 h-6" />
-                  <span>Explore Now</span>
-                </div>
-              </motion.button>
-              {!isAuthenticated ? (
-                <motion.button
-                  whileHover={{
-                    scale: 1.05,
-                    boxShadow: "0 20px 40px rgba(168, 85, 247, 0.4)",
-                  }}
-                  whileTap={{ scale: 0.95 }}
-                  transition={{ type: "spring", stiffness: 300, damping: 15 }}
-                  className="group px-8 py-4 bg-transparent border-2 border-purple-400 text-purple-400 rounded-lg text-lg font-bold hover:bg-purple-400/10"
-                  onClick={() => router.push('/login')}
-                >
-                  <div className="flex items-center gap-3">
-                    <UserIcon className="w-6 h-6" />
-                    <span>Sign In</span>
-                  </div>
-                </motion.button>
-              ) : (
-                <motion.div
-                  whileHover={{ scale: 1.05 }}
-                  className="px-8 py-4 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-lg text-lg font-bold flex items-center gap-3"
-                >
-                  <UserIcon className="w-6 h-6" />
-                  <span>Hello, {user?.name || 'User'}! 👋</span>
-                </motion.div>
-              )}
-            </div>
-        </div>
-        {/* Floating Icons */}
-        {[
-          { icon: <FilmIcon className="w-16 h-16 text-purple-400" />, top: "20%", left: "10%", duration: 20 },
-          { icon: <SparklesIcon className="w-20 h-20 text-red-400" />, bottom: "20%", right: "10%", duration: 15 },
-          { icon: <VideoCameraIcon className="w-12 h-12 text-blue-400" />, top: "15%", right: "20%", duration: 25 },
-          { icon: <CubeTransparentIcon className="w-14 h-14 text-pink-400" />, bottom: "15%", left: "20%", duration: 18 },
-        ].map((item, index) => (
-          <motion.div
-            key={index}
-            animate={{ y: ["0%", "5%", "-5%", "0%"]}}
-            transition={{ duration: item.duration, repeat: Infinity, ease: "linear", repeatType: "mirror" }}
-            className="absolute opacity-20"
-            style={{ top: item.top, bottom: item.bottom, left: item.left, right: item.right }}
-          >
-            {item.icon}
-          </motion.div>
-        ))}
-      </motion.section>
+      {/* Hero Movies Section */}
+      <HeroMovies />
 
       {/* Features Section */}
       <section ref={featuresRef} className="py-12 sm:py-24 lg:py-32 px-4 sm:px-6 lg:px-8 relative">
