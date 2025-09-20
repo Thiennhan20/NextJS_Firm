@@ -275,6 +275,7 @@ export default function HeroMovies() {
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [showTrailer, setShowTrailer] = useState(false);
   const [currentTrailer, setCurrentTrailer] = useState<string>('');
+  const [isMobile, setIsMobile] = useState(false);
   const autoPlayRef = useRef<NodeJS.Timeout | null>(null);
 
   // Watchlist functionality
@@ -315,20 +316,34 @@ export default function HeroMovies() {
     }, 600);
   }, [currentIndex, isTransitioning, showTrailer]);
 
-  // Auto-play functionality
+  // Auto-play functionality - Optimized interval
   const startAutoPlay = useCallback(() => {
     if (autoPlayRef.current) clearInterval(autoPlayRef.current);
     autoPlayRef.current = setInterval(() => {
-      if (!isTransitioning && !showTrailer) {
+      if (!isTransitioning && !showTrailer && heroItems.length > 0) {
         nextSlide();
       }
-    }, 5000);
-  }, [isTransitioning, nextSlide, showTrailer]);
+    }, 8000); // Increased interval for better performance
+  }, [isTransitioning, nextSlide, showTrailer, heroItems.length]);
 
   const stopAutoPlay = useCallback(() => {
     if (autoPlayRef.current) {
       clearInterval(autoPlayRef.current);
     }
+  }, []);
+
+  // Mobile detection
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    
+    return () => {
+      window.removeEventListener('resize', checkMobile);
+    };
   }, []);
 
   useEffect(() => {
@@ -563,28 +578,24 @@ export default function HeroMovies() {
         </motion.div>
       </AnimatePresence>
 
-      {/* Floating Particles Effect */}
-      <div className="absolute inset-0">
-        {[...Array(20)].map((_, i) => (
-          <motion.div
-            key={i}
-            className="absolute w-1 h-1 bg-white/20 rounded-full"
-            style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-            }}
-            animate={{
-              y: [-20, -100],
-              opacity: [0, 1, 0],
-            }}
-            transition={{
-              duration: Math.random() * 3 + 2,
-              repeat: Infinity,
-              delay: Math.random() * 2,
-            }}
-          />
-        ))}
-      </div>
+      {/* Floating Particles Effect - Optimized for performance */}
+      {!isMobile && (
+        <div className="absolute inset-0">
+          {[...Array(4)].map((_, i) => (
+            <div
+              key={i}
+              className="absolute w-1 h-1 bg-white/20 rounded-full performance-particle"
+              style={{
+                left: `${20 + i * 15}%`,
+                top: `${25 + (i % 2) * 30}%`,
+                willChange: 'transform, opacity',
+                animation: `particleFloat ${4 + i * 0.5}s ease-in-out infinite`,
+                animationDelay: `${i * 0.3}s`
+              }}
+            />
+          ))}
+        </div>
+      )}
       
       <div className="relative z-10 w-full max-w-7xl mx-auto px-4 py-4 sm:py-8">
         {/* Custom CSS to hide scrollbars */}
@@ -613,7 +624,7 @@ export default function HeroMovies() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
                 transition={{ duration: 0.6 }}
-                className="space-y-4"
+                className="space-y-3"
               >
                 {/* Mobile Badges */}
                 <div className="flex items-center justify-center gap-2 flex-wrap">
@@ -691,24 +702,13 @@ export default function HeroMovies() {
                   </motion.div>
                 </AnimatePresence>
 
-                {/* Mobile Description */}
-                <motion.p
-                  className="text-sm sm:text-base text-gray-200 leading-relaxed px-4 max-w-md mx-auto"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.8, delay: 0.4 }}
-                >
-                  {currentItem.description && currentItem.description.length > 120
-                    ? `${currentItem.description.substring(0, 120)}...`
-                    : currentItem.description || 'No description available.'}
-                </motion.p>
 
                 {/* Mobile Action Buttons */}
                 <motion.div
-                  className="flex items-center justify-center gap-3 px-4 pt-4"
+                  className="flex items-center justify-center gap-3 px-4 pt-2"
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.8, delay: 0.6 }}
+                  transition={{ duration: 0.8, delay: 0.4 }}
                 >
                   <Link href={getRoute(currentItem)} className="w-auto">
                     <motion.button
@@ -741,7 +741,7 @@ export default function HeroMovies() {
                 </motion.div>
 
                 {/* Mobile Thumbnails */}
-                <div className="flex items-center justify-center gap-2 px-4 pt-4 overflow-x-auto pb-2 scrollbar-hide">
+                <div className="flex items-center justify-center gap-2 px-4 pt-2 overflow-x-auto pb-2 scrollbar-hide">
                   {visibleItems.map((item, index) => (
                     <motion.button
                       key={item.id}
@@ -780,7 +780,7 @@ export default function HeroMovies() {
           
           {/* Left Side - Main Content */}
           <motion.div
-            className="text-white space-y-6"
+            className="text-white space-y-4"
             initial={{ opacity: 0, x: -50 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.8, delay: 0.2 }}
@@ -792,7 +792,7 @@ export default function HeroMovies() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -30 }}
                 transition={{ duration: 0.6 }}
-                className="space-y-4"
+                className="space-y-3"
               >
                 {/* Status and Type Badges */}
                 <div className="flex items-center gap-3">
@@ -837,24 +837,13 @@ export default function HeroMovies() {
                   </span>
                 </div>
 
-                {/* Description */}
-                <motion.p
-                  className="text-lg text-gray-200 leading-relaxed max-w-lg"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.8, delay: 0.5 }}
-                >
-                  {currentItem.description && currentItem.description.length > 150
-                    ? `${currentItem.description.substring(0, 150)}...`
-                    : currentItem.description || 'No description available.'}
-                </motion.p>
 
                 {/* Action Buttons */}
                 <motion.div
-                  className="flex items-center gap-4 pt-4"
+                  className="flex items-center gap-4 pt-2"
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.8, delay: 0.7 }}
+                  transition={{ duration: 0.8, delay: 0.5 }}
                 >
                   <Link href={getRoute(currentItem)}>
                     <motion.button
@@ -891,7 +880,7 @@ export default function HeroMovies() {
 
           {/* Right Side - Poster and Thumbnails */}
           <motion.div
-            className="flex flex-col items-center space-y-6"
+            className="flex flex-col items-center space-y-4"
             initial={{ opacity: 0, x: 50 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.8, delay: 0.4 }}

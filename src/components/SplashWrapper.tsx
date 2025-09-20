@@ -1,10 +1,18 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import SplashScreen from './SplashScreen';
 
 export default function SplashWrapper() {
   const [showSplash, setShowSplash] = useState(true);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const cleanupTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Memoized cleanup function
+  const cleanup = useCallback(() => {
+    document.documentElement.classList.remove('splash-screen-active');
+    document.body.classList.remove('splash-screen-active');
+  }, []);
 
   // Always show splash screen on reload/visit
   useEffect(() => {
@@ -13,29 +21,23 @@ export default function SplashWrapper() {
     document.body.classList.add('splash-screen-active');
 
     // Force show splash screen for 2 seconds on every visit/reload
-    const timer = setTimeout(() => {
+    timeoutRef.current = setTimeout(() => {
       setShowSplash(false);
       // Remove CSS classes after splash screen fade out completes
-      setTimeout(() => {
-        document.documentElement.classList.remove('splash-screen-active');
-        document.body.classList.remove('splash-screen-active');
-      }, 1200); // Wait for fade out animation to complete (1.2s)
+      cleanupTimeoutRef.current = setTimeout(cleanup, 1200); // Wait for fade out animation to complete (1.2s)
     }, 2000);
 
     return () => {
-      clearTimeout(timer);
-      // Cleanup CSS classes
-      document.documentElement.classList.remove('splash-screen-active');
-      document.body.classList.remove('splash-screen-active');
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      if (cleanupTimeoutRef.current) clearTimeout(cleanupTimeoutRef.current);
+      cleanup();
     };
-  }, []);
+  }, [cleanup]);
 
-  const handleSplashComplete = () => {
+  const handleSplashComplete = useCallback(() => {
     setShowSplash(false);
-    // Remove CSS classes
-    document.documentElement.classList.remove('splash-screen-active');
-    document.body.classList.remove('splash-screen-active');
-  };
+    cleanup();
+  }, [cleanup]);
 
   if (!showSplash) return null;
 

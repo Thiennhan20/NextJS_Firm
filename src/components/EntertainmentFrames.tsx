@@ -43,12 +43,12 @@ export default function EntertainmentFrames() {
     offset: ["start end", "end start"]
   });
 
-  // Auto-switch between Movies/TV Shows
+  // Auto-switch between Movies/TV Shows - Optimized interval
   const startAutoPlay = useCallback(() => {
     if (autoPlayRef.current) clearInterval(autoPlayRef.current);
     autoPlayRef.current = setInterval(() => {
       setCurrentNav(prev => prev === 'movies' ? 'tvshows' : 'movies');
-    }, 5000); // Switch every 5 seconds
+    }, 10000); // Increased interval for better performance
   }, []);
 
   const stopAutoPlay = useCallback(() => {

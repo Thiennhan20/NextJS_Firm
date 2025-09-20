@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface SplashScreenProps {
@@ -11,39 +11,47 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
   const [isVisible, setIsVisible] = useState(true);
   const [textIndex, setTextIndex] = useState(0);
   const [charIndex, setCharIndex] = useState(0);
+  
+  const textIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const mainTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const completeTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const loadingTexts = useMemo(() => [
-    "Welcome to Entertainment",
+    "Welcome to E&G",
   ], []);
 
+  // Optimized text animation with requestAnimationFrame
+  const animateText = useCallback(() => {
+    setCharIndex((prev) => {
+      if (prev >= loadingTexts[textIndex].length) {
+        setTimeout(() => {
+          setTextIndex((prevIndex) => (prevIndex + 1) % loadingTexts.length);
+          setCharIndex(0);
+        }, 800);
+        return prev;
+      }
+      return prev + 1;
+    });
+  }, [loadingTexts, textIndex]);
+
   useEffect(() => {
-    // Hiệu ứng chữ chạy
-    const textInterval = setInterval(() => {
-      setCharIndex((prev) => {
-        if (prev >= loadingTexts[textIndex].length) {
-          setTimeout(() => {
-            setTextIndex((prevIndex) => (prevIndex + 1) % loadingTexts.length);
-            setCharIndex(0);
-          }, 800);
-          return prev;
-        }
-        return prev + 1;
-      });
-    }, 60);
+    // Optimized text animation with longer interval
+    textIntervalRef.current = setInterval(animateText, 80); // Reduced frequency
 
     // Hide splash screen after 3.5 seconds
-    const timer = setTimeout(() => {
+    mainTimerRef.current = setTimeout(() => {
       setIsVisible(false);
-      setTimeout(() => {
+      completeTimerRef.current = setTimeout(() => {
         onComplete();
       }, 1000);
     }, 3500);
 
     return () => {
-      clearTimeout(timer);
-      clearInterval(textInterval);
+      if (textIntervalRef.current) clearInterval(textIntervalRef.current);
+      if (mainTimerRef.current) clearTimeout(mainTimerRef.current);
+      if (completeTimerRef.current) clearTimeout(completeTimerRef.current);
     };
-  }, [onComplete, textIndex, loadingTexts]);
+  }, [onComplete, animateText]);
 
   return (
     <AnimatePresence mode="wait">
@@ -131,7 +139,7 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
             {/* Entertainment Icons - Added many more icons */}
             {/* Popcorn Icon */}
             <motion.div
-              className="absolute top-16 left-16 w-12 h-12 border border-yellow-400/30 rounded-full flex items-center justify-center bg-gradient-to-br from-yellow-400/20 to-orange-400/20 backdrop-blur-sm"
+              className="absolute top-16 left-16 w-12 h-12 border border-yellow-400/30 rounded-full flex items-center justify-center bg-gradient-to-br from-yellow-400/20 to-orange-400/20 backdrop-blur-sm splash-icon"
               animate={{
                 scale: [1, 1.1, 1],
                 rotate: [0, 5, -5, 0],
@@ -151,7 +159,7 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
 
             {/* Music Note Icon */}
             <motion.div
-              className="absolute top-24 right-16 w-10 h-10 border border-pink-400/30 rounded-full flex items-center justify-center bg-gradient-to-br from-pink-400/20 to-purple-400/20 backdrop-blur-sm"
+              className="absolute top-24 right-16 w-10 h-10 border border-pink-400/30 rounded-full flex items-center justify-center bg-gradient-to-br from-pink-400/20 to-purple-400/20 backdrop-blur-sm splash-icon"
               animate={{
                 scale: [1, 1.15, 1],
                 rotate: [0, -8, 8, 0],
@@ -350,32 +358,31 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
               </svg>
             </motion.div>
 
-            {/* Particle effects - Enhanced with more dynamic movement */}
-            {[...Array(16)].map((_, i) => (
+            {/* Optimized particle effects - Reduced from 16 to 8 particles */}
+            {[...Array(8)].map((_, i) => (
               <motion.div
                 key={i}
-                className="absolute w-1 h-1 bg-white/40 rounded-full"
+                className="absolute w-1 h-1 bg-white/40 rounded-full splash-particle"
                 style={{
-                  left: `${10 + Math.random() * 80}%`,
-                  top: `${10 + Math.random() * 80}%`,
+                  left: `${15 + i * 10}%`,
+                  top: `${20 + (i % 3) * 25}%`,
                 }}
                 animate={{
-                  y: [0, -80, 0],
-                  x: [0, (Math.random() - 0.5) * 40, 0],
-                  opacity: [0, 1, 0],
-                  scale: [0, 1.2, 0]
+                  y: [0, -60, 0],
+                  opacity: [0, 0.8, 0],
+                  scale: [0, 1, 0]
                 }}
                 transition={{
-                  duration: 3 + Math.random() * 3,
+                  duration: 4 + i * 0.5,
                   repeat: Infinity,
-                  delay: Math.random() * 2,
+                  delay: i * 0.3,
                   ease: [0.4, 0.0, 0.2, 1]
                 }}
               />
             ))}
             
-            {/* Glowing orbs in background */}
-            {[...Array(4)].map((_, i) => (
+            {/* Optimized glowing orbs - Reduced from 4 to 2 */}
+            {[...Array(2)].map((_, i) => (
               <motion.div
                 key={i}
                 className="absolute w-40 h-40 rounded-full blur-xl opacity-20"
@@ -383,15 +390,15 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
                   background: i % 2 === 0 
                     ? 'radial-gradient(circle, rgba(59, 130, 246, 0.6) 0%, transparent 70%)' 
                     : 'radial-gradient(circle, rgba(168, 85, 247, 0.6) 0%, transparent 70%)',
-                  left: `${15 + i * 25}%`,
-                  top: `${20 + (i % 2) * 40}%`,
+                  left: `${25 + i * 50}%`,
+                  top: `${30 + i * 30}%`,
                 }}
                 animate={{
-                  scale: [1, 1.3, 1],
-                  opacity: [0.1, 0.2, 0.1]
+                  scale: [1, 1.2, 1],
+                  opacity: [0.1, 0.15, 0.1]
                 }}
                 transition={{
-                  duration: 8 + i * 2,
+                  duration: 10 + i * 3,
                   repeat: Infinity,
                   ease: "easeInOut"
                 }}
@@ -426,7 +433,7 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
               {/* Main Logo Text */}
               <div className="relative flex justify-center mb-6">
                 <motion.div
-                  className="relative flex items-center justify-center p-2 rounded-2xl backdrop-blur-md border border-white/30 shadow-2xl bg-black/40"
+                  className="relative flex items-center justify-center p-2 rounded-2xl backdrop-blur-md border border-white/30 shadow-2xl bg-black/40 splash-logo"
                   animate={{
                     boxShadow: [
                       '0 20px 40px -4px rgba(0, 0, 0, 0.5)',
@@ -479,24 +486,24 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
                     {/* Text with slight shadow for depth */}
                     <span className="relative drop-shadow-md">NTN</span>
                     
-                    {/* Floating Particles */}
-                    {[...Array(3)].map((_, i) => (
+                    {/* Optimized Floating Particles - Reduced from 3 to 2 */}
+                    {[...Array(2)].map((_, i) => (
                       <motion.div
                         key={i}
                         className="absolute w-1.5 h-1.5 rounded-full bg-blue-400"
                         style={{
-                          top: `${15 + i * 25}%`,
-                          left: `${70 + i * 10}%`,
+                          top: `${20 + i * 30}%`,
+                          left: `${75 + i * 15}%`,
                         }}
                         animate={{
-                          y: [0, -8, 0],
-                          opacity: [0.6, 1, 0.6],
-                          scale: [0.8, 1.2, 0.8],
+                          y: [0, -6, 0],
+                          opacity: [0.6, 0.9, 0.6],
+                          scale: [0.8, 1.1, 0.8],
                         }}
                         transition={{
-                          duration: 3,
+                          duration: 4,
                           repeat: Infinity,
-                          delay: i * 0.3,
+                          delay: i * 0.5,
                           ease: [0.4, 0.0, 0.2, 1]
                         }}
                       />
@@ -584,25 +591,24 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
                     </div>
                   </div>
                   
-                  {/* Sparkles around the icon */}
-                  {[...Array(3)].map((_, i) => (
+                  {/* Optimized Sparkles - Reduced from 3 to 2 */}
+                  {[...Array(2)].map((_, i) => (
                     <motion.div
                       key={i}
                       className="absolute w-1.5 h-1.5 bg-yellow-400/70 rounded-full"
                       style={{
-                        top: i === 0 ? '-5px' : i === 1 ? 'auto' : '50%',
+                        top: i === 0 ? '-5px' : 'auto',
                         bottom: i === 1 ? '-5px' : 'auto',
-                        right: i === 2 ? '-5px' : 'auto',
-                        left: i === 2 ? 'auto' : '50%'
+                        left: '50%'
                       }}
                       animate={{
-                        scale: [0, 1.2, 0],
-                        opacity: [0, 1, 0]
+                        scale: [0, 1.1, 0],
+                        opacity: [0, 0.8, 0]
                       }}
                       transition={{
-                        duration: 2,
+                        duration: 2.5,
                         repeat: Infinity,
-                        delay: i * 0.7,
+                        delay: i * 0.8,
                         ease: [0.4, 0.0, 0.2, 1]
                       }}
                     />
@@ -618,11 +624,11 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
                 transition={{ delay: 0.8 }}
               >
                 <div className="flex items-center">
-                  {/* Animated dots */}
+                  {/* Optimized animated dots */}
                   <motion.div
                     className="flex space-x-1 mr-3"
-                    animate={{ opacity: [0.5, 1, 0.5] }}
-                    transition={{ duration: 1.5, repeat: Infinity }}
+                    animate={{ opacity: [0.6, 1, 0.6] }}
+                    transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
                   >
                     <div className="w-2 h-2 bg-blue-400 rounded-full" />
                     <div className="w-2 h-2 bg-blue-400 rounded-full" />
@@ -634,7 +640,7 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
                     {loadingTexts[textIndex].substring(0, charIndex)}
                     <motion.span
                       animate={{ opacity: [0, 1, 0] }}
-                      transition={{ duration: 0.8, repeat: Infinity }}
+                      transition={{ duration: 1, repeat: Infinity, ease: "easeInOut" }}
                       className="inline-block w-2 h-4 bg-blue-400 ml-1 align-middle"
                     />
                   </div>

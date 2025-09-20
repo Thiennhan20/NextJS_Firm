@@ -1,11 +1,12 @@
 'use client'
 
-import { useRef, useEffect, useState } from 'react'
+import { useRef, useEffect, useState, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import Image from 'next/image'
 import axios from 'axios'
 import Link from 'next/link'
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline'
+import { useApiCache } from '@/hooks/useApiCache'
 
 interface Movie {
   id: number;
@@ -90,20 +91,48 @@ const getCountryName = (languageCode?: string): string => {
 
 export default function TrendingMovies() {
   const API_KEY = process.env.NEXT_PUBLIC_TMDB_API_KEY;
-  const [trending, setTrending] = useState<TrendingItem[]>([]);
-  const [loading, setLoading] = useState(true);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null)
+  const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Check scroll position
-  const checkScrollPosition = () => {
-    if (scrollRef.current) {
-      const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
-      setCanScrollLeft(scrollLeft > 0);
-      setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 1);
-    }
-  };
+  // Optimized API call with caching
+  const fetchTrendingData = useCallback(async () => {
+    const [moviesResponse, tvShowsResponse] = await Promise.all([
+      axios.get(`https://api.themoviedb.org/3/trending/movie/week?api_key=${API_KEY}`),
+      axios.get(`https://api.themoviedb.org/3/trending/tv/week?api_key=${API_KEY}`)
+    ]);
+
+    const movies = moviesResponse.data.results.slice(0, 10).map((movie: TMDBMovie) => ({
+      id: movie.id,
+      title: movie.title,
+      image: movie.poster_path ? `https://image.tmdb.org/t/p/w400${movie.poster_path}` : '',
+      year: movie.release_date ? Number(movie.release_date.slice(0, 4)) : 0,
+      type: 'movie' as const,
+      status: 'Trending',
+      release_date: movie.release_date || '',
+      original_language: movie.original_language || 'en'
+    }));
+
+    const tvShows = tvShowsResponse.data.results.slice(0, 5).map((tvShow: TMDBTVShow) => ({
+      id: tvShow.id,
+      name: tvShow.name,
+      image: tvShow.poster_path ? `https://image.tmdb.org/t/p/w400${tvShow.poster_path}` : '',
+      year: tvShow.first_air_date ? Number(tvShow.first_air_date.slice(0, 4)) : 0,
+      type: 'tv' as const,
+      status: 'Trending',
+      first_air_date: tvShow.first_air_date || '',
+      original_language: tvShow.original_language || 'en'
+    }));
+
+    return [...movies, ...tvShows];
+  }, [API_KEY]);
+
+  const { data: trending = [], loading, error } = useApiCache(
+    'trending-movies-tv',
+    fetchTrendingData,
+    10 * 60 * 1000 // 10 minutes cache
+  );
+
 
   // Scroll functions
   const scrollLeft = () => {
@@ -118,76 +147,40 @@ export default function TrendingMovies() {
     }
   };
 
-  useEffect(() => {
-    const fetchTrending = async () => {
-      setLoading(true);
-      try {
-        const [moviesResponse, tvShowsResponse] = await Promise.all([
-          axios.get(`https://api.themoviedb.org/3/trending/movie/week?api_key=${API_KEY}`),
-          axios.get(`https://api.themoviedb.org/3/trending/tv/week?api_key=${API_KEY}`)
-        ]);
+  // Optimized scroll position checking with throttling
+  const checkScrollPosition = useCallback(() => {
+    if (scrollRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
+      setCanScrollLeft(scrollLeft > 0);
+      setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 1);
+    }
+  }, []);
 
-        const movies = moviesResponse.data.results.slice(0, 10).map((movie: TMDBMovie) => ({
-          id: movie.id,
-          title: movie.title,
-          image: movie.poster_path ? `https://image.tmdb.org/t/p/w400${movie.poster_path}` : '',
-          year: movie.release_date ? Number(movie.release_date.slice(0, 4)) : 0,
-          type: 'movie' as const,
-          status: 'Trending',
-          release_date: movie.release_date || '',
-          original_language: movie.original_language || 'en'
-        }));
-
-        const tvShows = tvShowsResponse.data.results.slice(0, 5).map((tvShow: TMDBTVShow) => ({
-          id: tvShow.id,
-          name: tvShow.name,
-          image: tvShow.poster_path ? `https://image.tmdb.org/t/p/w400${tvShow.poster_path}` : '',
-          year: tvShow.first_air_date ? Number(tvShow.first_air_date.slice(0, 4)) : 0,
-          type: 'tv' as const,
-          status: 'Trending',
-          first_air_date: tvShow.first_air_date || '',
-          original_language: tvShow.original_language || 'en'
-        }));
-
-        // Combine and shuffle to mix movies and TV shows
-        const combined = [...movies, ...tvShows];
-        setTrending(combined);
-      } catch (error) {
-        console.error(error);
-        setTrending([]);
-      }
-      setLoading(false);
-    };
-    fetchTrending();
-  }, [API_KEY]);
-
-  // Check scroll position on mount and scroll
+  // Optimized scroll position checking with throttling
   useEffect(() => {
     const container = scrollRef.current;
     if (!container) return;
+
+    let throttleTimeout: NodeJS.Timeout | null = null;
+    const throttledCheckScroll = () => {
+      if (throttleTimeout) return;
+      throttleTimeout = setTimeout(() => {
+        checkScrollPosition();
+        throttleTimeout = null;
+      }, 16); // ~60fps
+    };
 
     checkScrollPosition();
-    container.addEventListener('scroll', checkScrollPosition);
-    window.addEventListener('resize', checkScrollPosition);
+    container.addEventListener('scroll', throttledCheckScroll, { passive: true });
+    window.addEventListener('resize', throttledCheckScroll, { passive: true });
 
     return () => {
-      container.removeEventListener('scroll', checkScrollPosition);
-      window.removeEventListener('resize', checkScrollPosition);
+      container.removeEventListener('scroll', throttledCheckScroll);
+      window.removeEventListener('resize', throttledCheckScroll);
+      if (throttleTimeout) clearTimeout(throttleTimeout);
     };
-  }, [trending]);
+  }, [trending, checkScrollPosition]);
 
-  // Add wheel event handler for horizontal scrolling (no preventDefault)
-  useEffect(() => {
-    const container = scrollRef.current;
-    if (!container) return;
-    const handleWheel = (e: WheelEvent) => {
-      if (Math.abs(e.deltaX) < Math.abs(e.deltaY)) {
-        container.scrollLeft += e.deltaY;
-      }
-    };
-    container.addEventListener('wheel', handleWheel, { passive: true });
-    return () => container.removeEventListener('wheel', handleWheel);
-  }, []);
 
   // Helper function to get title for both movies and TV shows
   const getTitle = (item: TrendingItem) => {
@@ -261,8 +254,10 @@ export default function TrendingMovies() {
           >
             {loading ? (
               <div className="text-gray-400 text-center py-8">Loading...</div>
+            ) : error ? (
+              <div className="text-red-400 text-center py-8">Error loading content</div>
             ) : (
-              trending.map((item) => (
+              trending?.map((item) => (
                 <Link key={item.id} href={getRoute(item)} className="min-w-[180px] sm:min-w-[220px] md:min-w-[260px] max-w-[260px]">
                   <motion.div
                     whileHover={{ scale: 1.07 }}

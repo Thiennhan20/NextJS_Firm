@@ -37,8 +37,9 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
+      // Thay vì redirect ngay lập tức, chỉ clear token và để component tự xử lý
       localStorage.removeItem('token');
-      window.location.href = '/login';
+      // Không redirect tự động, để component tự xử lý logout
     }
     return Promise.reject(error);
   }

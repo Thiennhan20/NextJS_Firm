@@ -29,9 +29,16 @@ const nextConfig: NextConfig = {
   },
   experimental: {
     // Enable optimizations for better performance
-    optimizePackageImports: ['@react-three/fiber', '@react-three/drei', 'three'],
+    optimizePackageImports: ['@react-three/fiber', '@react-three/drei', 'three', 'framer-motion'],
+    // Enable modern bundling
+    esmExternals: true,
   },
-  // Add headers for better font loading
+  // Compiler optimizations
+  compiler: {
+    // Remove console logs in production
+    removeConsole: process.env.NODE_ENV === 'production',
+  },
+  // Add headers for better performance
   async headers() {
     return [
       {
@@ -40,6 +47,19 @@ const nextConfig: NextConfig = {
           {
             key: 'X-Font-Loading',
             value: 'swap',
+          },
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+      {
+        source: '/api/(.*)',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=300, s-maxage=300',
           },
         ],
       },

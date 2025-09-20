@@ -16,6 +16,80 @@
   height: 100vh !important;
 }
 
+/* Performance optimizations for splash screen */
+.splash-screen-active * {
+  will-change: auto;
+}
+
+/* Optimize animations for better performance */
+.splash-particle {
+  will-change: transform, opacity;
+  transform: translateZ(0); /* Force hardware acceleration */
+}
+
+.splash-icon {
+  will-change: transform, opacity;
+  transform: translateZ(0);
+}
+
+.splash-logo {
+  will-change: transform, opacity, box-shadow;
+  transform: translateZ(0);
+}
+
+/* Performance optimizations for particles and animations */
+.performance-particle {
+  will-change: transform, opacity;
+  transform: translateZ(0); /* Force hardware acceleration */
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+
+/* Optimized particle animation using CSS */
+@keyframes particleFloat {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0.3;
+  }
+  50% {
+    transform: translate(15px, 15px) scale(1.1);
+    opacity: 0.6;
+  }
+  100% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0.3;
+  }
+}
+
+/* Optimize all animated elements */
+[data-framer-motion] {
+  will-change: transform, opacity;
+  transform: translateZ(0);
+}
+
+/* Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+  .splash-screen-active *,
+  .performance-particle,
+  [data-framer-motion] {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Performance optimizations for mobile devices */
+@media (max-width: 768px) {
+  .performance-particle {
+    display: none !important;
+  }
+  
+  /* Reduce animation complexity on mobile */
+  [data-framer-motion] {
+    animation-duration: 0.3s !important;
+  }
+}
+
 /* Prevent translation for logo and brand elements */
 [translate="no"],
 .no-translate {

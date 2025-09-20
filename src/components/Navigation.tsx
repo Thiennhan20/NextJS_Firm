@@ -17,7 +17,8 @@ import {
   BookmarkIcon,
   UserIcon,
   QueueListIcon,
-  PlayCircleIcon
+  PlayCircleIcon,
+  ChevronUpIcon
 } from '@heroicons/react/24/outline'
 import useAuthStore from '@/store/useAuthStore'
 import { Menu, Transition } from '@headlessui/react'
@@ -25,11 +26,19 @@ import { Fragment } from 'react'
 import { toast } from 'react-hot-toast'
 import { LogOut, Settings } from 'lucide-react';
 import { useUIStore } from '@/store/store';
-import AutocompleteSearch from '@/components/common/AutocompleteSearch';
 import { useWatchlistStore } from '@/store/store';
 import useAuthHydrated from '@/store/useAuthHydrated';
 import Logo from '@/components/common/Logo';
 import LanguageSelector from '@/components/common/LanguageSelector';
+import { useHeader } from '@/contexts/HeaderContext';
+import dynamic from 'next/dynamic';
+
+// Lazy load heavy search component
+const AutocompleteSearch = dynamic(() => import('@/components/common/AutocompleteSearch'), {
+  loading: () => (
+    <div className="w-8 h-8 bg-gray-200 rounded-full animate-pulse"></div>
+  )
+});
 
 const mainNavItems = [
   { name: 'Home', href: '/', icon: HomeIcon },
@@ -42,7 +51,7 @@ const moreNavItems = [
   { name: 'About', href: '/about', icon: UserGroupIcon },
   { name: 'FAQ', href: '/faq', icon: QuestionMarkCircleIcon },
   { name: 'Contact', href: '/contact', icon: EnvelopeIcon },
-  { name: 'Streaming', href: '/streaming', icon: PlayCircleIcon },
+      { name: 'Streaming', href: '/streaming-lobby', icon: PlayCircleIcon },
 ]
 
 
@@ -61,6 +70,9 @@ export default function Navigation() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileUserDropdownOpen, setIsMobileUserDropdownOpen] = useState(false);
   const [isMobileMoreDropdownOpen, setIsMobileMoreDropdownOpen] = useState(false);
+  
+  // New states for collapsible header
+  const { isCollapsed, setIsCollapsed } = useHeader();
 
   useEffect(() => {
     setNavDropdownOpen(isOpen || isMoreDropdownActive || isProfileDropdownActive);
@@ -82,14 +94,95 @@ export default function Navigation() {
     };
   }, []);
 
+  // Auto-collapse functionality with optimized event handling
+  useEffect(() => {
+    let activityTimeout: NodeJS.Timeout;
+    
+    const resetInactivityTimer = () => {
+      if (activityTimeout) clearTimeout(activityTimeout);
+      
+      if (!isCollapsed) {
+        activityTimeout = setTimeout(() => {
+          setIsCollapsed(true);
+        }, 4000); // 4 seconds
+      }
+    };
+
+    const handleActivity = () => {
+      resetInactivityTimer();
+    };
+
+    // Throttled event listeners for better performance
+    let throttleTimeout: NodeJS.Timeout | null = null;
+    const throttledHandleActivity = () => {
+      if (throttleTimeout) return;
+      throttleTimeout = setTimeout(() => {
+        handleActivity();
+        throttleTimeout = null;
+      }, 100);
+    };
+
+    // Add event listeners for user activity (reduced events for better performance)
+    const events = ['mousedown', 'keypress', 'scroll', 'touchstart'];
+    events.forEach(event => {
+      document.addEventListener(event, throttledHandleActivity, { passive: true });
+    });
+
+    // Initial timer
+    resetInactivityTimer();
+
+    return () => {
+      events.forEach(event => {
+        document.removeEventListener(event, throttledHandleActivity);
+      });
+      if (activityTimeout) clearTimeout(activityTimeout);
+      if (throttleTimeout) clearTimeout(throttleTimeout);
+    };
+  }, [isCollapsed, setIsCollapsed]);
+
+  // Handle expand button click
+  const handleExpand = () => {
+    setIsCollapsed(false);
+  };
+
   return (
-    <nav
-      className={`fixed w-full z-50 transition-all duration-300 ${
-        isScrolled ? 'bg-black/90 backdrop-blur-md' : 'bg-white shadow-lg'
-      }`}
-    >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
+    <>
+      {/* Collapsed Header */}
+      {isCollapsed && (
+        <motion.div
+          initial={{ opacity: 0, y: -100 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -100 }}
+          className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 bg-black/90 backdrop-blur-md rounded-full shadow-lg border border-gray-700"
+        >
+          <div className="flex items-center space-x-3 px-4 py-2">
+            <Logo isScrolled={true} variant="compact" />
+            <button
+              onClick={handleExpand}
+              className="p-2 rounded-full bg-red-500 text-white hover:bg-red-600 transition-colors"
+              aria-label="Expand navigation"
+            >
+              <ChevronUpIcon className="w-4 h-4" />
+            </button>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Full Header */}
+      <motion.nav
+        initial={false}
+        animate={{ 
+          opacity: isCollapsed ? 0 : 1,
+          y: isCollapsed ? -100 : 0,
+          pointerEvents: isCollapsed ? 'none' : 'auto'
+        }}
+        transition={{ duration: 0.3 }}
+        className={`fixed w-full z-50 transition-all duration-300 ${
+          isScrolled ? 'bg-black/90 backdrop-blur-md' : 'bg-white shadow-lg'
+        }`}
+      >
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
           {/* Enhanced Logo */}
           <Logo isScrolled={isScrolled} variant="header" />
 
@@ -257,8 +350,8 @@ export default function Navigation() {
                         <Menu.Item>
                           {({ active }) => (
                             <button
-                              onClick={() => {
-                                logout();
+                              onClick={async () => {
+                                await logout();
                                 toast.success('Đã đăng xuất!');
                               }}
                               className={`w-full text-left px-4 py-2 text-gray-300 ${
@@ -467,8 +560,8 @@ export default function Navigation() {
                       <span>Settings</span>
                     </Link>
                     <button
-                      onClick={() => {
-                        logout();
+                      onClick={async () => {
+                        await logout();
                         toast.success('Đã đăng xuất!');
                         setIsOpen(false);
                         setIsMobileUserDropdownOpen(false);
@@ -497,6 +590,7 @@ export default function Navigation() {
           </div>
         </motion.div>
       </Transition>
-    </nav>
+      </motion.nav>
+    </>
   )
 }

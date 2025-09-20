@@ -5,6 +5,7 @@ import { motion } from 'framer-motion'
 import Image from 'next/image'
 import axios from 'axios'
 import Link from 'next/link'
+import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline'
 
 interface Movie {
   id: number;
@@ -486,35 +487,21 @@ export default function ComingSoonMovies() {
     return () => clearInterval(interval);
   }, [API_KEY, lastFetchDate]);
 
-  // Add scroll event listeners
+  // Check scroll position on mount and when data changes
   useEffect(() => {
-    const scrollContainer = comingSoonScrollRef.current;
-    if (scrollContainer) {
-      scrollContainer.addEventListener('scroll', checkComingSoonScrollPosition);
-      scrollContainer.addEventListener('resize', checkComingSoonScrollPosition);
-      
-      return () => {
-        scrollContainer.removeEventListener('scroll', checkComingSoonScrollPosition);
-        scrollContainer.removeEventListener('resize', checkComingSoonScrollPosition);
-      };
-    }
-  }, []);
+    const container = comingSoonScrollRef.current;
+    if (!container) return;
 
-  // Add wheel event listener for horizontal scrolling
-  useEffect(() => {
-    const scrollContainer = comingSoonScrollRef.current;
-    if (scrollContainer) {
-      const handleWheel = (e: WheelEvent) => {
-        if (Math.abs(e.deltaX) < Math.abs(e.deltaY)) {
-          e.preventDefault();
-          scrollContainer.scrollLeft += e.deltaY;
-        }
-      };
+    checkComingSoonScrollPosition();
+    container.addEventListener('scroll', checkComingSoonScrollPosition);
+    window.addEventListener('resize', checkComingSoonScrollPosition);
 
-      scrollContainer.addEventListener('wheel', handleWheel, { passive: false });
-      return () => scrollContainer.removeEventListener('wheel', handleWheel);
-    }
-  }, []);
+    return () => {
+      container.removeEventListener('scroll', checkComingSoonScrollPosition);
+      window.removeEventListener('resize', checkComingSoonScrollPosition);
+    };
+  }, [featuredContent]);
+
 
   return (
     <section className="py-8 sm:py-12 md:py-16 px-2 sm:px-4 bg-gradient-to-b from-gray-900 to-black">
@@ -537,9 +524,7 @@ export default function ComingSoonMovies() {
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
+            <ChevronLeftIcon className="w-6 h-6" />
           </motion.button>
           
           <motion.button
@@ -550,9 +535,7 @@ export default function ComingSoonMovies() {
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
+            <ChevronRightIcon className="w-6 h-6" />
           </motion.button>
         
           {/* Scroll indicator */}

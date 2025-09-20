@@ -2,16 +2,46 @@
 
 import { motion } from 'framer-motion'
 import { useEffect, useState } from 'react'
-import TrendingMovies from '@/components/TrendingMovies'
-import ComingSoonMovies from '@/components/ComingSoonMovies'
-import HeroMovies from '@/components/HeroMovies'
-import EntertainmentFrames from '@/components/EntertainmentFrames'
+import dynamic from 'next/dynamic'
 import { 
   SparklesIcon,
   StarIcon,
   HeartIcon,
   EyeIcon
 } from '@heroicons/react/24/outline'
+
+// Lazy load heavy components
+const HeroMovies = dynamic(() => import('@/components/HeroMovies'), {
+  loading: () => (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div>
+    </div>
+  )
+});
+
+const TrendingMovies = dynamic(() => import('@/components/TrendingMovies'), {
+  loading: () => (
+    <div className="py-8 flex items-center justify-center">
+      <div className="animate-pulse bg-gray-800 rounded-lg h-64 w-full max-w-7xl"></div>
+    </div>
+  )
+});
+
+const ComingSoonMovies = dynamic(() => import('@/components/ComingSoonMovies'), {
+  loading: () => (
+    <div className="py-8 flex items-center justify-center">
+      <div className="animate-pulse bg-gray-800 rounded-lg h-64 w-full max-w-7xl"></div>
+    </div>
+  )
+});
+
+const EntertainmentFrames = dynamic(() => import('@/components/EntertainmentFrames'), {
+  loading: () => (
+    <div className="py-8 flex items-center justify-center">
+      <div className="animate-pulse bg-gray-800 rounded-lg h-96 w-full max-w-6xl"></div>
+    </div>
+  )
+});
 
 interface Particle {
   x: number;
@@ -22,45 +52,62 @@ interface Particle {
 
 export default function Home() {
   const [particles, setParticles] = useState<Particle[]>([]);
+  const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
-    const newParticles = Array.from({ length: 50 }).map(() => ({
-      x: Math.random() * 100,
-      y: Math.random() * 100,
-      size: Math.random() * 2 + 1,
-      duration: Math.random() * 20 + 10,
-    }));
-    setParticles(newParticles);
-  }, []);
+    // Detect mobile device with debounce
+    let resizeTimeout: NodeJS.Timeout;
+    const checkMobile = () => {
+      clearTimeout(resizeTimeout);
+      resizeTimeout = setTimeout(() => {
+        const mobile = window.innerWidth < 768;
+        setIsMobile(mobile);
+        
+        // Only create particles on desktop and if not already created
+        if (!mobile && particles.length === 0) {
+          const newParticles = Array.from({ length: 8 }).map(() => ({
+            x: Math.random() * 100,
+            y: Math.random() * 100,
+            size: Math.random() * 1.5 + 0.5, // Smaller particles
+            duration: Math.random() * 10 + 6, // Shorter duration
+          }));
+          setParticles(newParticles);
+        } else if (mobile && particles.length > 0) {
+          setParticles([]); // Clear particles on mobile
+        }
+      }, 100);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    
+    return () => {
+      window.removeEventListener('resize', checkMobile);
+      clearTimeout(resizeTimeout);
+    };
+  }, [particles.length]);
 
   return (
     <main className="min-h-screen overflow-x-hidden bg-black text-white">
-      {/* Background Particles */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
-        {particles.map((p, i) => (
-          <motion.div
-            key={i}
-            className="absolute bg-purple-400/30 rounded-full"
-            animate={{
-              x: [0, 50, 0],
-              y: [0, 50, 0],
-              scale: [1, 1.5, 1],
-            }}
-            transition={{ 
-              duration: p.duration, 
-              repeat: Infinity, 
-              repeatType: "reverse",
-              ease: "easeInOut"
-            }}
-            style={{ 
-              left: `${p.x}%`, 
-              top: `${p.y}%`, 
-              width: p.size, 
-              height: p.size 
-            }}
-          />
-        ))}
-      </div>
+      {/* Background Particles - Only on desktop for better performance */}
+      {!isMobile && particles.length > 0 && (
+        <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
+          {particles.map((p, i) => (
+            <div
+              key={i}
+              className="absolute bg-purple-400/30 rounded-full performance-particle"
+              style={{ 
+                left: `${p.x}%`, 
+                top: `${p.y}%`, 
+                width: p.size, 
+                height: p.size,
+                willChange: 'transform, opacity',
+                animation: `particleFloat ${p.duration}s ease-in-out infinite alternate`
+              }}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Hero Movies Section */}
       <HeroMovies />

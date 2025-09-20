@@ -7,7 +7,7 @@ import { isAxiosError } from 'axios';
 interface AuthStore extends AuthState {
   login: (credentials: LoginCredentials) => Promise<void>;
   register: (credentials: RegisterCredentials) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   clearError: () => void;
   checkAuth: () => Promise<void>;
 }
@@ -71,7 +71,14 @@ const useAuthStore = create<AuthStore>()(
         }
       },
 
-      logout: () => {
+      logout: async () => {
+        try {
+          // Gọi API logout để blacklist token và clear cookie
+          await api.post('/auth/logout');
+        } catch (error) {
+          console.warn('Logout API call failed:', error);
+        }
+        
         localStorage.removeItem('token');
         // Clear watchlist khi logout - import trong function để tránh circular dependency
         try {
@@ -100,7 +107,7 @@ const useAuthStore = create<AuthStore>()(
         }
         try {
           set({ isLoading: true, error: null });
-          // You may need to adjust the endpoint to match your backend's user/profile endpoint
+          // Gửi Authorization header vì không có cookies
           const response = await api.get('/auth/profile', {
             headers: { Authorization: `Bearer ${token}` },
           });
