@@ -111,8 +111,16 @@ const useAuthStore = create<AuthStore>()(
           const response = await api.get('/auth/profile', {
             headers: { Authorization: `Bearer ${token}` },
           });
+          const prof = response.data.user;
+          const normalizedUser: User = {
+            id: prof.id || prof._id,
+            name: prof.name,
+            email: prof.email,
+            createdAt: prof.createdAt,
+            updatedAt: prof.updatedAt,
+          };
           set({
-            user: response.data.user as User,
+            user: normalizedUser,
             token,
             isAuthenticated: true,
             isLoading: false,

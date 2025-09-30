@@ -16,6 +16,7 @@ import useAuthStore from '@/store/useAuthStore'
 import api from '@/lib/axios'
 import EnhancedMoviePlayer from '@/components/common/EnhancedMoviePlayer';
 import { setupAudioNodes, cleanupAudioNodes, AudioNodes } from '@/lib/audioUtils';
+import Comments from '@/components/Comments';
 
 // Định nghĩa kiểu Movie rõ ràng
 interface Movie {
@@ -1214,6 +1215,13 @@ useEffect(() => {
           ))}
         </div>
       </div>
+
+      {/* Comments Section */}
+      <Comments 
+        movieId={movie.id} 
+        type="movie" 
+        title={movie.title} 
+      />
 
       <AnimatePresence>
         {activeScene !== null && (

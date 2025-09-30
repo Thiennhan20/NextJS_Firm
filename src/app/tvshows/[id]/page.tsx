@@ -15,6 +15,7 @@ import { useParams, useSearchParams, useRouter } from 'next/navigation'
 import useAuthStore from '@/store/useAuthStore'
 import api from '@/lib/axios'
 import EnhancedMoviePlayer from '@/components/common/EnhancedMoviePlayer'
+import Comments from '@/components/Comments'
 
 
 // Định nghĩa kiểu TVShow rõ ràng
@@ -1406,6 +1407,13 @@ export default function TVShowDetail() {
           ))}
         </div>
       </div>
+
+      {/* Comments Section */}
+      <Comments 
+        movieId={tvShow.id} 
+        type="tvshow" 
+        title={tvShow.name} 
+      />
 
       <AnimatePresence>
         {activeScene !== null && (

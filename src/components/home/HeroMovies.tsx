@@ -480,9 +480,9 @@ export default function HeroMovies() {
         `https://api.themoviedb.org/3/${item.type}/${item.id}/videos?api_key=${API_KEY}`
       );
       
-             const trailers = response.data.results.filter((video: { type: string; site: string }) => 
-         video.type === 'Trailer' && video.site === 'YouTube'
-       );
+      const trailers = response.data.results.filter((video: { type: string; site: string }) => 
+        video.type === 'Trailer' && video.site === 'YouTube'
+      );
       
       if (trailers.length > 0) {
         const trailerKey = trailers[0].key;
@@ -692,16 +692,11 @@ export default function HeroMovies() {
                         priority
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-                                             {/* Mobile Trailer Hint */}
-                       <MobileTrailerHint />
+                      {/* Mobile Trailer Hint */}
+                      <MobileTrailerHint />
                     </div>
-                    
-                    
-                    
-                    
                   </motion.div>
                 </AnimatePresence>
-
 
                 {/* Mobile Action Buttons */}
                 <motion.div
@@ -885,40 +880,38 @@ export default function HeroMovies() {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.8, delay: 0.4 }}
           >
-                         {/* Main Poster */}
-             <AnimatePresence mode="wait">
-               <motion.div
-                 key={currentIndex}
-                 className="relative group"
-                 initial={{ opacity: 0, rotateY: 90 }}
-                 animate={{ opacity: 1, rotateY: 0 }}
-                 exit={{ opacity: 0, rotateY: -90 }}
-                 transition={{ duration: 0.6 }}
-                 whileHover={{ scale: 1.05 }}
-               >
-                                   <div 
-                    className="w-80 h-96 rounded-2xl overflow-hidden shadow-2xl relative cursor-pointer transition-transform duration-300 hover:scale-105"
-                    onClick={() => handleTrailerClick(currentItem)}
-                  >
-                   <Image
-                     src={currentItem.image || '/placeholder-poster.jpg'}
-                     alt={getTitle(currentItem)}
-                     fill
-                     className="object-cover"
-                     sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                   />
-                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                   
-                   
-                 </div>
-                 
-                 {/* Glow effect */}
-                 <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-red-500/20 to-pink-500/20 blur-xl -z-10 opacity-60" />
-                 
-                                   {/* Desktop Trailer Hint */}
-                  <DesktopTrailerHint />
-               </motion.div>
-             </AnimatePresence>
+            {/* Main Poster */}
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={currentIndex}
+                className="relative group"
+                initial={{ opacity: 0, rotateY: 90 }}
+                animate={{ opacity: 1, rotateY: 0 }}
+                exit={{ opacity: 0, rotateY: -90 }}
+                transition={{ duration: 0.6 }}
+                whileHover={{ scale: 1.05 }}
+              >
+                <div 
+                  className="w-80 h-96 rounded-2xl overflow-hidden shadow-2xl relative cursor-pointer transition-transform duration-300 hover:scale-105"
+                  onClick={() => handleTrailerClick(currentItem)}
+                >
+                  <Image
+                    src={currentItem.image || '/placeholder-poster.jpg'}
+                    alt={getTitle(currentItem)}
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                </div>
+                
+                {/* Glow effect */}
+                <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-red-500/20 to-pink-500/20 blur-xl -z-10 opacity-60" />
+                
+                {/* Desktop Trailer Hint */}
+                <DesktopTrailerHint />
+              </motion.div>
+            </AnimatePresence>
 
             {/* Thumbnail Navigation */}
             <div className="flex items-center gap-3 max-w-full overflow-x-auto pb-2 scrollbar-hide">
@@ -975,48 +968,49 @@ export default function HeroMovies() {
           showTrailer={showTrailer} 
         />
       </div>
+      
+      {/* Trailer Modal */}
+      <AnimatePresence>
+        {showTrailer && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm"
+            onClick={closeTrailer}
+          >
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.8, opacity: 0 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className="relative w-full max-w-4xl mx-4 aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Close Button */}
+              <motion.button
+                onClick={closeTrailer}
+                className="absolute top-4 right-4 z-10 w-10 h-10 bg-black/70 hover:bg-black/90 rounded-full flex items-center justify-center text-white transition-all duration-300 hover:scale-110"
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+              >
+                <XMarkIcon className="w-6 h-6" />
+              </motion.button>
+              
+              {/* YouTube Embed */}
+              <iframe
+                src={currentTrailer}
+                title="Movie Trailer"
+                className="w-full h-full"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </section>
+  )
+}
 
-       {/* Trailer Modal */}
-       <AnimatePresence>
-         {showTrailer && (
-           <motion.div
-             initial={{ opacity: 0 }}
-             animate={{ opacity: 1 }}
-             exit={{ opacity: 0 }}
-             className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm"
-             onClick={closeTrailer}
-           >
-             <motion.div
-               initial={{ scale: 0.8, opacity: 0 }}
-               animate={{ scale: 1, opacity: 1 }}
-               exit={{ scale: 0.8, opacity: 0 }}
-               transition={{ type: "spring", damping: 25, stiffness: 300 }}
-               className="relative w-full max-w-4xl mx-4 aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl"
-               onClick={(e) => e.stopPropagation()}
-             >
-               {/* Close Button */}
-               <motion.button
-                 onClick={closeTrailer}
-                 className="absolute top-4 right-4 z-10 w-10 h-10 bg-black/70 hover:bg-black/90 rounded-full flex items-center justify-center text-white transition-all duration-300 hover:scale-110"
-                 whileHover={{ scale: 1.1 }}
-                 whileTap={{ scale: 0.9 }}
-               >
-                 <XMarkIcon className="w-6 h-6" />
-               </motion.button>
-               
-               {/* YouTube Embed */}
-               <iframe
-                 src={currentTrailer}
-                 title="Movie Trailer"
-                 className="w-full h-full"
-                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                 allowFullScreen
-               />
-             </motion.div>
-           </motion.div>
-         )}
-       </AnimatePresence>
-     </section>
-   )
- }
 

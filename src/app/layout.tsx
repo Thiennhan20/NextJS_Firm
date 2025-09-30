@@ -5,7 +5,7 @@ import Navigation from "@/components/Navigation";
 import { Toaster } from 'react-hot-toast';
 import Footer from '@/components/Footer';
 import AuthChecker from '../components/AuthChecker';
-import SplashWrapper from '@/components/SplashWrapper';
+import { SplashWrapper } from '@/components/home';
 import { HeaderProvider } from '@/contexts/HeaderContext';
 import ContentWrapper from '@/components/ContentWrapper';
 import { FloatingChatbox, WatchlistSyncer } from '@/components/ClientComponents';

@@ -63,6 +63,7 @@ interface TMDBTVShow {
 }
 
 // Hàm chuyển đổi language code thành tên quốc gia
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const getCountryName = (languageCode?: string): string => {
   const countryMap: { [key: string]: string } = {
     'en': 'USA',
@@ -193,40 +194,36 @@ export default function TrendingMovies() {
   };
 
   return (
-    <section className="py-8 sm:py-12 md:py-16 px-2 sm:px-4 bg-gradient-to-b from-gray-900 to-black">
+    <section className="py-6 sm:py-8 md:py-10 px-2 sm:px-3 bg-gradient-to-b from-gray-900 to-black">
       <div className="max-w-7xl mx-auto">
-        <h2 className="text-lg sm:text-xl md:text-2xl lg:text-3xl xl:text-4xl font-bold mb-4 sm:mb-6 md:mb-8 bg-gradient-to-r from-yellow-400 to-pink-500 text-transparent bg-clip-text text-center leading-tight px-4">
+        <h2 className="text-base sm:text-lg md:text-xl lg:text-2xl xl:text-3xl font-bold mb-3 sm:mb-5 md:mb-6 bg-gradient-to-r from-yellow-400 to-pink-500 text-transparent bg-clip-text text-center leading-tight px-3">
           Trending Now
         </h2>
-                  <div className="relative">
-            {/* Fade left */}
-            <div className="pointer-events-none absolute left-0 top-0 h-full w-8 z-10 bg-gradient-to-r from-black/90 to-transparent" />
-            {/* Fade right */}
-            <div className="pointer-events-none absolute right-0 top-0 h-full w-8 z-10 bg-gradient-to-l from-black/90 to-transparent" />
-            
-            {/* Navigation arrows */}
-            <motion.button
-              onClick={scrollLeft}
-              className={`absolute left-2 top-1/2 -translate-y-1/2 z-20 p-2 rounded-full bg-black/70 text-white hover:bg-black/90 transition-all duration-200 ${
-                canScrollLeft ? 'opacity-100' : 'opacity-0 pointer-events-none'
-              }`}
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-            >
-              <ChevronLeftIcon className="w-6 h-6" />
-            </motion.button>
-            
-            <motion.button
-              onClick={scrollRight}
-              className={`absolute right-2 top-1/2 -translate-y-1/2 z-20 p-2 rounded-full bg-black/70 text-white hover:bg-black/90 transition-all duration-200 ${
-                canScrollRight ? 'opacity-100' : 'opacity-0 pointer-events-none'
-              }`}
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-            >
-              <ChevronRightIcon className="w-6 h-6" />
-            </motion.button>
+        <div className="relative">
           
+          {/* Navigation arrows */}
+          <motion.button
+            onClick={scrollLeft}
+            className={`absolute left-1.5 top-1/2 -translate-y-1/2 z-20 p-1.5 rounded-full bg-black/70 text-white hover:bg-black/90 transition-all duration-200 ${
+              canScrollLeft ? 'opacity-100' : 'opacity-0 pointer-events-none'
+            }`}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+          >
+            <ChevronLeftIcon className="w-5 h-5" />
+          </motion.button>
+          
+          <motion.button
+            onClick={scrollRight}
+            className={`absolute right-1.5 top-1/2 -translate-y-1/2 z-20 p-1.5 rounded-full bg-black/70 text-white hover:bg-black/90 transition-all duration-200 ${
+              canScrollRight ? 'opacity-100' : 'opacity-0 pointer-events-none'
+            }`}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+          >
+            <ChevronRightIcon className="w-5 h-5" />
+          </motion.button>
+        
           {/* Scroll indicator */}
           <div className={`absolute -bottom-2 sm:-bottom-4 md:-bottom-8 left-1/2 transform -translate-x-1/2 z-20 transition-opacity duration-300 ${
             canScrollLeft ? 'opacity-0 pointer-events-none' : 'opacity-100'
@@ -244,7 +241,7 @@ export default function TrendingMovies() {
           
           <div
             ref={scrollRef}
-            className="flex gap-6 overflow-x-auto pb-4 scrollbar-none snap-x snap-mandatory relative horizontal-scroll-container"
+            className="flex gap-4 overflow-x-auto pb-3 scrollbar-none snap-x snap-mandatory relative horizontal-scroll-container"
             style={{ 
               WebkitOverflowScrolling: 'touch', 
               scrollbarWidth: 'none', 
@@ -258,9 +255,9 @@ export default function TrendingMovies() {
               <div className="text-red-400 text-center py-8">Error loading content</div>
             ) : (
               trending?.map((item) => (
-                <Link key={item.id} href={getRoute(item)} className="min-w-[180px] sm:min-w-[220px] md:min-w-[260px] max-w-[260px]">
+                <Link key={item.id} href={getRoute(item)} className="min-w-[150px] sm:min-w-[190px] md:min-w-[220px] max-w-[220px]">
                   <motion.div
-                    whileHover={{ scale: 1.07 }}
+                    whileHover={{ scale: 1.06 }}
                     className="bg-gray-800 rounded-xl overflow-hidden shadow-lg snap-center cursor-pointer group relative"
                   >
                     {item.image ? (
@@ -269,36 +266,16 @@ export default function TrendingMovies() {
                         alt={getTitle(item)}
                         width={400}
                         height={600}
-                        className="w-full h-56 sm:h-72 object-cover group-hover:scale-105 transition-transform duration-300"
+                        className="w-full h-48 sm:h-60 object-contain bg-black group-hover:scale-105 transition-transform duration-300"
                       />
                     ) : (
                       <div className="w-full h-56 sm:h-72 flex items-center justify-center bg-gray-700 text-3xl sm:text-4xl">🎬</div>
                     )}
-                    {/* Status badge - top left */}
-                    <div className="absolute top-3 left-3 bg-red-500/90 px-2 py-1 rounded-full text-xs text-white font-bold">
-                      {item.status}
-                    </div>
-                    {/* Type badge - top right (replacing rating) */}
-                    <div className="absolute top-3 right-3 bg-black/70 px-2 py-1 rounded-full text-xs text-white font-bold">
-                      {item.type === 'movie' ? '🎬 Movie' : '📺 TV Show'}
-                    </div>
-                                          <div className="p-3 sm:p-4">
-                        <div className="font-semibold text-base sm:text-lg text-white mb-1 truncate">{getTitle(item)}</div>
-                        
-                        {/* Date and Country */}
-                        <div className="flex items-center justify-between text-gray-400 text-xs sm:text-sm">
-                          <span className="truncate">
-                            {item.type === 'movie' && item.release_date ? new Date(item.release_date).toLocaleDateString('en-US', {
-                              year: 'numeric',
-                              month: 'short',
-                              day: 'numeric'
-                            }) : item.year}
-                          </span>
-                          <span className="truncate ml-1">
-                            {getCountryName(item.original_language)}
-                          </span>
-                        </div>
+                    <div className="absolute inset-x-0 bottom-0">
+                      <div className="m-2 rounded-md bg-black/60 backdrop-blur-sm px-2 py-1.5 sm:px-3 sm:py-2">
+                        <div className="font-medium text-[13px] sm:text-sm text-white truncate">{getTitle(item)}</div>
                       </div>
+                    </div>
                   </motion.div>
                 </Link>
               ))
@@ -308,4 +285,4 @@ export default function TrendingMovies() {
       </div>
     </section>
   )
-} 
+}

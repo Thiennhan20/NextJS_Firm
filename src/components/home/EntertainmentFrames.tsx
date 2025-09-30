@@ -104,11 +104,11 @@ export default function EntertainmentFrames() {
                         backgroundPosition: 'center'
                       }}
                     />
-                                         <div className={`absolute inset-0 ${
-                       currentNav === 'movies' 
-                         ? 'bg-gradient-to-br from-purple-900/35 to-blue-900/35' 
-                         : 'bg-gradient-to-br from-amber-900/35 to-yellow-900/35'
-                     }`} />
+                    <div className={`absolute inset-0 ${
+                      currentNav === 'movies' 
+                        ? 'bg-gradient-to-br from-purple-900/35 to-blue-900/35' 
+                        : 'bg-gradient-to-br from-amber-900/35 to-yellow-900/35'
+                    }`} />
                   </motion.div>
 
                   {/* Left Arrow */}

@@ -10,8 +10,8 @@ import {
   EyeIcon
 } from '@heroicons/react/24/outline'
 
-// Lazy load heavy components
-const HeroMovies = dynamic(() => import('@/components/HeroMovies'), {
+// Lazy load heavy components from home barrel
+const HeroMovies = dynamic(() => import('@/components/home').then(m => m.HeroMovies), {
   loading: () => (
     <div className="min-h-screen flex items-center justify-center">
       <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div>
@@ -19,7 +19,7 @@ const HeroMovies = dynamic(() => import('@/components/HeroMovies'), {
   )
 });
 
-const TrendingMovies = dynamic(() => import('@/components/TrendingMovies'), {
+const TrendingMovies = dynamic(() => import('@/components/home').then(m => m.TrendingMovies), {
   loading: () => (
     <div className="py-8 flex items-center justify-center">
       <div className="animate-pulse bg-gray-800 rounded-lg h-64 w-full max-w-7xl"></div>
@@ -27,7 +27,7 @@ const TrendingMovies = dynamic(() => import('@/components/TrendingMovies'), {
   )
 });
 
-const ComingSoonMovies = dynamic(() => import('@/components/ComingSoonMovies'), {
+const ComingSoonMovies = dynamic(() => import('@/components/home').then(m => m.ComingSoonMovies), {
   loading: () => (
     <div className="py-8 flex items-center justify-center">
       <div className="animate-pulse bg-gray-800 rounded-lg h-64 w-full max-w-7xl"></div>
@@ -35,7 +35,7 @@ const ComingSoonMovies = dynamic(() => import('@/components/ComingSoonMovies'), 
   )
 });
 
-const EntertainmentFrames = dynamic(() => import('@/components/EntertainmentFrames'), {
+const EntertainmentFrames = dynamic(() => import('@/components/home').then(m => m.EntertainmentFrames), {
   loading: () => (
     <div className="py-8 flex items-center justify-center">
       <div className="animate-pulse bg-gray-800 rounded-lg h-96 w-full max-w-6xl"></div>

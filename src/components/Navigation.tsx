@@ -70,6 +70,7 @@ export default function Navigation() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileUserDropdownOpen, setIsMobileUserDropdownOpen] = useState(false);
   const [isMobileMoreDropdownOpen, setIsMobileMoreDropdownOpen] = useState(false);
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
   
   // New states for collapsible header
   const { isCollapsed, setIsCollapsed } = useHeader();
@@ -101,7 +102,8 @@ export default function Navigation() {
     const resetInactivityTimer = () => {
       if (activityTimeout) clearTimeout(activityTimeout);
       
-      if (!isCollapsed) {
+      // Don't collapse if search is focused or if already collapsed
+      if (!isCollapsed && !isSearchFocused) {
         activityTimeout = setTimeout(() => {
           setIsCollapsed(true);
         }, 4000); // 4 seconds
@@ -138,7 +140,7 @@ export default function Navigation() {
       if (activityTimeout) clearTimeout(activityTimeout);
       if (throttleTimeout) clearTimeout(throttleTimeout);
     };
-  }, [isCollapsed, setIsCollapsed]);
+  }, [isCollapsed, setIsCollapsed, isSearchFocused]);
 
   // Handle expand button click
   const handleExpand = () => {
@@ -271,7 +273,7 @@ export default function Navigation() {
           {/* Search and Auth */}
           <div className="hidden lg:flex lg:items-center lg:space-x-4">
             <div className="relative">
-              <AutocompleteSearch />
+              <AutocompleteSearch onFocusChange={setIsSearchFocused} />
             </div>
             
             {/* Language Selector */}
@@ -425,6 +427,7 @@ export default function Navigation() {
                 inputClassName="text-lg px-6 py-4 border-2 border-red-500 bg-gray-900 text-white placeholder-gray-300 focus:bg-gray-900 focus:ring-2 focus:ring-red-500 shadow-lg"
                 showClose
                 onClose={() => setShowMobileSearch(false)}
+                onFocusChange={setIsSearchFocused}
               />
             </div>
           </div>

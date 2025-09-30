@@ -59,9 +59,10 @@ interface AutocompleteSearchProps {
   inputClassName?: string;
   showClose?: boolean;
   onClose?: () => void;
+  onFocusChange?: (isFocused: boolean) => void;
 }
 
-export default function AutocompleteSearch({ menu, onSelectMovie, inputClassName, showClose, onClose }: AutocompleteSearchProps) {
+export default function AutocompleteSearch({ menu, onSelectMovie, inputClassName, showClose, onClose, onFocusChange }: AutocompleteSearchProps) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -296,11 +297,18 @@ export default function AutocompleteSearch({ menu, onSelectMovie, inputClassName
               ? 'w-full bg-gray-800 text-white border-2 border-red-400 placeholder-gray-300 focus:bg-gray-900 pr-16'
               : 'w-full sm:w-48 sm:focus:w-64 bg-gray-200 text-gray-900 placeholder-gray-600 focus:bg-gray-900/50 focus:text-white focus:placeholder-gray-400 backdrop-blur-sm pr-16'
           } ${inputClassName || ''}`}
-          placeholder={menu ? "Search..." : "Search movies, TV shows & seasons (e.g. 'Game of Thrones season 2')..."}
+          placeholder={menu ? "Search Movies,..." : "Search movies, TV shows & seasons (e.g. 'Game of Thrones season 2')..."}
           value={query}
           onChange={e => setQuery(e.target.value)}
-          onFocus={() => { setIsFocused(true); if (results.length > 0) setShowDropdown(true); }}
-          onBlur={() => setIsFocused(false)}
+          onFocus={() => { 
+            setIsFocused(true); 
+            if (results.length > 0) setShowDropdown(true);
+            onFocusChange?.(true);
+          }}
+          onBlur={() => {
+            setIsFocused(false);
+            onFocusChange?.(false);
+          }}
           autoComplete="off"
         />
         <button
