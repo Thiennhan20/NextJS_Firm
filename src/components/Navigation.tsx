@@ -71,6 +71,7 @@ export default function Navigation() {
   const [isMobileUserDropdownOpen, setIsMobileUserDropdownOpen] = useState(false);
   const [isMobileMoreDropdownOpen, setIsMobileMoreDropdownOpen] = useState(false);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [isMobileSearchButtonClicked, setIsMobileSearchButtonClicked] = useState(false);
   
   // New states for collapsible header
   const { isCollapsed, setIsCollapsed } = useHeader();
@@ -102,8 +103,12 @@ export default function Navigation() {
     const resetInactivityTimer = () => {
       if (activityTimeout) clearTimeout(activityTimeout);
       
-      // Don't collapse if search is focused or if already collapsed
-      if (!isCollapsed && !isSearchFocused) {
+      // Don't collapse if search is focused, if already collapsed, or if any menu is open
+      const isAnyMenuOpen = isOpen || isMoreDropdownActive || isProfileDropdownActive || 
+                           isMobileUserDropdownOpen || isMobileMoreDropdownOpen || showMobileSearch ||
+                           isMobileSearchButtonClicked;
+      
+      if (!isCollapsed && !isSearchFocused && !isAnyMenuOpen) {
         activityTimeout = setTimeout(() => {
           setIsCollapsed(true);
         }, 4000); // 4 seconds
@@ -140,7 +145,7 @@ export default function Navigation() {
       if (activityTimeout) clearTimeout(activityTimeout);
       if (throttleTimeout) clearTimeout(throttleTimeout);
     };
-  }, [isCollapsed, setIsCollapsed, isSearchFocused]);
+  }, [isCollapsed, setIsCollapsed, isSearchFocused, isOpen, isMoreDropdownActive, isProfileDropdownActive, isMobileUserDropdownOpen, isMobileMoreDropdownOpen, showMobileSearch, isMobileSearchButtonClicked]);
 
   // Handle expand button click
   const handleExpand = () => {
@@ -391,7 +396,10 @@ export default function Navigation() {
             <LanguageSelector isScrolled={isScrolled} />
             
             <button
-              onClick={() => setShowMobileSearch(true)}
+              onClick={() => {
+                setIsMobileSearchButtonClicked(true);
+                setShowMobileSearch(true);
+              }}
               className="p-1 rounded-full bg-white shadow border border-red-200 text-red-600 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-400 transition"
               aria-label="Open search"
               style={{ boxShadow: '0 2px 8px 0 rgba(0,0,0,0.08)' }}
@@ -423,11 +431,22 @@ export default function Navigation() {
             <div className="w-full max-w-md mx-2 relative">
               <AutocompleteSearch
                 menu
-                onSelectMovie={() => setShowMobileSearch(false)}
+                onSelectMovie={() => {
+                  setShowMobileSearch(false);
+                  setIsMobileSearchButtonClicked(false);
+                }}
                 inputClassName="text-lg px-6 py-4 border-2 border-red-500 bg-gray-900 text-white placeholder-gray-300 focus:bg-gray-900 focus:ring-2 focus:ring-red-500 shadow-lg"
                 showClose
-                onClose={() => setShowMobileSearch(false)}
-                onFocusChange={setIsSearchFocused}
+                onClose={() => {
+                  setShowMobileSearch(false);
+                  setIsMobileSearchButtonClicked(false);
+                }}
+                onFocusChange={(focused) => {
+                  setIsSearchFocused(focused);
+                  if (focused) {
+                    setIsMobileSearchButtonClicked(false);
+                  }
+                }}
               />
             </div>
           </div>

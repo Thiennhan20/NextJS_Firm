@@ -374,7 +374,7 @@ export default function Comments({ movieId, type, title }: CommentsProps) {
                 onChange={(e) => setNewComment(e.target.value)}
                 placeholder={isAuthenticated ? `Share your thoughts about ${title}...` : 'Please log in to comment'}
                 disabled={false}
-                className="w-full bg-gray-700/50 border border-gray-600 rounded-lg px-3 py-2 sm:px-4 sm:py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
+                className="w-full bg-gray-700/50 border border-gray-600 rounded-lg px-3 py-2 sm:px-4 sm:py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none disabled:opacity-50 disabled:cursor-not-allowed text-[16px] sm:text-base"
                 rows={3}
               />
               <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mt-3 gap-2">
@@ -629,7 +629,7 @@ export default function Comments({ movieId, type, title }: CommentsProps) {
                               onChange={(e) => setReplyText(e.target.value)}
                               placeholder={isAuthenticated ? `Reply to ${comment.username}...` : 'Please log in to reply'}
                               disabled={!isAuthenticated}
-                              className="w-full bg-gray-700/50 border border-gray-600 rounded-lg px-2 py-1.5 sm:px-3 sm:py-2 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none text-xs sm:text-sm"
+                              className="w-full bg-gray-700/50 border border-gray-600 rounded-lg px-2 py-1.5 sm:px-3 sm:py-2 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none text-[16px] sm:text-sm"
                               rows={2}
                             />
                             <div className="flex justify-end gap-1 sm:gap-2 mt-2">
