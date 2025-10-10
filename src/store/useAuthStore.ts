@@ -10,6 +10,7 @@ interface AuthStore extends AuthState {
   logout: () => Promise<void>;
   clearError: () => void;
   checkAuth: () => Promise<void>;
+  loginWithGoogle: (payload: { email: string; sub: string; name?: string; avatar?: string; email_verified?: boolean }) => Promise<void>;
 }
 
 const useAuthStore = create<AuthStore>()(
@@ -42,6 +43,40 @@ const useAuthStore = create<AuthStore>()(
           } else {
             set({
               error: 'An unexpected error occurred during login',
+              isLoading: false,
+            });
+          }
+          throw error;
+        }
+      },
+
+      loginWithGoogle: async ({ email, sub, name, avatar, email_verified }) => {
+        try {
+          set({ isLoading: true, error: null });
+          const response = await api.post('/auth/google-login', {
+            email,
+            sub,
+            name,
+            avatar,
+            email_verified,
+          });
+          const { token, user } = response.data;
+          localStorage.setItem('token', token);
+          set({
+            user: user as User,
+            token,
+            isAuthenticated: true,
+            isLoading: false,
+          });
+        } catch (error: unknown) {
+          if (isAxiosError(error)) {
+            set({
+              error: error.response?.data?.message || 'An error occurred during Google login',
+              isLoading: false,
+            });
+          } else {
+            set({
+              error: 'An unexpected error occurred during Google login',
               isLoading: false,
             });
           }

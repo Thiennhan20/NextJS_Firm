@@ -34,6 +34,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
+        <meta charSet="utf-8" />
         <link rel="icon" type="image/png" sizes="16x16" href="/favicon.ico" />
         <meta name="referrer" content="origin" />
       </head>

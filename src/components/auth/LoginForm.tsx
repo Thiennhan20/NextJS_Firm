@@ -5,7 +5,8 @@ import useAuthStore from '@/store/useAuthStore';
 import { LoginCredentials } from '@/types/auth';
 import { motion } from 'framer-motion';
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
-import { FaGoogle, FaFacebook } from 'react-icons/fa';
+import { FaFacebook } from 'react-icons/fa';
+import { GoogleLogin, CredentialResponse } from '@react-oauth/google';
 import axios from 'axios';
 import { useWatchlistStore } from '@/store/store';
 
@@ -23,6 +24,7 @@ export default function LoginForm() {
   const router = useRouter();
   const { login, isLoading, error, clearError, token } = useAuthStore();
   const { fetchWatchlistFromServer } = useWatchlistStore();
+  const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID as string | undefined;
   const [formData, setFormData] = useState<LoginCredentials>({
     email: '',
     password: '',
@@ -153,16 +155,54 @@ export default function LoginForm() {
           </div>
         </div>
         <div className="grid grid-cols-2 gap-4">
-          <motion.button
-            type="button"
-            className="flex items-center justify-center w-full py-3 px-4 bg-gray-700 hover:bg-gray-800 text-white font-semibold rounded-lg transition duration-200 ease-in-out transform hover:scale-[1.01] shadow-md focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 focus:ring-offset-black"
-            whileHover={{ scale: 1.01, boxShadow: '0 5px 15px -5px rgba(0, 0, 0, 0.4)' }}
-            whileTap={{ scale: 0.99 }}
-            disabled={isLoading}
-          >
-            <FaGoogle className="w-5 h-5 mr-2" />
-            Google
-          </motion.button>
+          <div className="flex items-center justify-center w-full">
+            {googleClientId ? (
+            <GoogleLogin
+              onSuccess={async (credentialResponse: CredentialResponse) => {
+                try {
+                  const cred = credentialResponse.credential;
+                  if (!cred) throw new Error('No credential');
+                  // Send raw credential to server for verification
+                  await fetch(`${process.env.NEXT_PUBLIC_API_URL || (typeof window!=='undefined' && (window.location.hostname==='localhost'||window.location.hostname==='127.0.0.1') ? 'http://localhost:3001/api' : '')}/auth/google-login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ credential: cred })
+                  }).then(async (r) => {
+                    if (!r.ok) {
+                      const data = await r.json().catch(() => ({}));
+                      throw new Error(data.message || 'Google login failed');
+                    }
+                    const data = await r.json();
+                    const { token, user } = data;
+                    localStorage.setItem('token', token);
+                    useAuthStore.setState({ user, token, isAuthenticated: true });
+                  });
+                  const t = useAuthStore.getState().token;
+                  if (t) await fetchWatchlistFromServer(t);
+                  toast.success('Logged in with Google');
+                  router.push('/');
+                } catch (err: unknown) {
+                  const msg = (err as Error)?.message || 'Google login failed';
+                  toast.error(msg);
+                }
+              }}
+              onError={() => {
+                toast.error('Google login failed');
+              }}
+              shape="pill"
+              theme="filled_black"
+              locale="en"
+            />
+            ) : (
+              <motion.button
+                type="button"
+                className="flex items-center justify-center w-full py-3 px-4 bg-gray-700 text-white font-semibold rounded-lg opacity-60 cursor-not-allowed"
+                disabled
+              >
+                Google (missing client id)
+              </motion.button>
+            )}
+          </div>
           <motion.button
             type="button"
             className="flex items-center justify-center w-full py-3 px-4 bg-blue-800 hover:bg-blue-900 text-white font-semibold rounded-lg transition duration-200 ease-in-out transform hover:scale-[1.01] shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-black"

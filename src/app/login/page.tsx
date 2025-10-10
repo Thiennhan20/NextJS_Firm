@@ -6,6 +6,7 @@ import RegisterForm from '@/components/auth/RegisterForm';
 import dynamic from 'next/dynamic';
 import ThreeBackground from '@/components/common/ThreeBackground';
 import { motion, AnimatePresence } from 'framer-motion';
+import { GoogleOAuthProvider } from '@react-oauth/google';
 
 const MotionDiv = dynamic(() => import('framer-motion').then(mod => mod.motion.div), { ssr: false });
 
@@ -54,6 +55,7 @@ const buttonVariants = {
 
 export default function LoginPage() {
   const [isLogin, setIsLogin] = useState(true);
+  const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID as string | undefined;
 
   return (
     <div className="min-h-screen relative flex items-center justify-center p-4 overflow-hidden">
@@ -86,16 +88,18 @@ export default function LoginPage() {
           </div>
         </div>
         <AnimatePresence mode="wait">
-          <MotionDiv
-            key={isLogin ? 'login' : 'register'}
-            variants={pageVariants}
-            initial="initial"
-            animate="animate"
-            exit="exit"
-            className="w-full"
-          >
-            {isLogin ? <LoginForm /> : <RegisterForm />}
-          </MotionDiv>
+          <GoogleOAuthProvider clientId={googleClientId || 'placeholder-client-id'}>
+            <MotionDiv
+              key={isLogin ? 'login' : 'register'}
+              variants={pageVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              className="w-full"
+            >
+              {isLogin ? <LoginForm /> : <RegisterForm />}
+            </MotionDiv>
+          </GoogleOAuthProvider>
         </AnimatePresence>
       </div>
     </div>

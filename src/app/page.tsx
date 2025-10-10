@@ -35,6 +35,14 @@ const ComingSoonMovies = dynamic(() => import('@/components/home').then(m => m.C
   )
 });
 
+const TopComments = dynamic(() => import('@/components/home').then(m => m.TopComments), {
+  loading: () => (
+    <div className="py-8 flex items-center justify-center">
+      <div className="animate-pulse bg-gray-800 rounded-lg h-96 w-full max-w-7xl"></div>
+    </div>
+  )
+});
+
 const EntertainmentFrames = dynamic(() => import('@/components/home').then(m => m.EntertainmentFrames), {
   loading: () => (
     <div className="py-8 flex items-center justify-center">
@@ -120,6 +128,9 @@ export default function Home() {
 
       {/* Coming Soon Movies Section */}
       <ComingSoonMovies />
+
+      {/* Top Comments Section */}
+      <TopComments />
 
       {/* Call to Action Section */}
       <section className="py-20 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
