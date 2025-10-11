@@ -8,7 +8,9 @@ import AuthChecker from '../components/AuthChecker';
 import { SplashWrapper } from '@/components/home';
 import { HeaderProvider } from '@/contexts/HeaderContext';
 import ContentWrapper from '@/components/ContentWrapper';
-import { FloatingChatbox, WatchlistSyncer } from '@/components/ClientComponents';
+import { SpeedInsights } from '@vercel/speed-insights/next';
+import WatchlistSyncer from "@/components/WatchlistSyncer";
+import FloatingChatbox from "@/components/FloatingChatbox";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -72,6 +74,7 @@ export default function RootLayout({
               },
             }}
           />
+          <SpeedInsights />
         </HeaderProvider>
       </body>
     </html>

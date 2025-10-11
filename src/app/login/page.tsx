@@ -1,14 +1,26 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import LoginForm from '@/components/auth/LoginForm';
 import RegisterForm from '@/components/auth/RegisterForm';
 import dynamic from 'next/dynamic';
-import ThreeBackground from '@/components/common/ThreeBackground';
 import { motion, AnimatePresence } from 'framer-motion';
-import { GoogleOAuthProvider } from '@react-oauth/google';
 
-const MotionDiv = dynamic(() => import('framer-motion').then(mod => mod.motion.div), { ssr: false });
+// Optimize ThreeBackground with better loading and performance
+const ThreeBackground = dynamic(() => import('@/components/common/ThreeBackground'), { 
+  ssr: false,
+  loading: () => <div className="absolute inset-0 bg-black" />
+});
+
+// Memoize GoogleOAuthProvider to prevent re-renders
+const GoogleOAuthProvider = dynamic(
+  () => import('@react-oauth/google').then(mod => mod.GoogleOAuthProvider),
+  { 
+    ssr: false,
+    loading: () => <div className="w-full h-96 bg-black/20 rounded-xl animate-pulse" />
+  }
+);
+
 
 const pageVariants = {
   initial: {
@@ -55,7 +67,16 @@ const buttonVariants = {
 
 export default function LoginPage() {
   const [isLogin, setIsLogin] = useState(true);
-  const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID as string | undefined;
+  
+  // Memoize googleClientId to prevent re-computation
+  const googleClientId = useMemo(() => 
+    process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID as string | undefined, 
+    []
+  );
+
+  // Memoize button handlers to prevent re-renders
+  const handleLoginClick = useMemo(() => () => setIsLogin(true), []);
+  const handleRegisterClick = useMemo(() => () => setIsLogin(false), []);
 
   return (
     <div className="min-h-screen relative flex items-center justify-center p-4 overflow-hidden">
@@ -64,7 +85,7 @@ export default function LoginPage() {
         <div className="flex justify-center mb-8">
           <div className="bg-black/50 rounded-lg p-1 shadow-inner-lg shadow-red-900/50 border border-yellow-600">
             <motion.button
-              onClick={() => setIsLogin(true)}
+              onClick={handleLoginClick}
               className={`px-6 py-2 rounded-lg transition-colors duration-200 font-semibold ${
                 isLogin ? 'bg-red-800 text-yellow-300 shadow-md' : 'text-gray-400 hover:bg-red-900 hover:text-yellow-300'
               }`}
@@ -75,7 +96,7 @@ export default function LoginPage() {
               Login
             </motion.button>
             <motion.button
-              onClick={() => setIsLogin(false)}
+              onClick={handleRegisterClick}
               className={`px-6 py-2 rounded-lg transition-colors duration-200 font-semibold ${
                 !isLogin ? 'bg-red-800 text-yellow-300 shadow-md' : 'text-gray-400 hover:bg-red-900 hover:text-yellow-300'
               }`}
@@ -89,7 +110,7 @@ export default function LoginPage() {
         </div>
         <AnimatePresence mode="wait">
           <GoogleOAuthProvider clientId={googleClientId || 'placeholder-client-id'}>
-            <MotionDiv
+            <motion.div
               key={isLogin ? 'login' : 'register'}
               variants={pageVariants}
               initial="initial"
@@ -98,7 +119,7 @@ export default function LoginPage() {
               className="w-full"
             >
               {isLogin ? <LoginForm /> : <RegisterForm />}
-            </MotionDiv>
+            </motion.div>
           </GoogleOAuthProvider>
         </AnimatePresence>
       </div>

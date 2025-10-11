@@ -8,6 +8,7 @@ declare module '@react-oauth/google' {
   export const GoogleOAuthProvider: React.FC<GoogleOAuthProviderProps>;
 
   export interface CredentialResponse {
+    access_token: string;
     credential: string;
   }
 

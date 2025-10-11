@@ -178,159 +178,113 @@ export default function WatchNowMovies({ movie }: WatchNowMoviesProps) {
     let timeoutId: NodeJS.Timeout;
     
     async function fetchPhimApiEmbed() {
-      console.log('🎬 [MOVIE DEBUG] Starting movie search process...');
-      console.log('🎬 [MOVIE DEBUG] Movie data:', { title: movie?.title, year: movie?.year, id });
       
       if (movieLinks.m3u8) {
-        console.log('🎬 [MOVIE DEBUG] Already have m3u8 link, skipping search');
         return;
       }
       
       setMovieLinksLoading(true);
       setApiSearchCompleted(false);
       timeoutId = setTimeout(() => {
-        console.log('🎬 [MOVIE DEBUG] Search timeout reached (60s)');
       }, 60000);
 
       try {
         if (typeof id !== 'string') {
-          console.log('🎬 [MOVIE DEBUG] Invalid ID type:', typeof id);
           return;
         }
 
         let slug = null;
 
         if (movie?.title) {
-          console.log('🎬 [MOVIE DEBUG] Starting search strategies for:', movie.title);
-          
           // Strategy 1: Search by exact title with year
-          console.log('🎬 [MOVIE DEBUG] Strategy 1: Exact title with year');
           const searchResults1 = await searchPhimApi(movie.title, movie.year as number);
-          console.log('🎬 [MOVIE DEBUG] Strategy 1 results:', searchResults1.length, 'items');
           const match1 = findBestMatch(searchResults1, movie.title, movie.year as number, id);
           if (match1) {
             slug = match1.slug;
-            console.log('🎬 [MOVIE DEBUG] Strategy 1 SUCCESS:', match1.name, '->', match1.slug);
           } else {
-            console.log('🎬 [MOVIE DEBUG] Strategy 1 failed');
           }
 
           // Strategy 2: Search by exact title without year
           if (!slug) {
-            console.log('🎬 [MOVIE DEBUG] Strategy 2: Exact title without year');
             const searchResults2 = await searchPhimApi(movie.title);
-            console.log('🎬 [MOVIE DEBUG] Strategy 2 results:', searchResults2.length, 'items');
             const match2 = findBestMatch(searchResults2, movie.title, movie.year as number, id);
             if (match2) {
               slug = match2.slug;
-              console.log('🎬 [MOVIE DEBUG] Strategy 2 SUCCESS:', match2.name, '->', match2.slug);
             } else {
-              console.log('🎬 [MOVIE DEBUG] Strategy 2 failed');
             }
           }
 
           // Strategy 3: Search by title with special characters removed
           if (!slug) {
-            console.log('🎬 [MOVIE DEBUG] Strategy 3: Normalized title');
             const normalizedTitle = normalizeTitle(movie.title);
-            console.log('🎬 [MOVIE DEBUG] Normalized title:', normalizedTitle);
             const searchResults3 = await searchPhimApi(normalizedTitle, movie.year as number);
-            console.log('🎬 [MOVIE DEBUG] Strategy 3 results:', searchResults3.length, 'items');
             const match3 = findBestMatch(searchResults3, movie.title, movie.year as number, id);
             if (match3) {
               slug = match3.slug;
-              console.log('🎬 [MOVIE DEBUG] Strategy 3 SUCCESS:', match3.name, '->', match3.slug);
             } else {
-              console.log('🎬 [MOVIE DEBUG] Strategy 3 failed');
             }
           }
 
           // Strategy 4: Search by keywords from title
           if (!slug) {
-            console.log('🎬 [MOVIE DEBUG] Strategy 4: Keywords search');
             const keywords = extractKeywords(movie.title);
-            console.log('🎬 [MOVIE DEBUG] Extracted keywords:', keywords);
             for (const keyword of keywords) {
-              console.log('🎬 [MOVIE DEBUG] Searching keyword:', keyword);
               const searchResults4 = await searchPhimApi(keyword, movie.year as number);
-              console.log('🎬 [MOVIE DEBUG] Keyword results:', searchResults4.length, 'items');
               const match4 = findBestMatch(searchResults4, movie.title, movie.year as number, id);
               if (match4) {
                 slug = match4.slug;
-                console.log('🎬 [MOVIE DEBUG] Strategy 4 SUCCESS:', match4.name, '->', match4.slug);
                 break;
               }
             }
             if (!slug) {
-              console.log('🎬 [MOVIE DEBUG] Strategy 4 failed');
             }
           }
 
           // Strategy 5: Search by year range (±1 year)
           if (!slug && movie.year) {
-            console.log('🎬 [MOVIE DEBUG] Strategy 5: Year range search');
             const years = [movie.year - 1, movie.year + 1];
-            console.log('🎬 [MOVIE DEBUG] Year range:', years);
             for (const yearVariant of years) {
-              console.log('🎬 [MOVIE DEBUG] Searching year:', yearVariant);
               const searchResults5 = await searchPhimApi(movie.title, yearVariant);
-              console.log('🎬 [MOVIE DEBUG] Year results:', searchResults5.length, 'items');
               const match5 = findBestMatch(searchResults5, movie.title, movie.year as number, id);
               if (match5) {
                 slug = match5.slug;
-                console.log('🎬 [MOVIE DEBUG] Strategy 5 SUCCESS:', match5.name, '->', match5.slug);
                 break;
               }
             }
             if (!slug) {
-              console.log('🎬 [MOVIE DEBUG] Strategy 5 failed');
             }
           }
 
           // Strategy 6: Search by origin_name field (for movies with English titles)
           if (!slug) {
-            console.log('🎬 [MOVIE DEBUG] Strategy 6: English title variations');
             const englishTitleVariations = [
               movie.title,
               movie.title.replace(/[^\w\s]/g, ''),
               movie.title.toLowerCase(),
               movie.title.split(' ').slice(0, 3).join(' ')
             ];
-            console.log('🎬 [MOVIE DEBUG] English variations:', englishTitleVariations);
             
             for (const variation of englishTitleVariations) {
-              console.log('🎬 [MOVIE DEBUG] Searching variation:', variation);
               const searchResults6 = await searchPhimApi(variation, movie.year as number);
-              console.log('🎬 [MOVIE DEBUG] Variation results:', searchResults6.length, 'items');
               const match6 = findBestMatch(searchResults6, movie.title, movie.year as number, id);
               if (match6) {
                 slug = match6.slug;
-                console.log('🎬 [MOVIE DEBUG] Strategy 6 SUCCESS:', match6.name, '->', match6.slug);
                 break;
               }
             }
             if (!slug) {
-              console.log('🎬 [MOVIE DEBUG] Strategy 6 failed');
             }
           }
         }
 
         if (!slug) {
-          console.log('🎬 [MOVIE DEBUG] No slug found after all strategies');
           return;
         }
 
-        console.log('🎬 [MOVIE DEBUG] Final slug found:', slug);
-        console.log('🎬 [MOVIE DEBUG] Fetching movie details...');
 
         // Get movie details and extract embed link
         const detailRes = await fetch(`https://phimapi.com/phim/${slug}`);
         const detailData = await detailRes.json();
-        console.log('🎬 [MOVIE DEBUG] Movie details response:', {
-          name: detailData.name,
-          episodes: detailData.episodes?.length || 0,
-          link_embed: !!detailData.link_embed
-        });
 
         let vietsubLink = '';
         let dubbedLink = '';
@@ -338,31 +292,22 @@ export default function WatchNowMovies({ movie }: WatchNowMoviesProps) {
 
         // Extract links from episodes
         if (detailData.episodes && detailData.episodes.length > 0) {
-          console.log('🎬 [MOVIE DEBUG] Processing episodes:', detailData.episodes.length);
-          detailData.episodes.forEach((episode: PhimApiEpisode, index: number) => {
+          detailData.episodes.forEach((episode: PhimApiEpisode) => {
             const serverName = episode.server_name?.toLowerCase() || '';
-            console.log(`🎬 [MOVIE DEBUG] Episode ${index + 1}:`, {
-              server_name: episode.server_name,
-              server_data_count: episode.server_data?.length || 0
-            });
             
             if (episode.server_data && episode.server_data.length > 0) {
               // Check server_name first to determine audio type
               const isVietsub = serverName.includes('vietsub');
               const isDubbed = serverName.includes('thuyết minh') || serverName.includes('lồng tiếng') || serverName.includes('dubbed');
-              console.log(`🎬 [MOVIE DEBUG] Episode ${index + 1} audio type:`, { isVietsub, isDubbed });
               
               // If server_name matches, take the first available link from server_data
               if ((isVietsub || isDubbed) && episode.server_data[0]?.link_embed) {
                 const linkEmbed = episode.server_data[0].link_embed;
-                console.log(`🎬 [MOVIE DEBUG] Episode ${index + 1} link found:`, linkEmbed);
                 
                 if (isVietsub && !vietsubLink) {
                   vietsubLink = linkEmbed;
-                  console.log('🎬 [MOVIE DEBUG] Vietsub link set:', vietsubLink);
                 } else if (isDubbed && !dubbedLink) {
                   dubbedLink = linkEmbed;
-                  console.log('🎬 [MOVIE DEBUG] Dubbed link set:', dubbedLink);
                 }
               }
             }
@@ -372,11 +317,9 @@ export default function WatchNowMovies({ movie }: WatchNowMoviesProps) {
         // Try to get embed from direct link as fallback
         if (detailData.link_embed) {
           defaultEmbed = detailData.link_embed;
-          console.log('🎬 [MOVIE DEBUG] Direct embed link found:', defaultEmbed);
         } 
         // Try to get embed from first episode as fallback
         else if (detailData.episodes && detailData.episodes[0]?.server_data) {
-          console.log('🎬 [MOVIE DEBUG] Using first episode as fallback');
           const firstEpisode = detailData.episodes[0];
           let foundFallback = false;
           
@@ -390,14 +333,12 @@ export default function WatchNowMovies({ movie }: WatchNowMoviesProps) {
             )) {
               defaultEmbed = serverData.link_embed;
               foundFallback = true;
-              console.log('🎬 [MOVIE DEBUG] Fallback link found:', defaultEmbed);
               break;
             }
           }
           
           if (!foundFallback && firstEpisode.server_data[0]?.link_embed) {
             defaultEmbed = firstEpisode.server_data[0].link_embed;
-            console.log('🎬 [MOVIE DEBUG] Using first server data link:', defaultEmbed);
           }
         }
 
@@ -405,26 +346,18 @@ export default function WatchNowMovies({ movie }: WatchNowMoviesProps) {
         const cleanUrl = (url: string) => {
           if (url && url.includes('?url=')) {
             const cleaned = url.split('?url=')[1];
-            console.log('🎬 [MOVIE DEBUG] Cleaned URL:', url, '->', cleaned);
             return cleaned;
           }
           return url;
         };
 
-        console.log('🎬 [MOVIE DEBUG] Before cleaning:', { vietsubLink, dubbedLink, defaultEmbed });
         vietsubLink = cleanUrl(vietsubLink);
         dubbedLink = cleanUrl(dubbedLink);
         defaultEmbed = cleanUrl(defaultEmbed);
-        console.log('🎬 [MOVIE DEBUG] After cleaning:', { vietsubLink, dubbedLink, defaultEmbed });
 
         // Set the appropriate link based on availability
         if (vietsubLink || dubbedLink) {
           const finalLink = vietsubLink || dubbedLink || defaultEmbed;
-          console.log('🎬 [MOVIE DEBUG] Setting links with audio options:', {
-            vietsub: vietsubLink,
-            dubbed: dubbedLink,
-            final: finalLink
-          });
           setMovieLinks(links => ({ 
             ...links, 
             vietsub: vietsubLink,
@@ -434,21 +367,17 @@ export default function WatchNowMovies({ movie }: WatchNowMoviesProps) {
           setMovieLinksLoading(false);
           setApiSearchCompleted(true);
         } else if (defaultEmbed) {
-          console.log('🎬 [MOVIE DEBUG] Setting default embed link:', defaultEmbed);
           setMovieLinks(links => ({ ...links, m3u8: defaultEmbed }));
           setMovieLinksLoading(false);
           setApiSearchCompleted(true);
         } else {
-          console.log('🎬 [MOVIE DEBUG] No video links found');
         }
 
-      } catch (error) {
-        console.log('🎬 [MOVIE DEBUG] Error occurred:', error);
+      } catch {
       } finally {
         clearTimeout(timeoutId);
         setMovieLinksLoading(false);
         setApiSearchCompleted(true);
-        console.log('🎬 [MOVIE DEBUG] Search process completed');
       }
     }
 
@@ -458,126 +387,79 @@ export default function WatchNowMovies({ movie }: WatchNowMoviesProps) {
         let url = `https://phimapi.com/v1/api/tim-kiem?keyword=${encodeURIComponent(keyword)}`;
         if (year) url += `&year=${year}`;
         
-        console.log('🎬 [MOVIE DEBUG] API Request:', { keyword, year, url });
         const res = await fetch(url);
         const data = await res.json();
-        console.log('🎬 [MOVIE DEBUG] API Response:', { 
-          status: data.status, 
-          itemsCount: data.data?.items?.length || 0,
-          firstItem: data.data?.items?.[0]?.name || 'none'
-        });
 
         if (data.status === 'success' && data.data && Array.isArray(data.data.items)) {
           return data.data.items;
         }
         
         return [];
-      } catch (error) {
-        console.log('🎬 [MOVIE DEBUG] API Error:', error);
+      } catch {
         return [];
       }
     }
 
     // Helper function to find best matching movie
     function findBestMatch(items: PhimApiMovie[], targetTitle: string, targetYear: number, tmdbId: string): PhimApiMovie | null {
-      console.log('🎬 [MOVIE DEBUG] findBestMatch called:', { 
-        itemsCount: items?.length || 0, 
-        targetTitle, 
-        targetYear, 
-        tmdbId 
-      });
       
       if (!items || items.length === 0) {
-        console.log('🎬 [MOVIE DEBUG] No items to match');
         return null;
       }
 
       // Priority 1: Exact TMDB ID match
-      console.log('🎬 [MOVIE DEBUG] Priority 1: TMDB ID match');
       const tmdbMatch = items.find(item => 
         item.tmdb && item.tmdb.id && item.tmdb.id.toString() === tmdbId.toString()
       );
       if (tmdbMatch) {
-        console.log('🎬 [MOVIE DEBUG] TMDB match found:', tmdbMatch.name);
         return tmdbMatch;
       }
 
       // Priority 2: Exact title and year match
-      console.log('🎬 [MOVIE DEBUG] Priority 2: Exact title and year match');
       const exactMatch = items.find(item => {
         const titleMatch = normalizeTitle(item.name || item.title || '') === normalizeTitle(targetTitle);
         const yearMatch = item.year && parseInt(String(item.year)) === targetYear;
-        console.log('🎬 [MOVIE DEBUG] Checking item:', {
-          name: item.name,
-          title: item.title,
-          year: item.year,
-          titleMatch,
-          yearMatch
-        });
         return titleMatch && yearMatch;
       });
       if (exactMatch) {
-        console.log('🎬 [MOVIE DEBUG] Exact match found:', exactMatch.name);
         return exactMatch;
       }
 
       // Priority 3: Origin name match (similar to slug matching)
-      console.log('🎬 [MOVIE DEBUG] Priority 3: Origin name match');
       const originNameMatch = items.find(item => {
         if (!item.origin_name) return false;
         const originNameNormalized = normalizeTitle(item.origin_name);
         const targetNormalized = normalizeTitle(targetTitle);
         const similarity = calculateSimilarity(originNameNormalized, targetNormalized);
         const yearDiff = Math.abs(parseInt(String(item.year || '0')) - targetYear);
-        console.log('🎬 [MOVIE DEBUG] Origin name check:', {
-          origin_name: item.origin_name,
-          similarity,
-          yearDiff
-        });
         return similarity > 0.7 && yearDiff <= 2;
       });
       if (originNameMatch) {
-        console.log('🎬 [MOVIE DEBUG] Origin name match found:', originNameMatch.name);
         return originNameMatch;
       }
 
       // Priority 4: Title match with year tolerance
-      console.log('🎬 [MOVIE DEBUG] Priority 4: Title match with year tolerance');
       const titleMatchWithYearTolerance = items.find(item => {
         const titleMatch = normalizeTitle(item.name || item.title || '') === normalizeTitle(targetTitle);
         const yearDiff = Math.abs(parseInt(String(item.year || '0')) - targetYear);
-        console.log('🎬 [MOVIE DEBUG] Title tolerance check:', {
-          name: item.name,
-          titleMatch,
-          yearDiff
-        });
         return titleMatch && yearDiff <= 1;
       });
       if (titleMatchWithYearTolerance) {
-        console.log('🎬 [MOVIE DEBUG] Title tolerance match found:', titleMatchWithYearTolerance.name);
         return titleMatchWithYearTolerance;
       }
 
       // Priority 5: Fuzzy title match
-      console.log('🎬 [MOVIE DEBUG] Priority 5: Fuzzy title match');
       const fuzzyMatch = items.find(item => {
         const itemTitle = normalizeTitle(item.name || item.title || '');
         const targetNormalized = normalizeTitle(targetTitle);
         const similarity = calculateSimilarity(itemTitle, targetNormalized);
         const yearDiff = Math.abs(parseInt(String(item.year || '0')) - targetYear);
-        console.log('🎬 [MOVIE DEBUG] Fuzzy match check:', {
-          name: item.name,
-          similarity,
-          yearDiff
-        });
         return similarity > 0.8 && yearDiff <= 2;
       });
       if (fuzzyMatch) {
-        console.log('🎬 [MOVIE DEBUG] Fuzzy match found:', fuzzyMatch.name);
         return fuzzyMatch;
       }
 
-      console.log('🎬 [MOVIE DEBUG] No match found');
       return null;
     }
 

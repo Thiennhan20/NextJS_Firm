@@ -213,26 +213,16 @@ export default function WatchNowTVShows({
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
     async function fetchPhimApiEmbed() {
-      console.log('📺 [TVSHOW DEBUG] Starting TV show search process...');
-      console.log('📺 [TVSHOW DEBUG] TV show data:', { 
-        name: tvShow?.name, 
-        year: tvShow?.year, 
-        id, 
-        selectedSeason, 
-        selectedEpisode 
-      });
       
       // Nếu đã có audio links cho season hiện tại thì không cần tìm kiếm lại
       if (tvShowLinks.currentSeason === selectedSeason && !tvShowLinks.seasonChanged && 
           (tvShowLinks.vietsub || tvShowLinks.dubbed)) {
-        console.log('📺 [TVSHOW DEBUG] Already have links for current season, skipping search');
         setDataReady(true);
         return;
       }
       
       // Nếu season thay đổi, reset tvShowLinks để tìm kiếm lại
       if (tvShowLinks.seasonChanged) {
-        console.log('📺 [TVSHOW DEBUG] Season changed, resetting links');
         setTVShowLinks(links => ({ 
           ...links, 
           m3u8: '', 
@@ -245,18 +235,15 @@ export default function WatchNowTVShows({
       }
       
       // Tiến hành tìm kiếm
-      console.log('📺 [TVSHOW DEBUG] Starting search process...');
       
       setTVShowLinksLoading(true);
       setApiSearchCompleted(false);
       setDataReady(false);
 
       timeoutId = setTimeout(() => {
-        console.log('📺 [TVSHOW DEBUG] Search timeout reached (60s)');
       }, 60000);
       try {
         if (typeof id !== 'string') {
-          console.log('📺 [TVSHOW DEBUG] Invalid ID type:', typeof id);
           return;
         }
         let slug = null;
@@ -265,24 +252,20 @@ export default function WatchNowTVShows({
         try {
           if (!slug && typeof id === 'string') {
             const tmdbSearchUrl = `https://phimapi.com/v1/api/tim-kiem?keyword=${encodeURIComponent(id)}`;
-            console.log('📺 [TVSHOW DEBUG] First pass: TMDB ID search:', tmdbSearchUrl);
             const tmdbRes = await fetch(tmdbSearchUrl);
             const tmdbData = await tmdbRes.json();
             if (tmdbData?.status === 'success' && Array.isArray(tmdbData?.data?.items)) {
               const tmdbMatch = tmdbData.data.items.find((it: { tmdb?: { id?: string | number }; slug?: string; name?: string }) => it?.tmdb?.id && String(it.tmdb.id) === String(id));
               if (tmdbMatch?.slug) {
                 slug = tmdbMatch.slug;
-                console.log('📺 [TVSHOW DEBUG] TMDB ID match found:', tmdbMatch.name, '->', slug);
               }
             }
           }
-        } catch (e) {
-          console.log('📺 [TVSHOW DEBUG] TMDB ID search error:', e);
+        } catch {
         }
 
         // 2) English keyword-based search (from TMDB title)
         if (!slug && tvShow?.name) {
-          console.log('📺 [TVSHOW DEBUG] Starting search for:', tvShow.name);
           
           // Chuẩn hóa tên phim để tìm kiếm chính xác hơn
           const normalizedName = tvShow.name
@@ -292,24 +275,16 @@ export default function WatchNowTVShows({
             .trim();
           
           const keywords = [normalizedName, tvShow.name].filter(Boolean);
-          console.log('📺 [TVSHOW DEBUG] Search keywords:', keywords);
           
           outer: for (const keyword of keywords) {
-            console.log('📺 [TVSHOW DEBUG] Searching keyword:', keyword);
             // Trừ năm ra - chỉ tìm kiếm theo tên phim
             const url = `https://phimapi.com/v1/api/tim-kiem?keyword=${encodeURIComponent(keyword)}`;
-            console.log('📺 [TVSHOW DEBUG] API URL:', url);
             
             if (!logged) {
               logged = true;
             }
             const res = await fetch(url);
             const data = await res.json();
-            console.log('📺 [TVSHOW DEBUG] API Response:', { 
-              status: data.status, 
-              itemsCount: data.data?.items?.length || 0,
-              firstItem: data.data?.items?.[0]?.name || 'none'
-            });
             
             if (
               data.status === 'success' &&
@@ -317,7 +292,6 @@ export default function WatchNowTVShows({
               Array.isArray(data.data.items) &&
               data.data.items.length > 0
             ) {
-              console.log('📺 [TVSHOW DEBUG] Processing search results...');
               // Tìm kiếm chính xác hơn bằng cách so sánh với nhiều trường và kiểm tra season
               let bestMatch = null;
               let bestScore = 0;
@@ -371,11 +345,6 @@ export default function WatchNowTVShows({
                   }
                 }
                 
-                console.log('📺 [TVSHOW DEBUG] Item score:', { 
-                  name: item.name, 
-                  score, 
-                  bestScore 
-                });
                 
                 if (score > bestScore) {
                   bestScore = score;
@@ -385,17 +354,14 @@ export default function WatchNowTVShows({
               
               if (bestMatch && bestMatch.slug && bestScore >= 2) {
                 slug = bestMatch.slug;
-                console.log('📺 [TVSHOW DEBUG] Best match found:', bestMatch.name, '->', bestMatch.slug, 'score:', bestScore);
                 break outer;
               } else {
-                console.log('📺 [TVSHOW DEBUG] No good match found, best score:', bestScore);
               }
             }
           }
         }
         // 3) Vietnamese keyword fallback using TMDB translations/alternative names
         if (!slug && tvShow?.name) {
-          console.log('📺 [TVSHOW DEBUG] Fallback: Vietnamese keyword search');
           try {
             const viNames: string[] = [];
             if (typeof id === 'string') {
@@ -416,7 +382,6 @@ export default function WatchNowTVShows({
             const viNoAccents = viNames.map(n => String(n).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\w\s-]/g, '').replace(/\s+/g, ' ').trim());
             const viSlugs = viNoAccents.map(n => n.replace(/\s+/g, '-'));
             const viKeywords = [...viNames, ...viNoAccents, ...viSlugs].filter(Boolean).map(String);
-            console.log('📺 [TVSHOW DEBUG] VI keywords:', viKeywords);
 
             outerVi: for (const keyword of viKeywords) {
               const url = `https://phimapi.com/v1/api/tim-kiem?keyword=${encodeURIComponent(keyword)}`;
@@ -427,36 +392,26 @@ export default function WatchNowTVShows({
                 const item = data.data.items[0];
                 if (item?.slug) {
                   slug = item.slug;
-                  console.log('📺 [TVSHOW DEBUG] VI fallback matched:', item.name, '->', slug);
                   break outerVi;
                 }
               }
             }
-          } catch (e) {
-            console.log('📺 [TVSHOW DEBUG] VI fallback error:', e);
+          } catch {
           }
         }
         
         if (!slug) {
-          console.log('📺 [TVSHOW DEBUG] No slug found after search');
           return;
         }
         
-        console.log('📺 [TVSHOW DEBUG] Fetching TV show details for slug:', slug);
         const detailRes = await fetch(`https://phimapi.com/phim/${slug}`);
         const detailData = await detailRes.json();
-        console.log('📺 [TVSHOW DEBUG] TV show details response:', {
-          name: detailData.name,
-          episodes: detailData.episodes?.length || 0,
-          link_embed: !!detailData.link_embed
-        });
         
         // Kiểm tra xem phim này có episodes của season đang được chọn không
         let hasSeasonEpisodes = false;
         let finalDetailData = detailData;
         
         if (detailData.episodes && Array.isArray(detailData.episodes)) {
-          console.log('📺 [TVSHOW DEBUG] Checking for target episode:', selectedEpisode);
           // Tìm episode có số thứ tự tương ứng với episode đang được chọn
           const targetEpisode = detailData.episodes.find((ep: { episode_number: number; name?: string }) => 
             ep.episode_number === selectedEpisode || 
@@ -465,12 +420,10 @@ export default function WatchNowTVShows({
           );
           
           hasSeasonEpisodes = !!targetEpisode;
-          console.log('📺 [TVSHOW DEBUG] Has season episodes:', hasSeasonEpisodes);
         }
         
         // Nếu không có episodes của season này, tìm kiếm lại với từ khóa khác
         if (!hasSeasonEpisodes) {
-          console.log('📺 [TVSHOW DEBUG] No season episodes found, trying alternative search...');
           
           // Thử tìm kiếm với từ khóa có thêm season
           const seasonKeywords = [
@@ -480,23 +433,16 @@ export default function WatchNowTVShows({
             `${tvShow?.name?.toLowerCase().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ').trim()} tập ${selectedEpisode}`,
             `${tvShow?.name?.toLowerCase().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ').trim()} episode ${selectedEpisode}`
           ];
-          console.log('📺 [TVSHOW DEBUG] Alternative keywords:', seasonKeywords);
           
           for (const seasonKeyword of seasonKeywords) {
-            console.log('📺 [TVSHOW DEBUG] Trying alternative keyword:', seasonKeyword);
             const altUrl = `https://phimapi.com/v1/api/tim-kiem?keyword=${encodeURIComponent(seasonKeyword)}`;
             
             try {
               const altRes = await fetch(altUrl);
               const altData = await altRes.json();
-              console.log('📺 [TVSHOW DEBUG] Alternative search result:', { 
-                status: altData.status, 
-                itemsCount: altData.data?.items?.length || 0 
-              });
               
               if (altData.status === 'success' && altData.data?.items?.length > 0) {
                 const altItem = altData.data.items[0];
-                console.log('📺 [TVSHOW DEBUG] Alternative item found:', altItem.name);
                 
                 // Kiểm tra lại với phim mới
                 const altDetailRes = await fetch(`https://phimapi.com/phim/${altItem.slug}`);
@@ -510,7 +456,6 @@ export default function WatchNowTVShows({
                   );
                   
                   if (altTargetEpisode) {
-                    console.log('📺 [TVSHOW DEBUG] Alternative episode found:', altTargetEpisode.name);
                     slug = altItem.slug;
                     finalDetailData = altDetailData;
                     hasSeasonEpisodes = true;
@@ -518,8 +463,7 @@ export default function WatchNowTVShows({
                   }
                 }
               }
-            } catch (error) {
-              console.log('📺 [TVSHOW DEBUG] Alternative search error:', error);
+            } catch {
             }
           }
         }
@@ -530,10 +474,8 @@ export default function WatchNowTVShows({
         let defaultEmbed = '';
         
         if (finalDetailData.episodes && Array.isArray(finalDetailData.episodes)) {
-          console.log('📺 [TVSHOW DEBUG] Processing episodes for audio links...');
           
           for (const episode of finalDetailData.episodes) {
-            console.log('📺 [TVSHOW DEBUG] Processing episode:', episode.server_name);
             // Tìm episode có số thứ tự tương ứng
              const targetEpisode = episode.server_data?.find((ep: { name?: string; link_m3u8?: string; link_embed?: string }) => {
                const epName = ep.name?.toLowerCase() || '';
@@ -549,28 +491,23 @@ export default function WatchNowTVShows({
              });
             
             if (targetEpisode) {
-              console.log('📺 [TVSHOW DEBUG] Target episode found:', targetEpisode.name);
               
               // Phân loại theo server_name
               if (episode.server_name?.toLowerCase().includes('vietsub')) {
                 vietsubLink = targetEpisode.link_m3u8 || targetEpisode.link_embed?.split('?url=')[1] || '';
-                console.log('📺 [TVSHOW DEBUG] Vietsub link set:', vietsubLink);
               } else if (episode.server_name?.toLowerCase().includes('thuyết minh') ||
                          episode.server_name?.toLowerCase().includes('lồng tiếng') || 
                          episode.server_name?.toLowerCase().includes('dubbed')) {
                 dubbedLink = targetEpisode.link_m3u8 || targetEpisode.link_embed?.split('?url=')[1] || '';
-                console.log('📺 [TVSHOW DEBUG] Dubbed link set:', dubbedLink);
               }
             }
           }
           
           // Fallback: lấy episode đầu tiên nếu không tìm thấy episode cụ thể
           if (!vietsubLink && !dubbedLink) {
-            console.log('📺 [TVSHOW DEBUG] No specific episode found, using first episode as fallback');
             const firstEpisode = finalDetailData.episodes[0]?.server_data?.[0];
             if (firstEpisode) {
               defaultEmbed = firstEpisode.link_m3u8 || firstEpisode.link_embed?.split('?url=')[1] || '';
-              console.log('📺 [TVSHOW DEBUG] Fallback link set:', defaultEmbed);
             }
           }
         }
@@ -580,10 +517,8 @@ export default function WatchNowTVShows({
           defaultEmbed = finalDetailData.link_embed.includes('?url=') 
             ? finalDetailData.link_embed.split('?url=')[1] 
             : finalDetailData.link_embed;
-          console.log('📺 [TVSHOW DEBUG] Using original link_embed:', defaultEmbed);
         }
         
-        console.log('📺 [TVSHOW DEBUG] Final links:', { vietsubLink, dubbedLink, defaultEmbed });
         
         // Lưu episodes data để tái sử dụng khi đổi episode
         setEpisodesData(finalDetailData.episodes);
@@ -600,15 +535,12 @@ export default function WatchNowTVShows({
         
         setTVShowLinks(updatedLinks);
         setDataReady(true);
-        console.log('📺 [TVSHOW DEBUG] Links updated successfully');
         
-      } catch (error) {
-        console.log('📺 [TVSHOW DEBUG] Error occurred:', error);
+      } catch {
       } finally {
         clearTimeout(timeoutId);
         setTVShowLinksLoading(false);
         setApiSearchCompleted(true);
-        console.log('📺 [TVSHOW DEBUG] Search process completed');
       }
     }
     fetchPhimApiEmbed();
