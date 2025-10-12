@@ -4,6 +4,8 @@ import { useState, useMemo } from 'react';
 import LoginForm from '@/components/auth/LoginForm';
 import RegisterForm from '@/components/auth/RegisterForm';
 import dynamic from 'next/dynamic';
+import { motion, AnimatePresence } from 'framer-motion';
+
 // Optimize ThreeBackground with better loading and performance
 const ThreeBackground = dynamic(() => import('@/components/common/ThreeBackground'), { 
   ssr: false,
@@ -18,11 +20,6 @@ const GoogleOAuthProvider = dynamic(
     loading: () => <div className="w-full h-96 bg-black/20 rounded-xl animate-pulse" />
   }
 );
-
-// Dynamic import for framer-motion to fix runtime error
-const MotionDiv = dynamic(() => import('framer-motion').then(mod => mod.motion.div), { ssr: false });
-const MotionButton = dynamic(() => import('framer-motion').then(mod => mod.motion.button), { ssr: false });
-const AnimatePresence = dynamic(() => import('framer-motion').then(mod => mod.AnimatePresence), { ssr: false });
 
 
 const pageVariants = {
@@ -87,7 +84,7 @@ export default function LoginPage() {
       <div className="relative z-10 w-full max-w-md">
         <div className="flex justify-center mb-8">
           <div className="bg-black/50 rounded-lg p-1 shadow-inner-lg shadow-red-900/50 border border-yellow-600">
-            <MotionButton
+            <motion.button
               onClick={handleLoginClick}
               className={`px-6 py-2 rounded-lg transition-colors duration-200 font-semibold ${
                 isLogin ? 'bg-red-800 text-yellow-300 shadow-md' : 'text-gray-400 hover:bg-red-900 hover:text-yellow-300'
@@ -97,8 +94,8 @@ export default function LoginPage() {
               whileTap="tap"
             >
               Login
-            </MotionButton>
-            <MotionButton
+            </motion.button>
+            <motion.button
               onClick={handleRegisterClick}
               className={`px-6 py-2 rounded-lg transition-colors duration-200 font-semibold ${
                 !isLogin ? 'bg-red-800 text-yellow-300 shadow-md' : 'text-gray-400 hover:bg-red-900 hover:text-yellow-300'
@@ -108,12 +105,12 @@ export default function LoginPage() {
               whileTap="tap"
             >
               Register
-            </MotionButton>
+            </motion.button>
           </div>
         </div>
         <AnimatePresence mode="wait">
           <GoogleOAuthProvider clientId={googleClientId || 'placeholder-client-id'}>
-            <MotionDiv
+            <motion.div
               key={isLogin ? 'login' : 'register'}
               variants={pageVariants}
               initial="initial"
@@ -122,7 +119,7 @@ export default function LoginPage() {
               className="w-full"
             >
               {isLogin ? <LoginForm /> : <RegisterForm />}
-            </MotionDiv>
+            </motion.div>
           </GoogleOAuthProvider>
         </AnimatePresence>
       </div>
