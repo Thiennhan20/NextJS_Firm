@@ -6,7 +6,7 @@ import { isAxiosError } from 'axios';
 
 interface AuthStore extends AuthState {
   login: (credentials: LoginCredentials) => Promise<void>;
-  register: (credentials: RegisterCredentials) => Promise<{ message: string; warning?: string }>;
+  register: (credentials: RegisterCredentials) => Promise<{ message: string; warning?: string; emailSendFailed?: boolean }>;
   logout: () => Promise<void>;
   clearError: () => void;
   checkAuth: () => Promise<void>;

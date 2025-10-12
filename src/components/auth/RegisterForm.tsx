@@ -212,6 +212,7 @@ export default function RegisterForm() {
     password: '',
   });
   const [showPassword, setShowPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -221,9 +222,42 @@ export default function RegisterForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (isSubmitting) return; // Prevent double submission
+    
+    // Check network connectivity
+    if (!navigator.onLine) {
+      toast.error('No internet connection. Please check your network and try again.');
+      return;
+    }
+    
+    setIsSubmitting(true);
+    
+    // Quick server health check before registration
+    try {
+      const healthResponse = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || 'https://server-nextjs-firm.onrender.com/api'}/health`, {
+        timeout: 5000
+      });
+      console.log('Server health check:', healthResponse.data);
+    } catch (healthError) {
+      setIsSubmitting(false);
+      console.error('Server health check failed:', healthError);
+      toast.error('Server is not responding. Please try again later.');
+      return;
+    }
+    
+    // Set a timeout to prevent infinite loading
+    const timeoutId = setTimeout(() => {
+      setIsSubmitting(false);
+      toast.error('Registration request timed out. Please check your connection and try again.');
+    }, 30000); // 30 seconds timeout
+    
     try {
       console.log('Starting registration for:', formData.email);
       const result = await register(formData);
+      clearTimeout(timeoutId);
+      setIsSubmitting(false);
+      
       console.log('Registration successful, result:', result);
       
       // Check if there was a warning about email sending
@@ -232,18 +266,38 @@ export default function RegisterForm() {
         return;
       }
       
+      // Check if email sending failed
+      if (result?.emailSendFailed) {
+        toast.error('Registration successful! However, we could not send the verification email at this time. Please use the "Resend Email" option.');
+        return;
+      }
+      
       console.log('Registration successful, redirecting to verify-email-info');
       toast.success('Please check your email to verify your account!');
       router.push(`/verify-email-info?email=${encodeURIComponent(formData.email)}`);
     } catch (error: unknown) {
+      clearTimeout(timeoutId);
+      setIsSubmitting(false);
       console.error('Registration error:', error);
+      
       if (axios.isAxiosError(error)) {
         console.error('Axios error details:', {
           status: error.response?.status,
           data: error.response?.data,
-          message: error.message
+          message: error.message,
+          code: error.code
         });
-        toast.error(error.response?.data?.message || 'Registration failed!');
+        
+        // Handle specific error cases
+        if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+          toast.error('Request timed out. Please check your connection and try again.');
+        } else if (error.code === 'ERR_NETWORK' || error.message.includes('Network Error')) {
+          toast.error('Network error. Please check your internet connection.');
+        } else if (error.response?.status === 500) {
+          toast.error('Server error. Please try again later or contact support.');
+        } else {
+          toast.error(error.response?.data?.message || 'Registration failed!');
+        }
       } else {
         toast.error('An unexpected error occurred during registration.');
       }
@@ -341,12 +395,12 @@ export default function RegisterForm() {
         )}
         <motion.button
           type="submit"
-          disabled={isLoading}
+          disabled={isLoading || isSubmitting}
         className="w-full py-3 px-4 bg-yellow-600 hover:bg-yellow-700 text-black font-semibold rounded-lg transition duration-200 ease-in-out shadow-lg hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 focus:ring-offset-black disabled:opacity-50 disabled:cursor-not-allowed"
         whileHover={{ scale: 1.005 }}
         whileTap={{ scale: 0.995 }}
         >
-          {isLoading ? (
+          {isLoading || isSubmitting ? (
             <div className="flex items-center justify-center space-x-2">
               <LoadingSpinner />
               <span>Registering...</span>
