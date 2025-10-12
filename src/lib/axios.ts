@@ -8,22 +8,15 @@ if (typeof window !== 'undefined') {
     window.location.hostname === '127.0.0.1'
   ) {
     baseURL = 'http://localhost:3001/api';
-  } else if (!baseURL) {
-    // Fallback for production if NEXT_PUBLIC_API_URL is not set
-    baseURL = 'https://server-nextjs-firm.onrender.com/api';
   }
 }
 
 const api = axios.create({
   baseURL,
-  timeout: 25000, // 25 seconds timeout
   headers: {
     'Content-Type': 'application/json',
   },
 });
-
-console.log('Axios configured with baseURL:', baseURL);
-console.log('Current window location:', typeof window !== 'undefined' ? window.location.href : 'SSR');
 
 // Add a request interceptor
 api.interceptors.request.use(
