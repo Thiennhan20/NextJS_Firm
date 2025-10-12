@@ -204,6 +204,8 @@ const GoogleRegisterButton = () => {
 export default function RegisterForm() {
   const router = useRouter();
   const { register, isLoading, error, clearError } = useAuthStore();
+  
+  console.log('RegisterForm rendered, isLoading:', isLoading, 'error:', error);
   const [formData, setFormData] = useState<RegisterCredentials>({
     name: '',
     email: '',
@@ -221,7 +223,15 @@ export default function RegisterForm() {
     e.preventDefault();
     try {
       console.log('Starting registration for:', formData.email);
-      await register(formData);
+      const result = await register(formData);
+      console.log('Registration successful, result:', result);
+      
+      // Check if there was a warning about email sending
+      if (result?.warning) {
+        toast.error('Registration successful but email could not be sent. Please contact support.');
+        return;
+      }
+      
       console.log('Registration successful, redirecting to verify-email-info');
       toast.success('Please check your email to verify your account!');
       router.push(`/verify-email-info?email=${encodeURIComponent(formData.email)}`);

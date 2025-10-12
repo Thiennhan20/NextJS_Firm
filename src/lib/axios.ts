@@ -21,6 +21,9 @@ const api = axios.create({
   },
 });
 
+console.log('Axios configured with baseURL:', baseURL);
+console.log('Current window location:', typeof window !== 'undefined' ? window.location.href : 'SSR');
+
 // Add a request interceptor
 api.interceptors.request.use(
   (config) => {

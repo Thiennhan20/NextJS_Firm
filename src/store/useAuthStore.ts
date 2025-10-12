@@ -6,7 +6,7 @@ import { isAxiosError } from 'axios';
 
 interface AuthStore extends AuthState {
   login: (credentials: LoginCredentials) => Promise<void>;
-  register: (credentials: RegisterCredentials) => Promise<void>;
+  register: (credentials: RegisterCredentials) => Promise<{ message: string; warning?: string }>;
   logout: () => Promise<void>;
   clearError: () => void;
   checkAuth: () => Promise<void>;
@@ -89,9 +89,18 @@ const useAuthStore = create<AuthStore>()(
           set({ isLoading: true, error: null });
           console.log('Auth store: Sending registration request to:', api.defaults.baseURL + '/auth/register');
           const response = await api.post('/auth/register', credentials);
-          console.log('Auth store: Registration response:', response.data);
+          console.log('Auth store: Registration response:', response.status, response.data);
+          
+          // Check if there's a warning about email sending
+          if (response.data.warning) {
+            console.warn('Auth store: Email sending warning:', response.data.warning);
+          }
+          
           // Chỉ hiển thị thông báo, không tự đăng nhập
           set({ isLoading: false });
+          
+          // Return the response data for the component to handle
+          return response.data;
         } catch (error: unknown) {
           console.error('Auth store: Registration error:', error);
           if (isAxiosError(error)) {
