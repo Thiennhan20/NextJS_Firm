@@ -220,11 +220,19 @@ export default function RegisterForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      console.log('Starting registration for:', formData.email);
       await register(formData);
+      console.log('Registration successful, redirecting to verify-email-info');
       toast.success('Please check your email to verify your account!');
       router.push(`/verify-email-info?email=${encodeURIComponent(formData.email)}`);
     } catch (error: unknown) {
+      console.error('Registration error:', error);
       if (axios.isAxiosError(error)) {
+        console.error('Axios error details:', {
+          status: error.response?.status,
+          data: error.response?.data,
+          message: error.message
+        });
         toast.error(error.response?.data?.message || 'Registration failed!');
       } else {
         toast.error('An unexpected error occurred during registration.');

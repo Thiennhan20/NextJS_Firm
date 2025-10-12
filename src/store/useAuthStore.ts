@@ -87,11 +87,20 @@ const useAuthStore = create<AuthStore>()(
       register: async (credentials) => {
         try {
           set({ isLoading: true, error: null });
-          await api.post('/auth/register', credentials);
+          console.log('Auth store: Sending registration request to:', api.defaults.baseURL + '/auth/register');
+          const response = await api.post('/auth/register', credentials);
+          console.log('Auth store: Registration response:', response.data);
           // Chỉ hiển thị thông báo, không tự đăng nhập
           set({ isLoading: false });
         } catch (error: unknown) {
+          console.error('Auth store: Registration error:', error);
           if (isAxiosError(error)) {
+            console.error('Auth store: Axios error details:', {
+              status: error.response?.status,
+              data: error.response?.data,
+              message: error.message,
+              baseURL: api.defaults.baseURL
+            });
             set({
               error: error.response?.data?.message || 'An error occurred during registration',
               isLoading: false,
