@@ -71,13 +71,17 @@ const FacebookLoginButton = () => {
         if ((response as { authResponse?: unknown }).authResponse) {
           // Send Facebook access token to server directly
           // Server will handle getting user info from Facebook
-          const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? 'http://localhost:3001/api' : '')}/auth/facebook-login`;
+          const apiUrl = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') 
+            ? 'http://localhost:3001/api' 
+            : 'https://server-nextjs-firm.onrender.com/api';
+          
+          const fullApiUrl = `${apiUrl}/auth/facebook-login`;
           const requestData = { 
             accessToken: (response as { authResponse: { accessToken: string; userID: string } }).authResponse.accessToken,
             userID: (response as { authResponse: { accessToken: string; userID: string } }).authResponse.userID
           };
           
-          axios.post(apiUrl, requestData).then(async (serverResponse) => {
+          axios.post(fullApiUrl, requestData).then(async (serverResponse) => {
             const { token, user } = serverResponse.data;
             
             localStorage.setItem('token', token);
@@ -144,8 +148,12 @@ const GoogleLoginButton = () => {
   const handleGoogleSuccess = useCallback(async (credentialResponse: CredentialResponse) => {
     try {
       // Send the credential (ID token) directly to server
+      const apiUrl = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') 
+        ? 'http://localhost:3001/api' 
+        : 'https://server-nextjs-firm.onrender.com/api';
+      
       const response = await axios.post(
-        `${process.env.NEXT_PUBLIC_API_URL || (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? 'http://localhost:3001/api' : '')}/auth/google-login`,
+        `${apiUrl}/auth/google-login`,
         { credential: credentialResponse.credential }
       );
       

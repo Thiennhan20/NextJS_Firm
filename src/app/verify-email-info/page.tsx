@@ -35,8 +35,11 @@ function VerifyEmailInfoPageInner() {
     setChecking(true);
     const interval = setInterval(async () => {
       try {
-        const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api"}/auth/check-email-verified`;
-        const res = await axios.get(apiUrl, { params: { email } });
+        const apiUrl = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') 
+          ? 'http://localhost:3001/api' 
+          : 'https://server-nextjs-firm.onrender.com/api';
+          
+        const res = await axios.get(`${apiUrl}/auth/check-email-verified`, { params: { email } });
         if (res.data?.isEmailVerified) {
           setShouldRedirect(true);
           setTimeout(() => {
