@@ -31,7 +31,7 @@ function VerifyEmailPageInner() {
     const verify = async () => {
       try {
         const res = await axios.get(
-          `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api"}/auth/verify-email`,
+          `${process.env.NEXT_PUBLIC_API_URL || (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? 'http://localhost:3001/api' : 'https://server-nextjs-firm.onrender.com/api')}/auth/verify-email`,
           { params: { token, email } }
         );
         const msg = typeof res.data === 'string' ? res.data : res.data?.message;

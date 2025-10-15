@@ -88,6 +88,7 @@ const useAuthStore = create<AuthStore>()(
         try {
           set({ isLoading: true, error: null });
           console.log('Auth store: Sending registration request to:', api.defaults.baseURL + '/auth/register');
+          console.log('Auth store: Request data:', credentials);
           const response = await api.post('/auth/register', credentials);
           console.log('Auth store: Registration response:', response.data);
           // Chỉ hiển thị thông báo, không tự đăng nhập
