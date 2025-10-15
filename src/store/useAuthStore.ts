@@ -93,6 +93,11 @@ const useAuthStore = create<AuthStore>()(
           console.log('Auth store: Registration response:', response.data);
           // Chỉ hiển thị thông báo, không tự đăng nhập
           set({ isLoading: false });
+          
+          // Nếu có verification URL, lưu vào localStorage để hiển thị
+          if (response.data.verificationUrl) {
+            localStorage.setItem('verificationUrl', response.data.verificationUrl);
+          }
         } catch (error: unknown) {
           console.error('Auth store: Registration error:', error);
           if (isAxiosError(error)) {
