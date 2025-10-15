@@ -20,7 +20,6 @@ function VerifyEmailInfoPageInner() {
   const [email, setEmail] = useState("");
   const [checking, setChecking] = useState(false);
   const [error, setError] = useState("");
-  const [verificationUrl, setVerificationUrl] = useState("");
   const router = useRouter();
 
   // Lấy email từ query string
@@ -28,13 +27,6 @@ function VerifyEmailInfoPageInner() {
     const emailFromQuery = searchParams.get("email");
     if (emailFromQuery) setEmail(emailFromQuery);
     else setError("Email not found. Please register again or check your verification link.");
-    
-    // Kiểm tra xem có verification URL trong localStorage không
-    const storedVerificationUrl = localStorage.getItem('verificationUrl');
-    if (storedVerificationUrl) {
-      setVerificationUrl(storedVerificationUrl);
-      localStorage.removeItem('verificationUrl'); // Xóa sau khi lấy
-    }
   }, [searchParams]);
 
   useEffect(() => {
@@ -43,7 +35,7 @@ function VerifyEmailInfoPageInner() {
     setChecking(true);
     const interval = setInterval(async () => {
       try {
-        const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? 'http://localhost:3001/api' : 'https://server-nextjs-firm.onrender.com/api')}/auth/check-email-verified`;
+        const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api"}/auth/check-email-verified`;
         const res = await axios.get(apiUrl, { params: { email } });
         if (res.data?.isEmailVerified) {
           setShouldRedirect(true);
@@ -100,22 +92,6 @@ function VerifyEmailInfoPageInner() {
           <span className="text-yellow-400">You will be redirected to the login page after successful verification.</span>
         )}
       </p>
-      
-      {verificationUrl && (
-        <div className="mt-4 p-4 bg-yellow-900/50 rounded-lg border border-yellow-600">
-          <p className="text-yellow-200 text-sm mb-2">
-            <strong>Email service may be unavailable.</strong> You can verify your account manually by clicking the link below:
-          </p>
-          <a 
-            href={verificationUrl}
-            className="inline-block px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-black font-semibold rounded-lg transition duration-200"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Verify Account Manually
-          </a>
-        </div>
-      )}
       <div className="absolute -bottom-6 -right-6 sm:-bottom-10 sm:-right-10 opacity-30 pointer-events-none select-none">
         <svg width="80" height="80" className="sm:w-[120px] sm:h-[120px]" viewBox="0 0 120 120" fill="none"><circle cx="60" cy="60" r="60" fill="#FFD600" /></svg>
       </div>

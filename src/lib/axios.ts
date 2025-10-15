@@ -8,13 +8,8 @@ if (typeof window !== 'undefined') {
     window.location.hostname === '127.0.0.1'
   ) {
     baseURL = 'http://localhost:3001/api';
-  } else {
-    // Production URL
-    baseURL = 'https://server-nextjs-firm.onrender.com/api';
   }
 }
-
-console.log('API baseURL:', baseURL);
 
 const api = axios.create({
   baseURL,
