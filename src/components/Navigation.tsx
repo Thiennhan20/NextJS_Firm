@@ -359,7 +359,7 @@ export default function Navigation() {
                             <button
                               onClick={async () => {
                                 await logout();
-                                toast.success('Đã đăng xuất!');
+                                toast.success('Logged out!');
                               }}
                               className={`w-full text-left px-4 py-2 text-gray-300 ${
                                 active ? 'bg-red-500 text-white' : 'hover:bg-gray-800 hover:text-white'
@@ -592,7 +592,7 @@ export default function Navigation() {
                     >
                       <div className="flex items-center space-x-2">
                         <LogOut className="h-5 w-5" />
-                        <span>Đăng xuất</span>
+                        <span>Logout</span>
                       </div>
                     </button>
                   </div>

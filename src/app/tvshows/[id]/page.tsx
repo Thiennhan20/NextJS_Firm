@@ -204,6 +204,8 @@ export default function TVShowDetail() {
   const { addToWatchlist, removeFromWatchlist, isInWatchlist, fetchWatchlistFromServer } = useWatchlistStore()
   const { isAuthenticated, token } = useAuthStore()
   const isBookmarked = tvShow ? isInWatchlist(tvShow.id) : false
+  const [isCastExpanded, setIsCastExpanded] = useState(false)
+  const [isDescExpanded, setIsDescExpanded] = useState(false)
 
   const handleToggleWatchlist = async () => {
     if (!tvShow) return
@@ -491,6 +493,10 @@ export default function TVShowDetail() {
     : poster
   const seasonAirDate = currentSeason?.air_date
 
+  const heroHeightClass = (displayPoster && displayPoster.length > 0)
+    ? 'h-[40vh] md:h-[50vh] lg:h-[60vh]'
+    : 'h-[28vh] sm:h-[24vh] md:h-[28vh] lg:h-[32vh]';
+
   return (
     <div ref={containerRef} className="min-h-screen bg-gradient-to-b from-gray-900 to-black">
       <div className="relative w-full overflow-hidden py-16 lg:py-0 min-h-screen flex items-center">
@@ -509,7 +515,7 @@ export default function TVShowDetail() {
           style={{ y, opacity }}
           className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 lg:grid lg:grid-cols-2 lg:gap-8 lg:items-center"
         >
-          <div className="relative h-[40vh] md:h-[50vh] lg:h-[60vh] w-full flex items-center justify-center mb-8 lg:mb-0">
+          <div className={`relative ${heroHeightClass} w-full flex items-center justify-center mb-8 lg:mb-0`}>
             {displayPoster ? (
               <Canvas className="w-full h-full">
                 <PerspectiveCamera makeDefault position={[0, 0, 5]} />
@@ -526,8 +532,8 @@ export default function TVShowDetail() {
                 <TVShowPoster3D posterUrl={`/api/cache-image?id=${id}&url=${encodeURIComponent(displayPoster ?? '')}`} />
               </Canvas>
             ) : (
-              <div className="w-[300px] h-[450px] bg-gray-700 rounded-lg flex items-center justify-center">
-                <span className="text-4xl">📺</span>
+              <div className="bg-gray-700/70 rounded-lg flex items-center justify-center shadow-inner border border-gray-600 w-[96px] h-[144px] sm:w-[128px] sm:h-[192px] md:w-[160px] md:h-[240px] lg:w-[192px] lg:h-[288px]">
+                <span className="text-2xl sm:text-3xl">📺</span>
               </div>
             )}
           </div>
@@ -566,26 +572,82 @@ export default function TVShowDetail() {
               {creator && (
                 <p className="text-gray-300">Director: {creator}</p>
               )}
+              {/* Cast collapsed */}
+              <div>
+                {!isCastExpanded ? (
+                  <div className="flex items-center">
+                    <div className="min-w-0 overflow-hidden">
+                      <div className="flex flex-nowrap gap-2 whitespace-nowrap">
+                        {cast.map((actor: string, index: number) => (
+                          <span key={index} className="shrink-0 last:shrink last:min-w-0 last:max-w-[50%] last:truncate px-3 py-1 rounded-full text-sm bg-gray-900/60 border border-white/15 text-white shadow-sm backdrop-blur-[2px]">
+                            {actor}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="flex-none flex items-center gap-2 pl-2">
+                      <span className="px-2 py-0.5 rounded-full bg-gray-900/60 border border-white/15 text-white text-xs shadow-sm backdrop-blur-[2px] select-none">…</span>
+                      <button
+                        onClick={() => setIsCastExpanded(true)}
+                        className="text-xs px-2 py-1 rounded-md bg-white/15 hover:bg-white/25 text-white border border-white/20 backdrop-blur-sm"
+                      >
+                        Show more
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap gap-2 items-center">
+                    {cast.map((actor: string, index: number) => (
+                      <span key={index} className="px-3 py-1 rounded-full text-sm bg-gray-900/60 border border-white/15 text-white shadow-sm backdrop-blur-[2px]">
+                        {actor}
+                      </span>
+                    ))}
+                    <button
+                      onClick={() => setIsCastExpanded(false)}
+                      className="text-xs px-2 py-1 rounded-md bg-white/15 hover:bg-white/25 text-white border border-white/20"
+                    >
+                      Show less
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
 
-              <div className="flex flex-wrap gap-2">
-                {cast.map((actor: string, index: number) => (
-                  <span key={index} className="px-3 py-1 bg-gray-800 rounded-full text-sm">
-                    {actor}
-                  </span>
-                ))}
+            {/* Description collapsed */}
+            {!isDescExpanded ? (
+              <div className="relative">
+                <p className="text-gray-300 leading-relaxed whitespace-nowrap overflow-hidden text-ellipsis pr-24">
+                  {description}
+                </p>
+                <div className="absolute inset-y-0 right-0 flex items-center pl-6">
+                  <div className="pointer-events-none absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-black/70 to-transparent"></div>
+                  
+                  <button
+                    onClick={() => setIsDescExpanded(true)}
+                    className="relative z-10 text-xs px-2 py-1 rounded-md bg-white/15 hover:bg-white/25 text-white border border-white/20 backdrop-blur-sm"
+                  >
+                    Read more
+                  </button>
+                </div>
               </div>
-
-            <p className="text-gray-300 leading-relaxed">
-              {description}
-            </p>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-gray-300 leading-relaxed">{description}</p>
+                <button
+                  onClick={() => setIsDescExpanded(false)}
+                  className="text-xs px-2 py-1 rounded-md bg-white/15 hover:bg-white/25 text-white border border-white/20"
+                >
+                  Show less
+                </button>
+              </div>
+            )}
 
             <div className="flex flex-wrap gap-4">
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => setShowTrailer(true)}
-                className="px-6 py-3 bg-gray-700 text-white rounded-lg font-semibold hover:bg-gray-600 transition-colors flex items-center gap-2"
+                className="px-6 py-3 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition-colors flex items-center gap-2"
               >
                 <PlayIcon className="h-5 w-5" />
                 Trailer

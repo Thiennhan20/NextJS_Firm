@@ -152,13 +152,7 @@ const newComments: NewComment[] = [
     movie: "Avatar: The Way of Water",
     timestamp: "10 minutes ago"
   },
-  {
-    id: 4,
-    user: { name: "ClassicFilmFan", avatar: "/api/placeholder/40/40", verified: true },
-    content: "This is why I love foreign cinema. The storytelling is so nuanced and the cultural perspective adds incredible depth.",
-    movie: "Parasite",
-    timestamp: "15 minutes ago"
-  }
+
 ]
 
 // Custom avatar generator function

@@ -8,9 +8,6 @@ if (typeof window !== 'undefined') {
     window.location.hostname === '127.0.0.1'
   ) {
     baseURL = 'http://localhost:3001/api';
-  } else {
-    // For production, use the deployed server URL
-    baseURL = 'https://server-nextjs-firm.onrender.com/api';
   }
 }
 

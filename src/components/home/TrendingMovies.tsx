@@ -272,7 +272,7 @@ export default function TrendingMovies() {
                       <div className="w-full h-56 sm:h-72 flex items-center justify-center bg-gray-700 text-3xl sm:text-4xl">🎬</div>
                     )}
                     <div className="absolute inset-x-0 bottom-0">
-                      <div className="m-2 rounded-md bg-black/60 backdrop-blur-sm px-2 py-1.5 sm:px-3 sm:py-2">
+                      <div className="bg-black/70 backdrop-blur-sm px-2 py-1.5 sm:px-3 sm:py-2">
                         <div className="font-medium text-[13px] sm:text-sm text-white truncate">{getTitle(item)}</div>
                       </div>
                     </div>

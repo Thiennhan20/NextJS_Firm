@@ -130,10 +130,23 @@ export default function WatchNowMovies({ movie }: WatchNowMoviesProps) {
     }
   }, [movie?.title, movie?.year]);
 
-  // Mặc định chọn Vietsub khi có đủ 2 phiên bản và chưa chọn gì
+  // Tự động chọn audio khi có sẵn
   useEffect(() => {
-    if (movieLinks.vietsub && movieLinks.dubbed && !selectedAudio) {
-      setSelectedAudio('vietsub');
+    if (!selectedAudio) {
+      // Nếu có cả hai, ưu tiên Vietsub
+      if (movieLinks.vietsub && movieLinks.dubbed) {
+        setSelectedAudio('vietsub');
+        return;
+      }
+      // Nếu chỉ có một loại audio, tự động chọn
+      if (movieLinks.vietsub) {
+        setSelectedAudio('vietsub');
+        return;
+      }
+      if (movieLinks.dubbed) {
+        setSelectedAudio('dubbed');
+        return;
+      }
     }
   }, [movieLinks.vietsub, movieLinks.dubbed, selectedAudio]);
 

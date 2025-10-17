@@ -641,17 +641,18 @@ function MoviesPageContent() {
                    transition={{ type: 'spring', stiffness: 200, damping: 20 }}
                  >
                    <Link key={movie.id} href={`/movies/${movie.id}?page=${page}&year=${selectedYear}&category=${selectedCategory}&country=${selectedCountry}`} className="block">
-                     <div className="border border-gray-700 rounded-lg overflow-hidden relative group bg-gray-800 hover:bg-gray-700 transition-colors duration-200">
-                                               {/* Poster Image */}
-                        <div className="relative">
-                          <Image
-                            src={movie.image ?? ''}
-                            alt={movie.title}
-                            width={500}
-                            height={750}
-                            className="w-full"
-                          />
-                        </div>
+                    <div className="border border-gray-700 rounded-lg overflow-hidden relative group bg-gray-800 hover:bg-gray-700 transition-colors duration-200">
+                      {/* Poster Image with fixed frame and fallback */}
+                      <div className="relative w-full h-[240px] md:h-[300px] lg:h-[360px] overflow-hidden bg-gray-900">
+                        <Image
+                          src={(movie.image && movie.image.length > 0) ? movie.image : '/window.svg'}
+                          alt={movie.title}
+                          fill
+                          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, 20vw"
+                          className="object-cover"
+                          priority={false}
+                        />
+                      </div>
 
                         {/* Movie Info */}
                         <div className="p-2 md:p-3 bg-gray-900">

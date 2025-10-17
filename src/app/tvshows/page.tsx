@@ -641,14 +641,15 @@ function TVShowsPageContent() {
                 >
                   <Link key={tvShow.id} href={`/tvshows/${tvShow.id}?page=${page}&year=${selectedYear}&category=${selectedCategory}&country=${selectedCountry}&season=1`} className="block">
                     <div className="border border-gray-700 rounded-lg overflow-hidden relative group bg-gray-800 hover:bg-gray-700 transition-colors duration-200">
-                      {/* Poster Image */}
-                      <div className="relative">
+                      {/* Poster Image with fixed frame and fallback */}
+                      <div className="relative w-full h-[240px] md:h-[300px] lg:h-[360px] overflow-hidden bg-gray-900">
                         <Image
-                          src={tvShow.image ?? ''}
+                          src={(tvShow.image && tvShow.image.length > 0) ? tvShow.image : '/window.svg'}
                           alt={tvShow.name}
-                          width={500}
-                          height={750}
-                          className="w-full"
+                          fill
+                          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, 20vw"
+                          className="object-cover"
+                          priority={false}
                         />
                       </div>
 
