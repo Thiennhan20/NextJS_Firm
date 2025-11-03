@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useEffect, useState } from 'react'
+import { useRef, useEffect, useState, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import Image from 'next/image'
 import axios from 'axios'
@@ -34,54 +34,22 @@ interface ProcessedMovie {
   type: 'movie';
 }
 
-interface TVShow {
-  id: number;
-  name: string;
-  poster_path: string;
-  first_air_date?: string;
-  original_language?: string;
-  backdrop_path?: string;
-}
-
-interface TVShowDetail {
-  id: number;
-  name: string;
-  poster_path: string;
-  first_air_date?: string;
-  original_language?: string;
-  backdrop_path?: string;
-  seasons?: Array<{
-    id: number;
-    name: string;
-    poster_path?: string;
-    air_date?: string;
-    season_number: number;
-  }>;
-}
-
-interface ProcessedTVShow {
-  id: number;
-  name: string;
-  year: number;
-  image: string;
-  backdrop: string;
-  genre: never[];
-  first_air_date?: string;
-  status?: 'Full HD' | 'Full HD/CAM' | 'Coming Soon' | 'Non';
-  original_language?: string;
-  type: 'tv';
-}
-
-type ContentItem = ProcessedMovie | ProcessedTVShow;
+type ContentItem = ProcessedMovie;
 
 export default function ComingSoonMovies() {
   const API_KEY = process.env.NEXT_PUBLIC_TMDB_API_KEY;
   const [featuredContent, setFeaturedContent] = useState<ContentItem[]>([]);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [isFetchingMore, setIsFetchingMore] = useState(false);
   const [loading, setLoading] = useState(true);
   const [lastFetchDate, setLastFetchDate] = useState<string>('');
   const [canScrollLeftComingSoon, setCanScrollLeftComingSoon] = useState(false);
   const [canScrollRightComingSoon, setCanScrollRightComingSoon] = useState(false);
   const comingSoonScrollRef = useRef<HTMLDivElement>(null);
+  
+  // Giới hạn số lượng dữ liệu để cải thiện hiệu suất
+  const MAX_ITEMS = 20;
 
   // Hàm chuyển đổi language code thành tên quốc gia
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -136,39 +104,86 @@ export default function ComingSoonMovies() {
     return 'Full HD';
   };
 
-  // --- TV SHOW STATUS GENERATION FUNCTION ---
-  const generateTVShowStatus = (firstAirDate?: string): 'Full HD' | 'Full HD/CAM' | 'Coming Soon' | 'Non' => {
-    if (!firstAirDate) return 'Coming Soon';
-    
-    const firstAirDateObj = new Date(firstAirDate);
-    const currentDate = new Date();
-    const firstAirYear = firstAirDateObj.getFullYear();
-    
-    // Trường hợp Non: TV show từ 1990 trở về quá khứ
-    if (firstAirYear < 1990) return 'Non';
-    
-    // Tính khoảng cách thời gian giữa ngày hiện tại và ngày phát sóng đầu tiên (tính bằng tháng)
-    const timeDiffInMs = firstAirDateObj.getTime() - currentDate.getTime();
-    const timeDiffInMonths = timeDiffInMs / (1000 * 60 * 60 * 24 * 30.44); // 30.44 ngày = 1 tháng
-    
-    // Trường hợp Coming Soon: TV show sẽ phát sóng từ 1 tháng trở đi (giảm từ 2 xuống 1)
-    if (timeDiffInMonths >= 1) return 'Coming Soon';
-    
-    // Trường hợp Full HD/CAM: TV show mới xuất hiện dưới 1 tháng
-    if (timeDiffInMonths >= 0 && timeDiffInMonths < 1) return 'Full HD/CAM';
-    
-    // Trường hợp Full HD: TV show đã xuất hiện (quá khứ)
-    return 'Full HD';
+  // Process movies function
+  const processMovies = (movies: Movie[]) => movies
+    .filter(movie => {
+      // Client-side filtering to ensure only movies with valid release dates
+      if (!movie.release_date) return false;
+      const movieReleaseDate = new Date(movie.release_date);
+      const currentDateObj = new Date();
+      return movieReleaseDate >= currentDateObj;
+    })
+    .map((movie: Movie) => ({
+      id: movie.id,
+      title: movie.title,
+      year: movie.release_date ? Number(movie.release_date.slice(0, 4)) : 0,
+      image: movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : '',
+      backdrop: movie.backdrop_path ? `https://image.tmdb.org/t/p/w1280${movie.backdrop_path}` : '',
+      genre: [],
+      release_date: movie.release_date || '',
+      status: generateMovieStatus(movie.release_date),
+      original_language: movie.original_language || 'en',
+      type: 'movie' as const,
+    }));
+
+  // Fetch movies function (supports initial load and load more)
+  const fetchMovies = async (pageNumber: number, isInitial: boolean = false) => {
+    if (isInitial) {
+      setLoading(true);
+    } else {
+      setIsFetchingMore(true);
+    }
+
+    try {
+      // Calculate dynamic date range (90 days from today)
+      const today = new Date();
+      const startDate = today.toISOString().split('T')[0]; // Format: YYYY-MM-DD
+      const endDate = new Date(today);
+      endDate.setDate(today.getDate() + 90);
+      const endDateStr = endDate.toISOString().split('T')[0]; // Format: YYYY-MM-DD
+
+
+      const apiUrl = `https://api.themoviedb.org/3/discover/movie?api_key=${API_KEY}&release_date.gte=${startDate}&release_date.lte=${endDateStr}&with_release_type=3|6&region=VN&sort_by=release_date.asc`;
+      
+
+      const response = await axios.get(apiUrl, {
+        params: { page: pageNumber },
+      });
+
+      const newMovies: Movie[] = response.data.results;
+      const processed = processMovies(newMovies);
+
+      setFeaturedContent(prev => {
+        const newContent = isInitial ? processed : [...prev, ...processed];
+        // Giới hạn số lượng items để cải thiện hiệu suất
+        return newContent.slice(0, MAX_ITEMS);
+      });
+      setHasMore(pageNumber < response.data.total_pages && newMovies.length > 0 && featuredContent.length < MAX_ITEMS);
+
+      if (isInitial) {
+        setLastFetchDate(startDate);
+      }
+
+      setPage(pageNumber + 1);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      if (isInitial) {
+        setLoading(false);
+      } else {
+        setIsFetchingMore(false);
+      }
+    }
   };
 
-  // Check scroll position for Coming Soon section
-  const checkComingSoonScrollPosition = () => {
+  // Optimized scroll position checking with throttling
+  const checkComingSoonScrollPosition = useCallback(() => {
     if (comingSoonScrollRef.current) {
       const { scrollLeft, scrollWidth, clientWidth } = comingSoonScrollRef.current;
       setCanScrollLeftComingSoon(scrollLeft > 0);
       setCanScrollRightComingSoon(scrollLeft < scrollWidth - clientWidth - 1);
     }
-  };
+  }, []);
 
   // Scroll functions for Coming Soon section
   const scrollComingSoonLeft = () => {
@@ -183,154 +198,10 @@ export default function ComingSoonMovies() {
     }
   };
 
-  // Fetch content on component mount
+  // Fetch initial content on component mount
   useEffect(() => {
-    const fetchContent = async () => {
-      setLoading(true);
-      try {
-        const currentDate = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
-        
-        // Fetch upcoming movies and popular TV shows
-        const [upcomingResponse, popularTVResponse] = await Promise.all([
-          axios.get(`https://api.themoviedb.org/3/movie/upcoming?api_key=${API_KEY}&page=1&region=US`),
-          axios.get(`https://api.themoviedb.org/3/tv/popular?api_key=${API_KEY}&page=1`)
-        ]);
-
-        // Fetch detailed TV show information including latest season
-        const tvShowDetails = await Promise.all(
-          popularTVResponse.data.results.slice(0, 20).map(async (tvShow: TVShow) => {
-            try {
-              const detailResponse = await axios.get(`https://api.themoviedb.org/3/tv/${tvShow.id}?api_key=${API_KEY}&append_to_response=seasons`);
-              return detailResponse.data;
-            } catch (error) {
-              console.error(`Error fetching TV show details for ${tvShow.id}:`, error);
-              return null;
-            }
-          })
-        );
-
-        // Filter out failed requests
-        const validTVShowDetails = tvShowDetails.filter(detail => detail !== null);
-        
-        // Process movies
-        const processMovies = (movies: Movie[]) => movies.map((movie: Movie) => ({
-          id: movie.id,
-          title: movie.title,
-          year: movie.release_date ? Number(movie.release_date.slice(0, 4)) : 0,
-          image: movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : '',
-          backdrop: movie.backdrop_path ? `https://image.tmdb.org/t/p/w1280${movie.backdrop_path}` : '',
-          genre: [],
-          release_date: movie.release_date || '',
-          status: generateMovieStatus(movie.release_date),
-          original_language: movie.original_language || 'en',
-          type: 'movie' as const,
-        }));
-
-        // Process TV shows with latest season information
-        const processTVShows = (tvShowDetails: TVShowDetail[]) => tvShowDetails.map((tvShow: TVShowDetail) => {
-          // Find the latest season with air date
-          const latestSeason = tvShow.seasons
-            ?.filter(season => season.air_date)
-            ?.sort((a, b) => {
-              if (!a.air_date || !b.air_date) return 0;
-              return new Date(b.air_date).getTime() - new Date(a.air_date).getTime();
-            })[0];
-
-          // Use latest season info if available, otherwise fall back to show info
-          const posterPath = latestSeason?.poster_path || tvShow.poster_path;
-          const airDate = latestSeason?.air_date || tvShow.first_air_date;
-          const seasonName = latestSeason ? `${tvShow.name} - S${latestSeason.season_number}` : tvShow.name;
-
-          return {
-            id: tvShow.id,
-            name: seasonName,
-            year: airDate ? Number(airDate.slice(0, 4)) : 0,
-            image: posterPath ? `https://image.tmdb.org/t/p/w500${posterPath}` : '',
-            backdrop: tvShow.backdrop_path ? `https://image.tmdb.org/t/p/w1280${tvShow.backdrop_path}` : '',
-            genre: [],
-            first_air_date: airDate || '',
-            status: generateTVShowStatus(airDate),
-            original_language: tvShow.original_language || 'en',
-            type: 'tv' as const,
-          };
-        });
-
-        // Filter for Coming Soon content from 2025 onwards
-        const upcomingMovies = processMovies(upcomingResponse.data.results)
-          .filter((movie: ProcessedMovie) => 
-            movie.status === 'Coming Soon' && 
-            movie.year >= 2025
-          );
-
-        const comingSoonTVShows = processTVShows(validTVShowDetails)
-          .filter((tvShow: ProcessedTVShow) => 
-            tvShow.status === 'Coming Soon' && 
-            tvShow.year >= 2025
-          );
-
-
-
-        // Logic mới: Luôn cố gắng có 5 TV shows và 10 movies
-        let finalContent = [];
-        
-        // 1. Lấy TV shows trước (ưu tiên 5 items)
-        let selectedTVShows = comingSoonTVShows.slice(0, 5);
-        
-        // 2. Nếu không đủ 5 TV shows Coming Soon, tìm thêm từ các tháng xa hơn
-        if (selectedTVShows.length < 5) {
-          const allTVShows = processTVShows(validTVShowDetails);
-          const availableTVShows = allTVShows
-            .filter(tvShow => tvShow.status !== 'Non' && tvShow.year >= 2025)
-            .sort((a, b) => {
-              if (!a.first_air_date || !b.first_air_date) return 0;
-              return new Date(a.first_air_date).getTime() - new Date(b.first_air_date).getTime();
-            });
-          
-          // Lấy thêm TV shows cho đủ 5
-          const additionalTVShows = availableTVShows
-            .filter(tvShow => !selectedTVShows.some(selected => selected.id === tvShow.id))
-            .slice(0, 5 - selectedTVShows.length);
-          
-          selectedTVShows = [...selectedTVShows, ...additionalTVShows];
-        }
-        
-        // 3. Lấy movies để bù vào phần còn lại
-        const remainingSlots = 15 - selectedTVShows.length;
-        let selectedMovies = upcomingMovies.slice(0, remainingSlots);
-        
-        // 4. Nếu không đủ movies Coming Soon, lấy thêm từ các status khác
-        if (selectedMovies.length < remainingSlots) {
-          const allMovies = processMovies(upcomingResponse.data.results);
-          const availableMovies = allMovies
-            .filter(movie => movie.status !== 'Non' && movie.year >= 2025)
-            .sort((a, b) => {
-              if (!a.release_date || !b.release_date) return 0;
-              return new Date(a.release_date).getTime() - new Date(b.release_date).getTime();
-            });
-          
-          // Lấy thêm movies cho đủ slots còn lại
-          const additionalMovies = availableMovies
-            .filter(movie => !selectedMovies.some(selected => selected.id === movie.id))
-            .slice(0, remainingSlots - selectedMovies.length);
-          
-          selectedMovies = [...selectedMovies, ...additionalMovies];
-        }
-        
-        // 5. Kết hợp và xáo trộn
-        finalContent = [...selectedMovies, ...selectedTVShows];
-        const shuffledContent = finalContent.sort(() => Math.random() - 0.5);
-        
-
-        
-        setFeaturedContent(shuffledContent);
-        setLastFetchDate(currentDate);
-      } catch (error) {
-        console.error(error);
-        setFeaturedContent([]);
-      }
-      setLoading(false);
-    };
-    fetchContent();
+    fetchMovies(1, true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [API_KEY]);
 
   // Check for daily updates
@@ -338,176 +209,60 @@ export default function ComingSoonMovies() {
     const checkForDailyUpdate = () => {
       const currentDate = new Date().toISOString().split('T')[0];
       if (lastFetchDate && lastFetchDate !== currentDate) {
-        // Date has changed, refetch content
-        const fetchContent = async () => {
-          setLoading(true);
-          try {
-            const [upcomingResponse, popularTVResponse] = await Promise.all([
-              axios.get(`https://api.themoviedb.org/3/movie/upcoming?api_key=${API_KEY}&page=1&region=US`),
-              axios.get(`https://api.themoviedb.org/3/tv/popular?api_key=${API_KEY}&page=1`)
-            ]);
-
-            // Fetch detailed TV show information including latest season
-            const tvShowDetails = await Promise.all(
-              popularTVResponse.data.results.slice(0, 20).map(async (tvShow: TVShow) => {
-                try {
-                  const detailResponse = await axios.get(`https://api.themoviedb.org/3/tv/${tvShow.id}?api_key=${API_KEY}&append_to_response=seasons`);
-                  return detailResponse.data;
-                } catch (error) {
-                  console.error(`Error fetching TV show details for ${tvShow.id}:`, error);
-                  return null;
-                }
-              })
-            );
-
-            // Filter out failed requests
-            const validTVShowDetails = tvShowDetails.filter(detail => detail !== null);
-            
-            // Process movies
-            const processMovies = (movies: Movie[]) => movies.map((movie: Movie) => ({
-              id: movie.id,
-              title: movie.title,
-              year: movie.release_date ? Number(movie.release_date.slice(0, 4)) : 0,
-              image: movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : '',
-              backdrop: movie.backdrop_path ? `https://image.tmdb.org/t/p/w1280${movie.backdrop_path}` : '',
-              genre: [],
-              release_date: movie.release_date || '',
-              status: generateMovieStatus(movie.release_date),
-              original_language: movie.original_language || 'en',
-              type: 'movie' as const,
-            }));
-
-            // Process TV shows with latest season information
-            const processTVShows = (tvShowDetails: TVShowDetail[]) => tvShowDetails.map((tvShow: TVShowDetail) => {
-              // Find the latest season with air date
-              const latestSeason = tvShow.seasons
-                ?.filter(season => season.air_date)
-                ?.sort((a, b) => {
-                  if (!a.air_date || !b.air_date) return 0;
-                  return new Date(b.air_date).getTime() - new Date(a.air_date).getTime();
-                })[0];
-
-              // Use latest season info if available, otherwise fall back to show info
-              const posterPath = latestSeason?.poster_path || tvShow.poster_path;
-              const airDate = latestSeason?.air_date || tvShow.first_air_date;
-              const seasonName = latestSeason ? `${tvShow.name} - S${latestSeason.season_number}` : tvShow.name;
-
-              return {
-                id: tvShow.id,
-                name: seasonName,
-                year: airDate ? Number(airDate.slice(0, 4)) : 0,
-                image: posterPath ? `https://image.tmdb.org/t/p/w500${posterPath}` : '',
-                backdrop: tvShow.backdrop_path ? `https://image.tmdb.org/t/p/w1280${tvShow.backdrop_path}` : '',
-                genre: [],
-                first_air_date: airDate || '',
-                status: generateTVShowStatus(airDate),
-                original_language: tvShow.original_language || 'en',
-                type: 'tv' as const,
-              };
-            });
-
-            // Filter for Coming Soon content from 2025 onwards
-            const upcomingMovies = processMovies(upcomingResponse.data.results)
-              .filter((movie: ProcessedMovie) => 
-                movie.status === 'Coming Soon' && 
-                movie.year >= 2025
-              );
-
-            const comingSoonTVShows = processTVShows(validTVShowDetails)
-              .filter((tvShow: ProcessedTVShow) => 
-                tvShow.status === 'Coming Soon' && 
-                tvShow.year >= 2025
-              );
-
-
-
-            // Logic mới: Luôn cố gắng có 5 TV shows và 10 movies
-            let finalContent = [];
-            
-            // 1. Lấy TV shows trước (ưu tiên 5 items)
-            let selectedTVShows = comingSoonTVShows.slice(0, 5);
-            
-            // 2. Nếu không đủ 5 TV shows Coming Soon, tìm thêm từ các tháng xa hơn
-            if (selectedTVShows.length < 5) {
-              const allTVShows = processTVShows(validTVShowDetails);
-              const availableTVShows = allTVShows
-                .filter(tvShow => tvShow.status !== 'Non' && tvShow.year >= 2025)
-                .sort((a, b) => {
-                  if (!a.first_air_date || !b.first_air_date) return 0;
-                  return new Date(a.first_air_date).getTime() - new Date(b.first_air_date).getTime();
-                });
-              
-              // Lấy thêm TV shows cho đủ 5
-              const additionalTVShows = availableTVShows
-                .filter(tvShow => !selectedTVShows.some(selected => selected.id === tvShow.id))
-                .slice(0, 5 - selectedTVShows.length);
-              
-              selectedTVShows = [...selectedTVShows, ...additionalTVShows];
-            }
-            
-            // 3. Lấy movies để bù vào phần còn lại
-            const remainingSlots = 15 - selectedTVShows.length;
-            let selectedMovies = upcomingMovies.slice(0, remainingSlots);
-            
-            // 4. Nếu không đủ movies Coming Soon, lấy thêm từ các status khác
-            if (selectedMovies.length < remainingSlots) {
-              const allMovies = processMovies(upcomingResponse.data.results);
-              const availableMovies = allMovies
-                .filter(movie => movie.status !== 'Non' && movie.year >= 2025)
-                .sort((a, b) => {
-                  if (!a.release_date || !b.release_date) return 0;
-                  return new Date(a.release_date).getTime() - new Date(b.release_date).getTime();
-                });
-              
-              // Lấy thêm movies cho đủ slots còn lại
-              const additionalMovies = availableMovies
-                .filter(movie => !selectedMovies.some(selected => selected.id === movie.id))
-                .slice(0, remainingSlots - selectedMovies.length);
-              
-              selectedMovies = [...selectedMovies, ...additionalMovies];
-            }
-            
-            // 5. Kết hợp và xáo trộn
-            finalContent = [...selectedMovies, ...selectedTVShows];
-            const shuffledContent = finalContent.sort(() => Math.random() - 0.5);
-            
-
-            
-            setFeaturedContent(shuffledContent);
-            setLastFetchDate(currentDate);
-          } catch (error) {
-            console.error(error);
-          }
-          setLoading(false);
-        };
-        fetchContent();
+        // Reset states and refetch
+        setFeaturedContent([]);
+        setPage(1);
+        setHasMore(true);
+        fetchMovies(1, true);
       }
     };
 
     const interval = setInterval(checkForDailyUpdate, 60000); // Check every minute
     return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [API_KEY, lastFetchDate]);
 
-  // Check scroll position on mount and when data changes
+  // Optimized scroll handling with throttling and data limit
   useEffect(() => {
     const container = comingSoonScrollRef.current;
     if (!container) return;
 
+    let throttleTimeout: NodeJS.Timeout | null = null;
+    const throttledCheckScroll = () => {
+      if (throttleTimeout) return;
+      throttleTimeout = setTimeout(() => {
+        checkComingSoonScrollPosition();
+        throttleTimeout = null;
+      }, 16); // ~60fps
+    };
+
+    const handleScroll = () => {
+      throttledCheckScroll();
+      if (container) {
+        const { scrollLeft, scrollWidth, clientWidth } = container;
+        // Chỉ load more khi chưa đạt giới hạn và có thể scroll thêm
+        if (scrollLeft + clientWidth >= scrollWidth - 100 && hasMore && !isFetchingMore && featuredContent.length < MAX_ITEMS) {
+          fetchMovies(page);
+        }
+      }
+    };
+
     checkComingSoonScrollPosition();
-    container.addEventListener('scroll', checkComingSoonScrollPosition);
-    window.addEventListener('resize', checkComingSoonScrollPosition);
+    container.addEventListener('scroll', handleScroll, { passive: true });
+    window.addEventListener('resize', throttledCheckScroll, { passive: true });
 
     return () => {
-      container.removeEventListener('scroll', checkComingSoonScrollPosition);
-      window.removeEventListener('resize', checkComingSoonScrollPosition);
+      container.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('resize', throttledCheckScroll);
+      if (throttleTimeout) clearTimeout(throttleTimeout);
     };
-  }, [featuredContent]);
-
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [featuredContent, page, hasMore, isFetchingMore, checkComingSoonScrollPosition, MAX_ITEMS]);
 
   return (
     <section className="py-6 sm:py-8 md:py-10 px-2 sm:px-3 bg-gradient-to-b from-gray-900 to-black">
       <div className="max-w-7xl mx-auto">
-                 <h2 className="text-base sm:text-lg md:text-xl lg:text-2xl xl:text-3xl font-bold mb-3 sm:mb-5 md:mb-6 bg-gradient-to-r from-yellow-400 to-pink-500 text-transparent bg-clip-text text-center leading-tight px-3">
+        <h2 className="text-lg sm:text-xl md:text-2xl lg:text-3xl xl:text-4xl font-bold mb-3 sm:mb-5 md:mb-6 bg-gradient-to-r from-yellow-400 to-pink-500 text-transparent bg-clip-text text-center leading-tight px-3">
           Coming Soon
         </h2>
         <div className="relative">
@@ -560,40 +315,47 @@ export default function ComingSoonMovies() {
               scrollBehavior: 'smooth'
             }}
           >
-                         {loading ? (
+            {loading ? (
               <div className="text-gray-400 text-center py-8">Loading...</div>
             ) : (
-              featuredContent.map((item) => (
-                <Link 
-                  key={item.id} 
-                  href={item.type === 'tv' ? `/tvshows/${item.id}` : `/movies/${item.id}`} 
-                  className="min-w-[150px] sm:min-w-[190px] md:min-w-[220px] max-w-[220px]"
-                >
-                  <motion.div
-                    whileHover={{ scale: 1.06 }}
-                    className="bg-gray-800 rounded-xl overflow-hidden shadow-lg snap-center cursor-pointer group relative"
+              <>
+                {featuredContent.map((item) => (
+                  <Link 
+                    key={item.id} 
+                    href={`/movies/${item.id}`} 
+                    className="min-w-[150px] sm:min-w-[190px] md:min-w-[220px] max-w-[220px]"
                   >
-                    {item.image ? (
-                      <Image
-                        src={item.image}
-                        alt={item.type === 'tv' ? item.name : item.title}
-                        width={400}
-                        height={600}
-                        className="w-full h-48 sm:h-60 object-contain bg-black group-hover:scale-105 transition-transform duration-300"
-                      />
-                    ) : (
-                      <div className="w-full h-56 sm:h-72 flex items-center justify-center bg-gray-700 text-3xl sm:text-4xl">🎬</div>
-                    )}
-                    <div className="absolute inset-x-0 bottom-0">
-                      <div className="bg-black/70 backdrop-blur-sm px-2 py-1.5 sm:px-3 sm:py-2">
-                        <div className="font-medium text-[13px] sm:text-sm text-white truncate">
-                          {item.type === 'tv' ? item.name : item.title}
+                    <motion.div
+                      whileHover={{ scale: 1.06 }}
+                      className="bg-gray-800 rounded-xl overflow-hidden shadow-lg snap-center cursor-pointer group relative"
+                    >
+                      {item.image ? (
+                        <Image
+                          src={item.image}
+                          alt={item.title}
+                          width={400}
+                          height={600}
+                          className="w-full h-48 sm:h-60 object-contain bg-black group-hover:scale-105 transition-transform duration-300"
+                        />
+                      ) : (
+                        <div className="w-full h-56 sm:h-72 flex items-center justify-center bg-gray-700 text-3xl sm:text-4xl">🎬</div>
+                      )}
+                      <div className="absolute inset-x-0 bottom-0">
+                        <div className="bg-black/70 backdrop-blur-sm px-2 py-1.5 sm:px-3 sm:py-2">
+                          <div className="font-medium text-[13px] sm:text-sm text-white truncate">
+                            {item.title}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </motion.div>
-                </Link>
-              ))
+                    </motion.div>
+                  </Link>
+                ))}
+                {isFetchingMore && (
+                  <div className="min-w-[150px] sm:min-w-[190px] md:min-w-[220px] max-w-[220px] flex items-center justify-center text-gray-400">
+                    Loading more...
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -601,5 +363,3 @@ export default function ComingSoonMovies() {
     </section>
   )
 }
-
-

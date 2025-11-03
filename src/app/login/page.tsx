@@ -1,10 +1,12 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import LoginForm from '@/components/auth/LoginForm';
 import RegisterForm from '@/components/auth/RegisterForm';
 import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'framer-motion';
+import useAuthStore from '@/store/useAuthStore';
 
 // Optimize ThreeBackground with better loading and performance
 const ThreeBackground = dynamic(() => import('@/components/common/ThreeBackground'), { 
@@ -67,6 +69,9 @@ const buttonVariants = {
 
 export default function LoginPage() {
   const [isLogin, setIsLogin] = useState(true);
+  const [isChecking, setIsChecking] = useState(true);
+  const router = useRouter();
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   
   // Memoize googleClientId to prevent re-computation
   const googleClientId = useMemo(() => 
@@ -77,6 +82,28 @@ export default function LoginPage() {
   // Memoize button handlers to prevent re-renders
   const handleLoginClick = useMemo(() => () => setIsLogin(true), []);
   const handleRegisterClick = useMemo(() => () => setIsLogin(false), []);
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    // Give some time for the auth state to hydrate
+    const timer = setTimeout(() => {
+      setIsChecking(false);
+      if (isAuthenticated) {
+        router.push('/');
+      }
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, [isAuthenticated, router]);
+
+  // Show loading state while checking
+  if (isChecking) {
+    return (
+      <div className="min-h-screen relative flex items-center justify-center p-4 overflow-hidden bg-black">
+        <div className="text-white text-xl">Loading...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen relative flex items-center justify-center p-4 overflow-hidden">

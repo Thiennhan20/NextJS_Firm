@@ -14,6 +14,11 @@ export interface EnhancedMoviePlayerProps {
   movieId?: number;
   server?: string;
   audio?: string;
+  title?: string;
+  season?: number;
+  episode?: number;
+  isTVShow?: boolean;
+  userId?: string;
 }
 
 function formatTime(seconds: number): string {
@@ -29,8 +34,10 @@ function formatTime(seconds: number): string {
   return `${mm}:${ss}`;
 }
 
+import api from '@/lib/axios';
+
 const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProps>(
-  ({ src, poster, autoPlay = false, onError, movieId, server, audio }, ref) => {
+  ({ src, poster, autoPlay = false, onError, movieId, server, audio, title, season, episode, isTVShow = false, userId }, ref) => {
     const innerRef = useRef<HTMLVideoElement>(null);
 
     const hlsRef = useRef<Hls | null>(null);
@@ -330,34 +337,84 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
       };
     }, [src, autoPlay, ref]);
 
-    // Resume video progress logic
+    // Resume video progress logic (server if logged in, else localStorage)
     useEffect(() => {
       if (!movieId || !server || !audio) return;
-      const key = `movie-progress-${movieId}-${server}-${audio}`;
+
       const video = (ref && typeof ref === "object" && ref !== null
         ? (ref as React.MutableRefObject<HTMLVideoElement | null>).current
         : innerRef.current) as HTMLVideoElement | null;
       if (!video) return;
-      const saved = localStorage.getItem(key);
-      if (saved) {
-        const time = parseFloat(saved);
-        if (!isNaN(time) && time > 0 && video.duration > 0) {
-          video.currentTime = Math.min(time, video.duration - 1);
-        } else if (!isNaN(time) && time > 0) {
-          // Nếu duration chưa có, chờ loadedmetadata
-          const onLoaded = () => {
-            video.currentTime = Math.min(time, video.duration - 1);
-            video.removeEventListener('loadedmetadata', onLoaded);
-          };
-          video.addEventListener('loadedmetadata', onLoaded);
-        }
-      }
-    }, [movieId, server, audio, src, ref]);
 
-    // Save progress on timeupdate, pause, beforeunload
+      const applyTime = (t: number) => {
+        if (t > 0) {
+          if (video.duration > 0) {
+            video.currentTime = Math.min(t, video.duration - 1);
+          } else {
+            const onLoaded = () => {
+              if (video.duration > 0) {
+                video.currentTime = Math.min(t, video.duration - 1);
+              }
+              video.removeEventListener('loadedmetadata', onLoaded);
+            };
+            video.addEventListener('loadedmetadata', onLoaded);
+          }
+        }
+      };
+
+      const load = async () => {
+        // Logged in → fetch from server
+        if (userId) {
+          try {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const params: any = {
+              contentId: String(movieId),
+              isTVShow: String(!!isTVShow),
+              server,
+              audio,
+            };
+            if (isTVShow && season && episode) {
+              params.season = String(season);
+              params.episode = String(episode);
+            }
+            const resp = await api.get('/recently-watched', { params });
+            const savedTime = resp.data?.item?.currentTime || 0;
+            applyTime(savedTime);
+          } catch {}
+          return;
+        }
+
+        // Guest → read from localStorage
+        const key = isTVShow && season && episode
+          ? `tvshow-progress-${movieId}-${season}-${episode}-${server}-${audio}`
+          : `movie-progress-${movieId}-${server}-${audio}`;
+        const saved = localStorage.getItem(key);
+        if (!saved) return;
+        let savedTime = 0;
+        try {
+          const progressData = JSON.parse(saved);
+          savedTime = progressData.currentTime || 0;
+          if (progressData.expiresAt) {
+            const expiresAt = new Date(progressData.expiresAt);
+            const now = new Date();
+            if (now > expiresAt) {
+              localStorage.removeItem(key);
+              return;
+            }
+          }
+        } catch {
+          savedTime = parseFloat(saved) || 0;
+        }
+        applyTime(savedTime);
+      };
+
+      load();
+    }, [movieId, server, audio, src, ref, season, episode, isTVShow, userId]);
+
+    // Save progress on timeupdate, pause, beforeunload (server if logged in, else localStorage)
     useEffect(() => {
       if (!movieId || !server || !audio) return;
-      const key = `movie-progress-${movieId}-${server}-${audio}`;
+
       const video = (ref && typeof ref === "object" && ref !== null
         ? (ref as React.MutableRefObject<HTMLVideoElement | null>).current
         : innerRef.current) as HTMLVideoElement | null;
@@ -365,12 +422,53 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
       const save = () => {
         if (video.currentTime > 0 && video.duration > 0) {
           const remainingTime = video.duration - video.currentTime;
+          // Logged in: send to server (remove when near end)
+          if (userId) {
+            if (remainingTime <= 240) {
+              api.delete('/recently-watched', {
+                data: {
+                  contentId: String(movieId),
+                  isTVShow: !!isTVShow,
+                  season: isTVShow ? season : null,
+                  episode: isTVShow ? episode : null,
+                  server,
+                  audio,
+                }
+              }).catch(() => {});
+            } else {
+              api.post('/recently-watched', {
+                contentId: String(movieId),
+                isTVShow: !!isTVShow,
+                season: isTVShow ? season : null,
+                episode: isTVShow ? episode : null,
+                server,
+                audio,
+                currentTime: video.currentTime,
+                duration: video.duration,
+                title: title || '',
+                poster: poster || ''
+              }).catch(() => {});
+            }
+            return;
+          }
+
+          // Guest: localStorage
+          const key = isTVShow && season && episode
+            ? `tvshow-progress-${movieId}-${season}-${episode}-${server}-${audio}`
+            : `movie-progress-${movieId}-${server}-${audio}`;
           if (remainingTime <= 240) {
-            // Nếu còn 240s (4 phút) hoặc ít hơn, xóa progress (reset về 00:00)
             localStorage.removeItem(key);
           } else {
-            // Lưu progress bình thường
-            localStorage.setItem(key, video.currentTime.toString());
+            const progressData = {
+              currentTime: video.currentTime,
+              duration: video.duration,
+              title: title || '',
+              poster: poster || '',
+              lastWatched: new Date().toISOString(),
+              expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+              ...(isTVShow && season && episode ? { season, episode } : {})
+            };
+            localStorage.setItem(key, JSON.stringify(progressData));
           }
         }
       };
@@ -382,7 +480,7 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
         video.removeEventListener('pause', save);
         window.removeEventListener('beforeunload', save);
       };
-    }, [movieId, server, audio, src, ref]);
+    }, [movieId, server, audio, src, ref, title, poster, season, episode, isTVShow, userId]);
 
     // Handlers
     const togglePlay = useCallback(() => {

@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { useParams, useSearchParams, useRouter } from 'next/navigation'
 import EnhancedMoviePlayer from '@/components/common/EnhancedMoviePlayer'
+import useAuthStore from '@/store/useAuthStore'
 import { setupAudioNodes, cleanupAudioNodes, AudioNodes } from '@/lib/audioUtils'
 
 // Định nghĩa kiểu Movie
@@ -51,12 +52,17 @@ interface WatchNowMoviesProps {
 }
 
 export default function WatchNowMovies({ movie }: WatchNowMoviesProps) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const userId = useAuthStore((s) => (s.user as any)?.id || (s.user as any)?._id)
   const { id } = useParams();
   const searchParams = useSearchParams();
   const router = useRouter();
   
   const [selectedServer, setSelectedServer] = useState<'server1' | 'server2'>('server1');
   const hasInitialized = useRef(false);
+  
+  // Read audio parameter from URL
+  const audioFromUrl = searchParams.get('audio');
 
   // Cập nhật URL khi thay đổi server
   const updateServerInUrl = (server: 'server1' | 'server2') => {
@@ -85,6 +91,16 @@ export default function WatchNowMovies({ movie }: WatchNowMoviesProps) {
     }
   };
 
+  const [movieLinks, setMovieLinks] = useState({
+    embed: '',
+    m3u8: '',
+    vietsub: '',
+    dubbed: '', // Gộp thuyết minh và lồng tiếng
+  });
+  const [movieLinksLoading, setMovieLinksLoading] = useState(false);
+  const [apiSearchCompleted, setApiSearchCompleted] = useState(false);
+  const [selectedAudio, setSelectedAudio] = useState<'vietsub' | 'dubbed' | null>(null);
+
   // Đọc server từ URL khi component mount hoặc URL thay đổi
   useEffect(() => {
     const serverFromUrl = searchParams.get('server');
@@ -98,15 +114,14 @@ export default function WatchNowMovies({ movie }: WatchNowMoviesProps) {
     }
   }, [searchParams]);
 
-  const [movieLinks, setMovieLinks] = useState({
-    embed: '',
-    m3u8: '',
-    vietsub: '',
-    dubbed: '', // Gộp thuyết minh và lồng tiếng
-  });
-  const [movieLinksLoading, setMovieLinksLoading] = useState(false);
-  const [apiSearchCompleted, setApiSearchCompleted] = useState(false);
-  const [selectedAudio, setSelectedAudio] = useState<'vietsub' | 'dubbed' | null>(null);
+  // Sync selectedAudio when audioFromUrl changes
+  useEffect(() => {
+    if (audioFromUrl === 'vietsub' && movieLinks.vietsub && selectedAudio !== 'vietsub') {
+      setSelectedAudio('vietsub');
+    } else if (audioFromUrl === 'dubbed' && movieLinks.dubbed && selectedAudio !== 'dubbed') {
+      setSelectedAudio('dubbed');
+    }
+  }, [audioFromUrl, movieLinks.vietsub, movieLinks.dubbed, selectedAudio]);
   
   // State cho server 2
   const [server2Link, setServer2Link] = useState('');
@@ -130,9 +145,20 @@ export default function WatchNowMovies({ movie }: WatchNowMoviesProps) {
     }
   }, [movie?.title, movie?.year]);
 
-  // Tự động chọn audio khi có sẵn
+  // Tự động chọn audio khi có sẵn, ưu tiên từ URL
   useEffect(() => {
     if (!selectedAudio) {
+      // Nếu URL có tham số audio, ưu tiên sử dụng audio từ URL
+      if (audioFromUrl === 'dubbed' && movieLinks.dubbed) {
+        setSelectedAudio('dubbed');
+        return;
+      }
+      if (audioFromUrl === 'vietsub' && movieLinks.vietsub) {
+        setSelectedAudio('vietsub');
+        return;
+      }
+      
+      // Nếu không có audio từ URL hoặc audio từ URL không khả dụng, chọn mặc định
       // Nếu có cả hai, ưu tiên Vietsub
       if (movieLinks.vietsub && movieLinks.dubbed) {
         setSelectedAudio('vietsub');
@@ -148,7 +174,7 @@ export default function WatchNowMovies({ movie }: WatchNowMoviesProps) {
         return;
       }
     }
-  }, [movieLinks.vietsub, movieLinks.dubbed, selectedAudio]);
+  }, [movieLinks.vietsub, movieLinks.dubbed, selectedAudio, audioFromUrl]);
 
   // Audio hiệu lực để hiển thị ngoài player
   const effectiveAudio = useMemo<('vietsub' | 'dubbed' | null)>(() => {
@@ -553,7 +579,12 @@ export default function WatchNowMovies({ movie }: WatchNowMoviesProps) {
                 {movieLinks.vietsub && (
                   <button
                     className={`px-3 py-1 rounded text-xs font-semibold transition-colors ${selectedAudio === 'vietsub' ? 'bg-gradient-to-r from-fuchsia-600 to-pink-600 text-white' : 'bg-gray-700 text-gray-200 hover:bg-gray-600'}`}
-                    onClick={() => setSelectedAudio('vietsub')}
+                    onClick={() => {
+                      setSelectedAudio('vietsub');
+                      const params = new URLSearchParams(searchParams.toString());
+                      params.set('audio', 'vietsub');
+                      router.push(`${window.location.pathname}?${params.toString()}`, { scroll: false });
+                    }}
                   >
                     Vietsub
                   </button>
@@ -561,7 +592,12 @@ export default function WatchNowMovies({ movie }: WatchNowMoviesProps) {
                 {movieLinks.dubbed && (
                   <button
                     className={`px-3 py-1 rounded text-xs font-semibold transition-colors ${selectedAudio === 'dubbed' ? 'bg-gradient-to-r from-fuchsia-600 to-pink-600 text-white' : 'bg-gray-700 text-gray-200 hover:bg-gray-600'}`}
-                    onClick={() => setSelectedAudio('dubbed')}
+                    onClick={() => {
+                      setSelectedAudio('dubbed');
+                      const params = new URLSearchParams(searchParams.toString());
+                      params.set('audio', 'dubbed');
+                      router.push(`${window.location.pathname}?${params.toString()}`, { scroll: false });
+                    }}
                   >
                     Dubbed
                   </button>
@@ -659,6 +695,8 @@ export default function WatchNowMovies({ movie }: WatchNowMoviesProps) {
                 movieId={movie.id}
                 server={selectedServer}
                 audio={effectiveAudio || undefined}
+                title={movie.title}
+                userId={typeof userId === 'string' ? userId : undefined}
               />
             ) : (
               <div className="flex items-center justify-center h-full text-white text-lg font-semibold">

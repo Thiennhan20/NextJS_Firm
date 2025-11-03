@@ -3,6 +3,7 @@
 import { useRef, useEffect, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Image from 'next/image'
+import Head from 'next/head'
 import axios from 'axios'
 import Link from 'next/link'
 import { ChevronLeftIcon, ChevronRightIcon, PlayIcon, BookmarkIcon, XMarkIcon, ArrowUpRightIcon } from '@heroicons/react/24/outline'
@@ -112,6 +113,15 @@ const formatDate = (dateString: string): string => {
     month: 'long',
     day: 'numeric'
   });
+};
+
+// Debounce function
+const debounce = (func: (...args: unknown[]) => void, delay: number) => {
+  let timeoutId: NodeJS.Timeout;
+  return (...args: unknown[]) => {
+    clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => func(...args), delay);
+  };
 };
 
 // Component cho mũi tên và hướng dẫn trên Mobile
@@ -275,6 +285,7 @@ export default function HeroMovies() {
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [showTrailer, setShowTrailer] = useState(false);
   const [currentTrailer, setCurrentTrailer] = useState<string>('');
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [isMobile, setIsMobile] = useState(false);
   const autoPlayRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -316,14 +327,14 @@ export default function HeroMovies() {
     }, 600);
   }, [currentIndex, isTransitioning, showTrailer]);
 
-  // Auto-play functionality - Optimized interval
+  // Auto-play functionality - Increased interval to 10s
   const startAutoPlay = useCallback(() => {
     if (autoPlayRef.current) clearInterval(autoPlayRef.current);
     autoPlayRef.current = setInterval(() => {
       if (!isTransitioning && !showTrailer && heroItems.length > 0) {
         nextSlide();
       }
-    }, 8000); // Increased interval for better performance
+    }, 10000); // Increased from 8s to 10s for better performance
   }, [isTransitioning, nextSlide, showTrailer, heroItems.length]);
 
   const stopAutoPlay = useCallback(() => {
@@ -332,17 +343,20 @@ export default function HeroMovies() {
     }
   }, []);
 
-  // Mobile detection
+  // Mobile detection with debounce
   useEffect(() => {
     const checkMobile = () => {
       setIsMobile(window.innerWidth < 768);
     };
     
+    // Debounced resize handler
+    const debouncedResize = debounce(checkMobile, 100);
+    
     checkMobile();
-    window.addEventListener('resize', checkMobile);
+    window.addEventListener('resize', debouncedResize);
     
     return () => {
-      window.removeEventListener('resize', checkMobile);
+      window.removeEventListener('resize', debouncedResize);
     };
   }, []);
 
@@ -507,8 +521,6 @@ export default function HeroMovies() {
     }
   };
 
-  // Enhanced slider functions moved above to fix dependency issue
-
   if (loading) {
     return (
       <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-gray-900 via-black to-gray-800">
@@ -550,8 +562,17 @@ export default function HeroMovies() {
 
   const currentItem = heroItems[currentIndex];
   const visibleItems = heroItems; // Show all 5 items in thumbnail row
+  const isFirstSlide = currentIndex === 0;
+  const firstBackdropUrl = heroItems[0]?.backdrop || heroItems[0]?.image || '';
 
   return (
+    <>
+      {/* Preload first backdrop to improve LCP */}
+      {firstBackdropUrl ? (
+        <Head>
+          <link rel="preload" as="image" href={firstBackdropUrl} fetchPriority="high" />
+        </Head>
+      ) : null}
     <section 
       className="relative min-h-screen flex items-center justify-center overflow-hidden"
       onMouseEnter={stopAutoPlay}
@@ -577,25 +598,6 @@ export default function HeroMovies() {
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/40" />
         </motion.div>
       </AnimatePresence>
-
-      {/* Floating Particles Effect - Optimized for performance */}
-      {!isMobile && (
-        <div className="absolute inset-0">
-          {[...Array(4)].map((_, i) => (
-            <div
-              key={i}
-              className="absolute w-1 h-1 bg-white/20 rounded-full performance-particle"
-              style={{
-                left: `${20 + i * 15}%`,
-                top: `${25 + (i % 2) * 30}%`,
-                willChange: 'transform, opacity',
-                animation: `particleFloat ${4 + i * 0.5}s ease-in-out infinite`,
-                animationDelay: `${i * 0.3}s`
-              }}
-            />
-          ))}
-        </div>
-      )}
       
       <div className="relative z-10 w-full max-w-7xl mx-auto px-4 py-4 sm:py-8">
         {/* Custom CSS to hide scrollbars */}
@@ -689,7 +691,8 @@ export default function HeroMovies() {
                         fill
                         className="object-cover"
                         sizes="(max-width: 640px) 192px, (max-width: 768px) 224px, 256px"
-                        priority
+                        priority={isFirstSlide}
+                        loading={isFirstSlide ? 'eager' : 'lazy'}
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
                       {/* Mobile Trailer Hint */}
@@ -755,6 +758,7 @@ export default function HeroMovies() {
                         fill
                         className="object-cover"
                         sizes="56px"
+                        loading="lazy"
                       />
                       {index === currentIndex && (
                         <motion.div
@@ -901,6 +905,8 @@ export default function HeroMovies() {
                     fill
                     className="object-cover"
                     sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                    priority={isFirstSlide}
+                    loading={isFirstSlide ? 'eager' : 'lazy'}
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                 </div>
@@ -933,6 +939,7 @@ export default function HeroMovies() {
                     fill
                     className="object-cover"
                     sizes="64px"
+                    loading="lazy"
                   />
                   {index === currentIndex && (
                     <motion.div
@@ -1010,7 +1017,6 @@ export default function HeroMovies() {
         )}
       </AnimatePresence>
     </section>
+    </>
   )
 }
-
-

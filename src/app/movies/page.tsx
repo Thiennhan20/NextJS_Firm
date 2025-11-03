@@ -53,6 +53,7 @@ function MoviesPageContent() {
   const [isRolling, setIsRolling] = useState(false)
   const [showThoughtBubble, setShowThoughtBubble] = useState(true)
   const [thoughtText, setThoughtText] = useState("Bored of old movies?\nTry random! 🎲")
+  const [pageInput, setPageInput] = useState<string>(String(urlPage))
 
   
   // Cache các trang đã load: { [filterKey]: { [page]: Movie[] } }
@@ -435,6 +436,7 @@ function MoviesPageContent() {
   // Xử lý khi đổi trang - Fix logic để đảm bảo window.scrollTo() được gọi đúng thời điểm
   const handlePageChange = (p: number) => {
     if (p < 1) return;
+    setPageInput(String(p));
     
     // Nếu bấm vào trang cuối cùng đã load, tự động load tiếp 10 trang mới
     if (p === maxLoadedPage) {
@@ -450,6 +452,18 @@ function MoviesPageContent() {
     } else {
       setPage(p);
       window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }
+
+  // Sync page input when page changes due to URL/back/forward
+  useEffect(() => {
+    setPageInput(String(page));
+  }, [page]);
+
+  const submitPageInput = () => {
+    const target = parseInt(pageInput || '1', 10);
+    if (!isNaN(target) && target > 0) {
+      handlePageChange(target);
     }
   }
 
@@ -686,6 +700,28 @@ function MoviesPageContent() {
               loadedPages={getCurrentFilterLoadedPages()}
               onPageChange={handlePageChange}
             />
+            {/* Go to page input */}
+            <div className="mt-4 flex flex-col items-center gap-2">
+              <span className="text-sm text-gray-400">Go to Page</span>
+              <div className="flex items-center gap-2 px-2">
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  value={pageInput}
+                  onChange={(e) => setPageInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') submitPageInput(); }}
+                  className="w-20 rounded-lg bg-gray-800 text-white border border-gray-700 px-3 py-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-red-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  placeholder="Page"
+                />
+                <button
+                  onClick={submitPageInput}
+                  className="rounded-lg bg-red-600 text-white px-4 py-2 text-sm font-medium hover:bg-red-700 transition-colors"
+                >
+                  Go
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>

@@ -1,6 +1,20 @@
 import type { NextConfig } from "next";
+import { execSync } from 'child_process';
+
+// Lấy Git hash để làm version ID
+const getGitHash = () => {
+  try {
+    return execSync('git rev-parse --short HEAD').toString().trim();
+  } catch (error) {
+    console.warn('Không thể lấy Git hash, sử dụng timestamp');
+    return Date.now().toString();
+  }
+};
 
 const nextConfig: NextConfig = {
+  env: {
+    NEXT_PUBLIC_BUILD_ID: getGitHash(),
+  },
   images: {
     // Disable Next.js Image Optimization to avoid Vercel image transformation usage
     unoptimized: true,

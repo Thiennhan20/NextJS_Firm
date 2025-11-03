@@ -1,16 +1,18 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import "../styles/scrollbar.css";
 import Navigation from "@/components/Navigation";
 import { Toaster } from 'react-hot-toast';
 import Footer from '@/components/Footer';
 import AuthChecker from '../components/AuthChecker';
-import { SplashWrapper } from '@/components/home';
+import { SplashWrapper } from '@/components/splash';
 import { HeaderProvider } from '@/contexts/HeaderContext';
 import ContentWrapper from '@/components/ContentWrapper';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import WatchlistSyncer from "@/components/WatchlistSyncer";
 import FloatingChatbox from "@/components/FloatingChatbox";
+import ProgressCleanup from '@/components/ProgressCleanup';
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -46,6 +48,7 @@ export default function RootLayout({
           <SplashWrapper />
           
           <AuthChecker />
+          <ProgressCleanup />
           <Navigation />
           <WatchlistSyncer />
           <ContentWrapper>

@@ -43,6 +43,16 @@ const TopComments = dynamic(() => import('@/components/home').then(m => m.TopCom
   )
 });
 
+const RecentlyWatchedMovies = dynamic(() => import('@/components/home').then(m => m.RecentlyWatched), {
+  loading: () => (
+    <div className="py-8 flex items-center justify-center">
+      <div className="animate-pulse bg-gray-800 rounded-lg h-64 w-full max-w-7xl"></div>
+    </div>
+  )
+});
+
+
+
 const EntertainmentFrames = dynamic(() => import('@/components/home').then(m => m.EntertainmentFrames), {
   loading: () => (
     <div className="py-8 flex items-center justify-center">
@@ -120,11 +130,16 @@ export default function Home() {
       {/* Hero Movies Section */}
       <HeroMovies />
 
+      {/* Recently Watched Movies Section */}
+      <RecentlyWatchedMovies />
+
       {/* Entertainment Frames Section */}
       <EntertainmentFrames />
 
       {/* Trending Movies Section */}
-      <TrendingMovies />
+      <div data-section="trending">
+        <TrendingMovies />
+      </div>
 
       {/* Coming Soon Movies Section */}
       <ComingSoonMovies />
@@ -193,6 +208,7 @@ export default function Home() {
             </motion.div>
         </div>
       </section>
+      
     </main>
   )
 }

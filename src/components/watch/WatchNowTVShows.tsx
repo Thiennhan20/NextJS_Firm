@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import { useParams, useSearchParams, useRouter } from 'next/navigation'
 import EnhancedMoviePlayer from '@/components/common/EnhancedMoviePlayer'
+import useAuthStore from '@/store/useAuthStore'
 
 // Định nghĩa kiểu TVShow
 interface TVShow {
@@ -48,6 +49,8 @@ export default function WatchNowTVShows({
   selectedEpisode, 
   episodes: _episodes 
 }: WatchNowTVShowsProps) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const userId = useAuthStore((s) => (s.user as any)?.id || (s.user as any)?._id)
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const episodes = _episodes;
   const { id } = useParams();
@@ -56,6 +59,9 @@ export default function WatchNowTVShows({
   
   const [selectedServer, setSelectedServer] = useState<'server1' | 'server2'>('server1');
   const hasInitialized = useRef(false);
+  
+  // Read audio parameter from URL
+  const audioFromUrl = searchParams.get('audio');
 
   const [selectedAudio, setSelectedAudio] = useState<'vietsub' | 'dubbed' | null>(null);
   const [episodesData, setEpisodesData] = useState<Array<{
@@ -70,6 +76,16 @@ export default function WatchNowTVShows({
   const [tvShowLinksLoading, setTVShowLinksLoading] = useState(false);
   const [apiSearchCompleted, setApiSearchCompleted] = useState(false);
   const [dataReady, setDataReady] = useState(false);
+  
+  // ✅ Di chuyển tvShowLinks lên đây để useEffect có thể dùng
+  const [tvShowLinks, setTVShowLinks] = useState({
+    embed: '',
+    m3u8: '',
+    vietsub: '', // Link cho Vietsub
+    dubbed: '', // Link cho Lồng Tiếng
+    seasonChanged: false,
+    currentSeason: 0, // Lưu season hiện tại đã tìm kiếm
+  });
 
   // Cập nhật URL khi thay đổi server
   const updateServerInUrl = (server: 'server1' | 'server2') => {
@@ -110,6 +126,15 @@ export default function WatchNowTVShows({
       hasInitialized.current = true;
     }
   }, [searchParams]);
+
+  // Sync selectedAudio when audioFromUrl changes
+  useEffect(() => {
+    if (audioFromUrl === 'vietsub' && tvShowLinks.vietsub && selectedAudio !== 'vietsub') {
+      setSelectedAudio('vietsub');
+    } else if (audioFromUrl === 'dubbed' && tvShowLinks.dubbed && selectedAudio !== 'dubbed') {
+      setSelectedAudio('dubbed');
+    }
+  }, [audioFromUrl, tvShowLinks.vietsub, tvShowLinks.dubbed, selectedAudio]);
 
   // Function để cập nhật audio links cho episode mới mà không cần tìm kiếm lại
   const updateAudioLinksForEpisode = useCallback((episodeNumber: number) => {
@@ -160,15 +185,6 @@ export default function WatchNowTVShows({
     }
   }, [id, selectedSeason, selectedEpisode]);
 
-  const [tvShowLinks, setTVShowLinks] = useState({
-    embed: '',
-    m3u8: '',
-    vietsub: '', // Link cho Vietsub
-    dubbed: '', // Link cho Lồng Tiếng
-    seasonChanged: false,
-    currentSeason: 0, // Lưu season hiện tại đã tìm kiếm
-  });
-
   useEffect(() => {
     if (tvShow?.name && tvShow?.year) {
       fetch(`/api/subtitles?query=${encodeURIComponent(tvShow.name)}&year=${tvShow.year.toString()}`)
@@ -195,20 +211,36 @@ export default function WatchNowTVShows({
     }
   }, [selectedEpisode, episodesData, tvShowLinks.seasonChanged, updateAudioLinksForEpisode]);
 
-  // Tự động chọn audio khi có sẵn
+  // Tự động chọn audio khi có sẵn, ưu tiên từ URL
   useEffect(() => {
-    if (tvShowLinks.vietsub && tvShowLinks.dubbed && !selectedAudio) {
-      setSelectedAudio('vietsub'); // Default to vietsub
+    if (!selectedAudio) {
+      // Nếu URL có tham số audio, ưu tiên sử dụng audio từ URL
+      if (audioFromUrl === 'dubbed' && tvShowLinks.dubbed) {
+        setSelectedAudio('dubbed');
+        return;
+      }
+      if (audioFromUrl === 'vietsub' && tvShowLinks.vietsub) {
+        setSelectedAudio('vietsub');
+        return;
+      }
+      
+      // Nếu không có audio từ URL hoặc audio từ URL không khả dụng, chọn mặc định
+      if (tvShowLinks.vietsub && tvShowLinks.dubbed) {
+        setSelectedAudio('vietsub'); // Default to vietsub
+        return;
+      }
+      
+      // Nếu chỉ có một loại audio, tự động chọn
+      if (tvShowLinks.vietsub && !tvShowLinks.dubbed) {
+        setSelectedAudio('vietsub');
+        return;
+      }
+      if (tvShowLinks.dubbed && !tvShowLinks.vietsub) {
+        setSelectedAudio('dubbed');
+        return;
+      }
     }
-    
-    // Nếu chỉ có một loại audio, tự động chọn
-    if (tvShowLinks.vietsub && !tvShowLinks.dubbed && !selectedAudio) {
-      setSelectedAudio('vietsub');
-    }
-    if (tvShowLinks.dubbed && !tvShowLinks.vietsub && !selectedAudio) {
-      setSelectedAudio('dubbed');
-    }
-  }, [tvShowLinks.vietsub, tvShowLinks.dubbed, selectedAudio]);
+  }, [tvShowLinks.vietsub, tvShowLinks.dubbed, selectedAudio, audioFromUrl]);
 
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
@@ -564,7 +596,12 @@ export default function WatchNowTVShows({
                 {tvShowLinks.vietsub && (
                   <button
                     className={`px-3 py-1 rounded text-xs font-semibold transition-colors ${selectedAudio === 'vietsub' ? 'bg-gradient-to-r from-fuchsia-600 to-pink-600 text-white' : 'bg-gray-700 text-gray-200 hover:bg-gray-600'}`}
-                    onClick={() => setSelectedAudio('vietsub')}
+                    onClick={() => {
+                      setSelectedAudio('vietsub');
+                      const params = new URLSearchParams(searchParams.toString());
+                      params.set('audio', 'vietsub');
+                      router.push(`${window.location.pathname}?${params.toString()}`, { scroll: false });
+                    }}
                   >
                     Vietsub
                   </button>
@@ -572,7 +609,12 @@ export default function WatchNowTVShows({
                 {tvShowLinks.dubbed && (
                   <button
                     className={`px-3 py-1 rounded text-xs font-semibold transition-colors ${selectedAudio === 'dubbed' ? 'bg-gradient-to-r from-fuchsia-600 to-pink-600 text-white' : 'bg-gray-700 text-gray-200 hover:bg-gray-600'}`}
-                    onClick={() => setSelectedAudio('dubbed')}
+                    onClick={() => {
+                      setSelectedAudio('dubbed');
+                      const params = new URLSearchParams(searchParams.toString());
+                      params.set('audio', 'dubbed');
+                      router.push(`${window.location.pathname}?${params.toString()}`, { scroll: false });
+                    }}
                   >
                     Dubbed
                   </button>
@@ -685,6 +727,11 @@ export default function WatchNowTVShows({
                 movieId={tvShow.id}
                 server={selectedServer}
                 audio={effectiveAudio || undefined}
+                title={tvShow.name}
+                season={selectedSeason}
+                episode={selectedEpisode}
+                isTVShow={true}
+                userId={typeof userId === 'string' ? userId : undefined}
               />
             ) : (
               <div className="flex items-center justify-center h-full text-white text-lg font-semibold">
