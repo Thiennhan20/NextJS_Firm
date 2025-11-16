@@ -27,8 +27,6 @@ interface Comment {
     email: string
     avatar?: string
   }
-  username: string
-  avatar?: string
   content: string
   createdAt: string
   updatedAt: string
@@ -357,9 +355,20 @@ export default function Comments({ movieId, type, title }: CommentsProps) {
         <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-4 sm:p-6 mb-6 sm:mb-8">
           <div className="flex gap-3 sm:gap-4">
             <div className="flex-shrink-0">
-              {isAuthenticated ? (
+              {isAuthenticated && user?.avatar ? (
+                <Image
+                  src={user.avatar}
+                  alt={user.name || 'User'}
+                  width={40}
+                  height={40}
+                  className="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover"
+                  unoptimized={user.avatar.startsWith('http')}
+                />
+              ) : isAuthenticated && user?.name ? (
                 <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-r from-red-500 to-pink-500 flex items-center justify-center">
-                  <UserIcon className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
+                  <span className="text-white font-bold text-sm sm:text-base">
+                    {user.name.charAt(0).toUpperCase()}
+                  </span>
                 </div>
               ) : (
                 <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gray-600 flex items-center justify-center">
@@ -372,16 +381,39 @@ export default function Comments({ movieId, type, title }: CommentsProps) {
                 ref={textareaRef}
                 value={newComment}
                 onChange={(e) => setNewComment(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault()
+                    if (isAuthenticated && newComment.trim() && !isSubmitting) {
+                      handleSubmitComment()
+                    }
+                  }
+                }}
                 placeholder={isAuthenticated ? `Share your thoughts about ${title}...` : 'Please log in to comment'}
                 disabled={false}
-                className="w-full bg-gray-700/50 border border-gray-600 rounded-lg px-3 py-2 sm:px-4 sm:py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none disabled:opacity-50 disabled:cursor-not-allowed text-[16px] sm:text-base"
+                maxLength={500}
+                className="w-full bg-gray-700/50 border border-gray-600 rounded-lg px-3 py-2 sm:px-4 sm:py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none disabled:opacity-50 disabled:cursor-not-allowed text-[16px] sm:text-base scrollbar-hide"
                 rows={3}
               />
               <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mt-3 gap-2">
                 <div className="flex flex-col">
-                  <span className="text-xs text-gray-400">
-                    {newComment.length}/500 characters
-                  </span>
+                  <div className="flex flex-col gap-0.5">
+                    <span className={`text-xs ${
+                      newComment.length >= 500 
+                        ? 'text-red-500 font-semibold' 
+                        : newComment.length >= 450 
+                        ? 'text-yellow-500' 
+                        : 'text-gray-400'
+                    }`}>
+                      {newComment.length}/500 characters
+                      {newComment.length >= 500 && ' (limit reached)'}
+                    </span>
+                    {isAuthenticated && (
+                      <span className="text-xs text-gray-500">
+                        Press Enter to post, Shift+Enter for new line
+                      </span>
+                    )}
+                  </div>
                   {!isAuthenticated && (
                     <div className="flex items-center gap-2 mt-1">
                       <span className="text-xs text-yellow-400 flex items-center gap-1">
@@ -473,18 +505,20 @@ export default function Comments({ movieId, type, title }: CommentsProps) {
             >
               <div className="flex gap-3 sm:gap-4">
                 <div className="flex-shrink-0">
-                  {comment.avatar ? (
+                  {comment.userId?.avatar ? (
                     <Image
-                      src={comment.avatar}
-                      alt={comment.username}
+                      src={comment.userId.avatar}
+                      alt={comment.userId.name}
                       width={40}
                       height={40}
                       className="rounded-full object-cover"
-                      unoptimized={comment.avatar.startsWith('http')} // Nếu avatar từ URL bên ngoài
+                      unoptimized={comment.userId.avatar.startsWith('http')} // Nếu avatar từ URL bên ngoài
                     />
                   ) : (
                     <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-r from-red-500 to-pink-500 flex items-center justify-center">
-                      <UserIcon className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
+                      <span className="text-white font-bold text-sm sm:text-base">
+                        {comment.userId?.name?.charAt(0).toUpperCase() || '?'}
+                      </span>
                     </div>
                   )}
                 </div>
@@ -492,7 +526,7 @@ export default function Comments({ movieId, type, title }: CommentsProps) {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start sm:items-center justify-between gap-2 mb-2">
                     <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 min-w-0">
-                      <h4 className="font-semibold text-white truncate text-sm sm:text-base">{comment.username}</h4>
+                      <h4 className="font-semibold text-white truncate text-sm sm:text-base">{comment.userId?.name || 'Unknown User'}</h4>
                       <span className="text-gray-400 text-xs sm:text-sm flex items-center gap-1">
                         <ClockIcon className="h-3 w-3" />
                         {formatTimeAgo(comment.createdAt)}
@@ -561,7 +595,7 @@ export default function Comments({ movieId, type, title }: CommentsProps) {
                       </div>
                     </div>
                   ) : (
-                    <p className="text-gray-300 leading-relaxed mb-3 sm:mb-4 text-sm sm:text-base">{comment.content}</p>
+                    <p className="text-gray-300 leading-relaxed mb-3 sm:mb-4 text-sm sm:text-base break-words whitespace-pre-wrap">{comment.content}</p>
                   )}
                   
                   <div className="flex items-center gap-3 sm:gap-4 flex-wrap">
@@ -612,9 +646,20 @@ export default function Comments({ movieId, type, title }: CommentsProps) {
                       >
                         <div className="flex gap-2 sm:gap-3">
                           <div className="flex-shrink-0">
-                            {isAuthenticated ? (
+                            {isAuthenticated && user?.avatar ? (
+                              <Image
+                                src={user.avatar}
+                                alt={user.name || 'User'}
+                                width={32}
+                                height={32}
+                                className="w-6 h-6 sm:w-8 sm:h-8 rounded-full object-cover"
+                                unoptimized={user.avatar.startsWith('http')}
+                              />
+                            ) : isAuthenticated && user?.name ? (
                               <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-gradient-to-r from-red-500 to-pink-500 flex items-center justify-center">
-                                <UserIcon className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
+                                <span className="text-white font-bold text-xs sm:text-sm">
+                                  {user.name.charAt(0).toUpperCase()}
+                                </span>
                               </div>
                             ) : (
                               <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-gray-600 flex items-center justify-center">
@@ -627,30 +672,51 @@ export default function Comments({ movieId, type, title }: CommentsProps) {
                               ref={replyTextareaRef}
                               value={replyText}
                               onChange={(e) => setReplyText(e.target.value)}
-                              placeholder={isAuthenticated ? `Reply to ${comment.username}...` : 'Please log in to reply'}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' && !e.shiftKey) {
+                                  e.preventDefault()
+                                  if (isAuthenticated && replyText.trim() && !isSubmitting) {
+                                    handleSubmitReply(comment._id)
+                                  }
+                                }
+                              }}
+                              placeholder={isAuthenticated ? `Reply to ${comment.userId?.name || 'user'}...` : 'Please log in to reply'}
                               disabled={!isAuthenticated}
-                              className="w-full bg-gray-700/50 border border-gray-600 rounded-lg px-2 py-1.5 sm:px-3 sm:py-2 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none text-[16px] sm:text-sm"
+                              maxLength={500}
+                              className="w-full bg-gray-700/50 border border-gray-600 rounded-lg px-2 py-1.5 sm:px-3 sm:py-2 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none text-[16px] sm:text-sm scrollbar-hide"
                               rows={2}
                             />
-                            <div className="flex justify-end gap-1 sm:gap-2 mt-2">
-                              <button
-                                onClick={() => {
-                                  setReplyingTo(null)
-                                  setReplyText('')
-                                }}
-                                className="px-2 py-1 sm:px-3 sm:py-1 text-gray-400 hover:text-white transition-colors text-xs sm:text-sm"
-                              >
-                                Cancel
-                              </button>
-                              <motion.button
-                                whileHover={{ scale: 1.02 }}
-                                whileTap={{ scale: 0.98 }}
-                                onClick={() => handleSubmitReply(comment._id)}
-                                disabled={!isAuthenticated || !replyText.trim() || isSubmitting}
-                                className="px-3 py-1 sm:px-4 sm:py-1 bg-red-600 text-white rounded-lg text-xs sm:text-sm font-medium hover:bg-red-700 disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors"
-                              >
-                                {isSubmitting ? 'Posting...' : 'Reply'}
-                              </motion.button>
+                            <div className="flex justify-between items-center mt-2">
+                              <span className={`text-xs ${
+                                replyText.length >= 500 
+                                  ? 'text-red-500 font-semibold' 
+                                  : replyText.length >= 450 
+                                  ? 'text-yellow-500' 
+                                  : 'text-gray-400'
+                              }`}>
+                                {replyText.length}/500
+                                {replyText.length >= 500 && ' (limit)'}
+                              </span>
+                              <div className="flex gap-1 sm:gap-2">
+                                <button
+                                  onClick={() => {
+                                    setReplyingTo(null)
+                                    setReplyText('')
+                                  }}
+                                  className="px-2 py-1 sm:px-3 sm:py-1 text-gray-400 hover:text-white transition-colors text-xs sm:text-sm"
+                                >
+                                  Cancel
+                                </button>
+                                <motion.button
+                                  whileHover={{ scale: 1.02 }}
+                                  whileTap={{ scale: 0.98 }}
+                                  onClick={() => handleSubmitReply(comment._id)}
+                                  disabled={!isAuthenticated || !replyText.trim() || isSubmitting}
+                                  className="px-3 py-1 sm:px-4 sm:py-1 bg-red-600 text-white rounded-lg text-xs sm:text-sm font-medium hover:bg-red-700 disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors"
+                                >
+                                  {isSubmitting ? 'Posting...' : 'Reply'}
+                                </motion.button>
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -670,32 +736,34 @@ export default function Comments({ movieId, type, title }: CommentsProps) {
                         {comment.replies.map((reply) => (
                           <div key={reply._id} className="flex gap-2 sm:gap-3 pl-2 sm:pl-4 border-l-2 border-gray-700">
                             <div className="flex-shrink-0">
-                              {reply.avatar ? (
+                              {reply.userId?.avatar ? (
                                 <Image
-                                  src={reply.avatar}
-                                  alt={reply.username}
+                                  src={reply.userId.avatar}
+                                  alt={reply.userId.name}
                                   width={32}
                                   height={32}
                                   className="rounded-full object-cover"
-                                  unoptimized={reply.avatar.startsWith('http')}
+                                  unoptimized={reply.userId.avatar.startsWith('http')}
                                 />
                               ) : (
                                 <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-gradient-to-r from-red-500 to-pink-500 flex items-center justify-center">
-                                  <UserIcon className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
+                                  <span className="text-white font-bold text-xs sm:text-sm">
+                                    {reply.userId?.name?.charAt(0).toUpperCase() || '?'}
+                                  </span>
                                 </div>
                               )}
                             </div>
                             
                             <div className="flex-1 min-w-0">
                               <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mb-1">
-                                <h5 className="font-medium text-white text-xs sm:text-sm truncate">{reply.username}</h5>
+                                <h5 className="font-medium text-white text-xs sm:text-sm truncate">{reply.userId?.name || 'Unknown User'}</h5>
                                 <span className="text-gray-400 text-xs flex items-center gap-1">
                                   <ClockIcon className="h-3 w-3" />
                                   {formatTimeAgo(reply.createdAt)}
                                 </span>
                               </div>
                               
-                              <p className="text-gray-300 text-xs sm:text-sm leading-relaxed mb-2">{reply.content}</p>
+                              <p className="text-gray-300 text-xs sm:text-sm leading-relaxed mb-2 break-words whitespace-pre-wrap">{reply.content}</p>
                               
                               <div className="flex items-center gap-2 sm:gap-3">
                                 <motion.button

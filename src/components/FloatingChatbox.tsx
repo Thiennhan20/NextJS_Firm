@@ -115,17 +115,26 @@ export default function FloatingChatbox() {
   }, [messages])
 
   // Handle drag end and snap to nearest position
-  const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+  const handleDragEnd = (_event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
     const { point } = info
     const windowWidth = window.innerWidth
     const windowHeight = window.innerHeight
+
+    // Button dimensions
+    const buttonSize = 80 // approximate button size with padding
+
+    // Constrain the point to be within viewport bounds
+    const constrainedPoint = {
+      x: Math.max(buttonSize, Math.min(point.x, windowWidth - buttonSize)),
+      y: Math.max(buttonSize, Math.min(point.y, windowHeight - buttonSize))
+    }
 
     // Calculate distances to each snap position
     const distances = Object.entries(snapPositions).map(([key, pos]) => ({
       key,
       distance: Math.sqrt(
-        Math.pow(point.x - (pos.x + windowWidth - 100), 2) +
-        Math.pow(point.y - (pos.y + windowHeight - 100), 2)
+        Math.pow(constrainedPoint.x - (pos.x + windowWidth - 100), 2) +
+        Math.pow(constrainedPoint.y - (pos.y + windowHeight - 100), 2)
       )
     }))
 
@@ -254,6 +263,12 @@ export default function FloatingChatbox() {
         dragControls={dragControls}
         dragMomentum={false}
         dragElastic={0.1}
+        dragConstraints={typeof window !== 'undefined' ? {
+          top: -(window.innerHeight - 100),
+          left: -(window.innerWidth - 100),
+          right: 0,
+          bottom: 0
+        } : undefined}
         onDragEnd={handleDragEnd}
         transition={{ type: "spring", stiffness: 300, damping: 30 }}
         className="fixed bottom-6 right-6 z-50 bg-gradient-to-r from-red-600 to-red-500 text-white p-4 rounded-full shadow-lg hover:shadow-xl transition-shadow duration-300 cursor-move"

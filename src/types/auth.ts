@@ -2,6 +2,9 @@ export interface User {
   id: string;
   name: string;
   email: string;
+  avatar?: string;
+  originalAvatar?: string;
+  authType?: string;
   createdAt: string;
   updatedAt: string;
 }

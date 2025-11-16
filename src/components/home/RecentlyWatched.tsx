@@ -347,17 +347,40 @@ export default function RecentlyWatched({ className = '' }: RecentlyWatchedProps
     }
   }, [router])
 
-  const handleRemoveFromRecent = useCallback((item: RecentlyWatchedItem) => {
-    const key = item.isTVShow && item.season && item.episode
-      ? `tvshow-progress-${item.id}-${item.season}-${item.episode}-${item.server}-${item.audio}`
-      : `movie-progress-${item.id}-${item.server}-${item.audio}`
-    localStorage.removeItem(key)
-    cachedData = null // Invalidate cache
+  const handleRemoveFromRecent = useCallback(async (item: RecentlyWatchedItem) => {
+    // Optimistic update: remove from UI immediately
     setRecentItems(prev => prev.filter(i => 
       !(i.id === item.id && i.server === item.server && i.audio === item.audio && 
         i.isTVShow === item.isTVShow && i.season === item.season && i.episode === item.episode)
     ))
-  }, [])
+
+    if (userId) {
+      // Logged-in: delete from database
+      try {
+        await api.delete('/recently-watched', {
+          data: {
+            contentId: item.id,
+            isTVShow: item.isTVShow || false,
+            season: item.season ?? null,
+            episode: item.episode ?? null,
+            server: item.server,
+            audio: item.audio,
+          },
+        })
+      } catch (error) {
+        console.error('Failed to delete from database:', error)
+        // Re-fetch to restore UI state if delete failed
+        fetchRecentItems()
+      }
+    } else {
+      // Guest: delete from localStorage
+      const key = item.isTVShow && item.season && item.episode
+        ? `tvshow-progress-${item.id}-${item.season}-${item.episode}-${item.server}-${item.audio}`
+        : `movie-progress-${item.id}-${item.server}-${item.audio}`
+      localStorage.removeItem(key)
+      cachedData = null // Invalidate cache
+    }
+  }, [userId, fetchRecentItems])
 
   if (loading) {
     return (

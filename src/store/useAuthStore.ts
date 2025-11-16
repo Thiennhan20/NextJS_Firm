@@ -28,6 +28,7 @@ const useAuthStore = create<AuthStore>()(
           const response = await api.post('/auth/login', credentials);
           const { token, user } = response.data;
           localStorage.setItem('token', token);
+          localStorage.setItem('cached_user_data', JSON.stringify(user));
           set({
             user: user as User,
             token,
@@ -62,6 +63,7 @@ const useAuthStore = create<AuthStore>()(
           });
           const { token, user } = response.data;
           localStorage.setItem('token', token);
+          localStorage.setItem('cached_user_data', JSON.stringify(user));
           set({
             user: user as User,
             token,
@@ -124,6 +126,7 @@ const useAuthStore = create<AuthStore>()(
         }
         
         localStorage.removeItem('token');
+        localStorage.removeItem('cached_user_data');
         // Clear watchlist khi logout - import trong function để tránh circular dependency
         try {
           import('./store').then(({ useWatchlistStore }) => {
@@ -149,6 +152,24 @@ const useAuthStore = create<AuthStore>()(
           set({ user: null, token: null, isAuthenticated: false });
           return;
         }
+        
+        // Load cached user data immediately for instant display
+        const cachedUserData = localStorage.getItem('cached_user_data');
+        if (cachedUserData) {
+          try {
+            const cachedUser = JSON.parse(cachedUserData) as User;
+            console.log('Using cached user data for instant display');
+            set({
+              user: cachedUser,
+              token,
+              isAuthenticated: true,
+              isLoading: true, // Still loading fresh data
+            });
+          } catch (error) {
+            console.warn('Failed to parse cached user data:', error);
+          }
+        }
+        
         try {
           set({ isLoading: true, error: null });
           // Gửi Authorization header vì không có cookies
@@ -156,13 +177,23 @@ const useAuthStore = create<AuthStore>()(
             headers: { Authorization: `Bearer ${token}` },
           });
           const prof = response.data.user;
+          console.log('checkAuth - Raw profile data:', prof);
+          console.log('checkAuth - Avatar value:', prof.avatar);
           const normalizedUser: User = {
             id: prof.id || prof._id,
             name: prof.name,
             email: prof.email,
+            avatar: prof.avatar && prof.avatar.trim() !== '' ? prof.avatar : undefined,
+            originalAvatar: prof.originalAvatar && prof.originalAvatar.trim() !== '' ? prof.originalAvatar : undefined,
+            authType: prof.authType,
             createdAt: prof.createdAt,
             updatedAt: prof.updatedAt,
           };
+          console.log('checkAuth - Normalized user:', normalizedUser);
+          
+          // Cache user data for next time
+          localStorage.setItem('cached_user_data', JSON.stringify(normalizedUser));
+          
           set({
             user: normalizedUser,
             token,
@@ -171,6 +202,7 @@ const useAuthStore = create<AuthStore>()(
           });
         } catch {
           localStorage.removeItem('token');
+          localStorage.removeItem('cached_user_data');
           // Clear watchlist khi token không hợp lệ
           try {
             import('./store').then(({ useWatchlistStore }) => {

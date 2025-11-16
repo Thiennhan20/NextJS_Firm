@@ -13,6 +13,13 @@ interface FilterIconProps {
   years: (string | number)[]
   categories: string[]
   countries: string[]
+  // Optional props for search page
+  selectedContentType?: 'all' | 'movie' | 'tv'
+  selectedSort?: 'relevance' | 'popularity' | 'rating' | 'date'
+  onContentTypeChange?: (type: 'all' | 'movie' | 'tv') => void
+  onSortChange?: (sort: 'relevance' | 'popularity' | 'rating' | 'date') => void
+  showContentType?: boolean
+  showSort?: boolean
 }
 
 export default function FilterIcon({
@@ -24,7 +31,13 @@ export default function FilterIcon({
   onCountryChange,
   years,
   categories,
-  countries
+  countries,
+  selectedContentType,
+  selectedSort,
+  onContentTypeChange,
+  onSortChange,
+  showContentType = false,
+  showSort = false
 }: FilterIconProps) {
   const [isOpen, setIsOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
@@ -44,13 +57,15 @@ export default function FilterIcon({
   // Close dropdown when filter changes
   useEffect(() => {
     setIsOpen(false)
-  }, [selectedYear, selectedCategory, selectedCountry])
+  }, [selectedYear, selectedCategory, selectedCountry, selectedContentType, selectedSort])
 
   // Get active filters count
   const activeFiltersCount = [
     selectedYear !== 'All' ? 1 : 0,
     selectedCategory !== 'All' ? 1 : 0,
-    selectedCountry !== 'All' ? 1 : 0
+    selectedCountry !== 'All' ? 1 : 0,
+    showContentType && selectedContentType !== 'all' ? 1 : 0,
+    showSort && selectedSort !== 'relevance' ? 1 : 0
   ].reduce((a, b) => a + b, 0)
 
   return (
@@ -121,7 +136,55 @@ export default function FilterIcon({
             </div>
 
             {/* Filter Options */}
-            <div className="p-2 sm:p-3 space-y-3 max-h-[30vh] overflow-y-auto custom-scrollbar">
+            <div className="p-2 sm:p-3 space-y-3 max-h-[60vh] overflow-y-auto custom-scrollbar">
+              {/* Content Type Filter (for search page) */}
+              {showContentType && onContentTypeChange && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Content Type
+                  </label>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {(['all', 'movie', 'tv'] as const).map((type) => (
+                      <button
+                        key={type}
+                        onClick={() => onContentTypeChange(type)}
+                        className={`px-2 py-1.5 text-xs rounded-md transition-all duration-200 ${
+                          selectedContentType === type
+                            ? 'bg-purple-600 text-white font-medium shadow-lg ring-1 ring-purple-400/30'
+                            : 'bg-gray-800/60 text-gray-300 hover:bg-gray-700/80 hover:text-white border border-gray-700/50 hover:border-gray-600/50'
+                        }`}
+                      >
+                        {type === 'all' ? 'All' : type === 'movie' ? 'Movies' : 'TV Shows'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Sort Filter (for search page) */}
+              {showSort && onSortChange && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Sort By
+                  </label>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                    {(['relevance', 'popularity', 'rating', 'date'] as const).map((sort) => (
+                      <button
+                        key={sort}
+                        onClick={() => onSortChange(sort)}
+                        className={`px-2 py-1.5 text-xs rounded-md transition-all duration-200 ${
+                          selectedSort === sort
+                            ? 'bg-purple-600 text-white font-medium shadow-lg ring-1 ring-purple-400/30'
+                            : 'bg-gray-800/60 text-gray-300 hover:bg-gray-700/80 hover:text-white border border-gray-700/50 hover:border-gray-600/50'
+                        }`}
+                      >
+                        {sort === 'relevance' ? 'Relevance' : sort === 'popularity' ? 'Popularity' : sort === 'rating' ? 'Rating' : 'Date'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Year Filter */}
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
@@ -167,26 +230,28 @@ export default function FilterIcon({
               </div>
 
               {/* Country Filter */}
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Country
-                </label>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
-                  {countries.map((country) => (
-                    <button
-                      key={country}
-                      onClick={() => onCountryChange(country)}
-                      className={`px-2 py-1.5 text-xs rounded-md transition-all duration-200 ${
-                        selectedCountry === country
-                          ? 'bg-purple-600 text-white font-medium shadow-lg ring-1 ring-purple-400/30'
-                          : 'bg-gray-800/60 text-gray-300 hover:bg-gray-700/80 hover:text-white border border-gray-700/50 hover:border-gray-600/50'
-                      }`}
-                    >
-                      {country === 'All' ? 'All' : country}
-                    </button>
-                  ))}
+              {countries.length > 1 && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Country
+                  </label>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                    {countries.map((country) => (
+                      <button
+                        key={country}
+                        onClick={() => onCountryChange(country)}
+                        className={`px-2 py-1.5 text-xs rounded-md transition-all duration-200 ${
+                          selectedCountry === country
+                            ? 'bg-purple-600 text-white font-medium shadow-lg ring-1 ring-purple-400/30'
+                            : 'bg-gray-800/60 text-gray-300 hover:bg-gray-700/80 hover:text-white border border-gray-700/50 hover:border-gray-600/50'
+                        }`}
+                      >
+                        {country === 'All' ? 'All' : country}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
 
             {/* Footer */}
@@ -195,7 +260,9 @@ export default function FilterIcon({
                 <span className="text-xs text-gray-400">
                   {activeFiltersCount > 0 ? (
                     <>
-                      {selectedYear !== 'All' && `${selectedYear}`}
+                      {showContentType && selectedContentType !== 'all' && `${selectedContentType === 'movie' ? 'Movies' : 'TV'}`}
+                      {showSort && selectedSort !== 'relevance' && `${showContentType && selectedContentType !== 'all' ? ' • ' : ''}${selectedSort === 'popularity' ? 'Popularity' : selectedSort === 'rating' ? 'Rating' : 'Date'}`}
+                      {selectedYear !== 'All' && `${(showContentType && selectedContentType !== 'all') || (showSort && selectedSort !== 'relevance') ? ' • ' : ''}${selectedYear}`}
                       {selectedCategory !== 'All' && ` • ${selectedCategory}`}
                       {selectedCountry !== 'All' && ` • ${selectedCountry}`}
                     </>
@@ -208,6 +275,8 @@ export default function FilterIcon({
                     onYearChange('All')
                     onCategoryChange('All')
                     onCountryChange('All')
+                    if (onContentTypeChange) onContentTypeChange('all')
+                    if (onSortChange) onSortChange('relevance')
                   }}
                   className="text-purple-400 hover:text-purple-300 transition-colors duration-200 px-2.5 py-1 rounded-md hover:bg-gray-800/60 text-xs font-medium"
                 >

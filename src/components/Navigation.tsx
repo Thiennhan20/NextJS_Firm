@@ -17,8 +17,7 @@ import {
   BookmarkIcon,
   UserIcon,
   QueueListIcon,
-  PlayCircleIcon,
-  ChevronUpIcon
+  PlayCircleIcon
 } from '@heroicons/react/24/outline'
 import useAuthStore from '@/store/useAuthStore'
 import { Menu, Transition } from '@headlessui/react'
@@ -30,8 +29,8 @@ import { useWatchlistStore } from '@/store/store';
 import useAuthHydrated from '@/store/useAuthHydrated';
 import Logo from '@/components/common/Logo';
 import LanguageSelector from '@/components/common/LanguageSelector';
-import { useHeader } from '@/contexts/HeaderContext';
 import dynamic from 'next/dynamic';
+import UserAvatar from '@/components/UserAvatar';
 
 // Lazy load heavy search component
 const AutocompleteSearch = dynamic(() => import('@/components/common/AutocompleteSearch'), {
@@ -70,121 +69,66 @@ export default function Navigation() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileUserDropdownOpen, setIsMobileUserDropdownOpen] = useState(false);
   const [isMobileMoreDropdownOpen, setIsMobileMoreDropdownOpen] = useState(false);
-  const [isSearchFocused, setIsSearchFocused] = useState(false);
-  const [isMobileSearchButtonClicked, setIsMobileSearchButtonClicked] = useState(false);
-  
-  // New states for collapsible header
-  const { isCollapsed, setIsCollapsed } = useHeader();
+  const [isHeaderVisible, setIsHeaderVisible] = useState(true);
 
   useEffect(() => {
     setNavDropdownOpen(isOpen || isMoreDropdownActive || isProfileDropdownActive);
   }, [isOpen, isMoreDropdownActive, isProfileDropdownActive, setNavDropdownOpen]);
 
   useEffect(() => {
+    let scrollTimeout: NodeJS.Timeout;
+    let isScrolling = false;
+
     const handleScroll = () => {
-      if (window.scrollY > 20) {
-        setIsScrolled(true);
-      } else {
-        setIsScrolled(false);
+      const currentScrollY = window.scrollY;
+
+      // Update scrolled state for background color
+      setIsScrolled(currentScrollY > 20);
+
+      // Hide header immediately when scrolling starts
+      if (!isScrolling) {
+        isScrolling = true;
+        setIsHeaderVisible(false);
       }
+
+      // Clear previous timeout
+      if (scrollTimeout) {
+        clearTimeout(scrollTimeout);
+      }
+
+      // Show header after a brief pause (80ms - sweet spot for smooth feel)
+      scrollTimeout = setTimeout(() => {
+        isScrolling = false;
+        setIsHeaderVisible(true);
+      }, 80);
     };
 
-    window.addEventListener('scroll', handleScroll);
+    window.addEventListener('scroll', handleScroll, { passive: true });
 
     return () => {
       window.removeEventListener('scroll', handleScroll);
+      if (scrollTimeout) {
+        clearTimeout(scrollTimeout);
+      }
     };
   }, []);
 
-  // Auto-collapse functionality with optimized event handling
-  useEffect(() => {
-    let activityTimeout: NodeJS.Timeout;
-    
-    const resetInactivityTimer = () => {
-      if (activityTimeout) clearTimeout(activityTimeout);
-      
-      // Don't collapse if search is focused, if already collapsed, or if any menu is open
-      const isAnyMenuOpen = isOpen || isMoreDropdownActive || isProfileDropdownActive || 
-                           isMobileUserDropdownOpen || isMobileMoreDropdownOpen || showMobileSearch ||
-                           isMobileSearchButtonClicked;
-      
-      if (!isCollapsed && !isSearchFocused && !isAnyMenuOpen) {
-        activityTimeout = setTimeout(() => {
-          setIsCollapsed(true);
-        }, 4000); // 4 seconds
-      }
-    };
 
-    const handleActivity = () => {
-      resetInactivityTimer();
-    };
-
-    // Throttled event listeners for better performance
-    let throttleTimeout: NodeJS.Timeout | null = null;
-    const throttledHandleActivity = () => {
-      if (throttleTimeout) return;
-      throttleTimeout = setTimeout(() => {
-        handleActivity();
-        throttleTimeout = null;
-      }, 100);
-    };
-
-    // Add event listeners for user activity (reduced events for better performance)
-    const events = ['mousedown', 'keypress', 'scroll', 'touchstart'];
-    events.forEach(event => {
-      document.addEventListener(event, throttledHandleActivity, { passive: true });
-    });
-
-    // Initial timer
-    resetInactivityTimer();
-
-    return () => {
-      events.forEach(event => {
-        document.removeEventListener(event, throttledHandleActivity);
-      });
-      if (activityTimeout) clearTimeout(activityTimeout);
-      if (throttleTimeout) clearTimeout(throttleTimeout);
-    };
-  }, [isCollapsed, setIsCollapsed, isSearchFocused, isOpen, isMoreDropdownActive, isProfileDropdownActive, isMobileUserDropdownOpen, isMobileMoreDropdownOpen, showMobileSearch, isMobileSearchButtonClicked]);
-
-  // Handle expand button click
-  const handleExpand = () => {
-    setIsCollapsed(false);
-  };
 
   return (
     <>
-      {/* Collapsed Header */}
-      {isCollapsed && (
-        <motion.div
-          initial={{ opacity: 0, y: -100 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -100 }}
-          className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 bg-black/90 backdrop-blur-md rounded-full shadow-lg border border-gray-700"
-        >
-          <div className="flex items-center space-x-3 px-4 py-2">
-            <Logo isScrolled={true} variant="compact" />
-            <button
-              onClick={handleExpand}
-              className="p-2 rounded-full bg-red-500 text-white hover:bg-red-600 transition-colors"
-              aria-label="Expand navigation"
-            >
-              <ChevronUpIcon className="w-4 h-4" />
-            </button>
-          </div>
-        </motion.div>
-      )}
-
-      {/* Full Header */}
+      {/* Header with auto-hide on scroll */}
       <motion.nav
         initial={false}
         animate={{ 
-          opacity: isCollapsed ? 0 : 1,
-          y: isCollapsed ? -100 : 0,
-          pointerEvents: isCollapsed ? 'none' : 'auto'
+          y: isHeaderVisible ? 0 : -100
         }}
-        transition={{ duration: 0.3 }}
-        className={`fixed w-full z-50 transition-all duration-300 ${
+        transition={{ 
+          duration: 0.25, 
+          ease: [0.4, 0, 0.2, 1], // Smooth easing curve
+          type: "tween"
+        }}
+        className={`fixed w-full z-50 ${
           isScrolled ? 'bg-black/90 backdrop-blur-md' : 'bg-white shadow-lg'
         }`}
       >
@@ -278,7 +222,7 @@ export default function Navigation() {
           {/* Search and Auth */}
           <div className="hidden lg:flex lg:items-center lg:space-x-4">
             <div className="relative">
-              <AutocompleteSearch onFocusChange={setIsSearchFocused} />
+              <AutocompleteSearch />
             </div>
             
             {/* Language Selector */}
@@ -298,7 +242,12 @@ export default function Navigation() {
                         isScrolled ? 'text-white hover:text-red-500' : 'text-gray-700 hover:text-red-500'
                       }`}
                     >
-                      <UserIcon className="h-5 w-5" />
+                      <UserAvatar 
+                        name={user?.name || 'User'} 
+                        avatar={user?.avatar}
+                        size="sm"
+                        priority={true}
+                      />
                       <span>{user?.name || 'User'}</span>
                     </Menu.Button>
                   </div>
@@ -397,7 +346,6 @@ export default function Navigation() {
             
             <button
               onClick={() => {
-                setIsMobileSearchButtonClicked(true);
                 setShowMobileSearch(true);
               }}
               className="p-1 rounded-full bg-white shadow border border-red-200 text-red-600 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-400 transition"
@@ -433,19 +381,11 @@ export default function Navigation() {
                 menu
                 onSelectMovie={() => {
                   setShowMobileSearch(false);
-                  setIsMobileSearchButtonClicked(false);
                 }}
                 inputClassName="text-lg px-6 py-4 border-2 border-red-500 bg-gray-900 text-white placeholder-gray-300 focus:bg-gray-900 focus:ring-2 focus:ring-red-500 shadow-lg"
                 showClose
                 onClose={() => {
                   setShowMobileSearch(false);
-                  setIsMobileSearchButtonClicked(false);
-                }}
-                onFocusChange={(focused) => {
-                  setIsSearchFocused(focused);
-                  if (focused) {
-                    setIsMobileSearchButtonClicked(false);
-                  }
                 }}
               />
             </div>
@@ -551,7 +491,12 @@ export default function Navigation() {
                   }}
                   aria-expanded={isMobileUserDropdownOpen}
                 >
-                  <UserIcon className="h-5 w-5" />
+                  <UserAvatar 
+                    name={user?.name || 'User'} 
+                    avatar={user?.avatar}
+                    size="sm"
+                    priority={true}
+                  />
                   <span className="truncate">{user?.name || 'User'}</span>
                   <svg className={`ml-auto h-4 w-4 transition-transform ${isMobileUserDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
                 </button>

@@ -713,8 +713,9 @@ function TVShowsPageContent() {
                   value={pageInput}
                   onChange={(e) => setPageInput(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter') submitPageInput(); }}
-                  className="w-20 rounded-lg bg-gray-800 text-white border border-gray-700 px-3 py-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-red-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  className="w-20 rounded-lg bg-gray-800 text-white border border-gray-700 px-3 py-2 text-base text-center focus:outline-none focus:ring-2 focus:ring-red-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   placeholder="Page"
+                  style={{ fontSize: '16px' }}
                 />
                 <button
                   onClick={submitPageInput}

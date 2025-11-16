@@ -1,20 +1,6 @@
 import type { NextConfig } from "next";
-import { execSync } from 'child_process';
-
-// Lấy Git hash để làm version ID
-const getGitHash = () => {
-  try {
-    return execSync('git rev-parse --short HEAD').toString().trim();
-  } catch (error) {
-    console.warn('Không thể lấy Git hash, sử dụng timestamp');
-    return Date.now().toString();
-  }
-};
 
 const nextConfig: NextConfig = {
-  env: {
-    NEXT_PUBLIC_BUILD_ID: getGitHash(),
-  },
   images: {
     // Disable Next.js Image Optimization to avoid Vercel image transformation usage
     unoptimized: true,
@@ -56,6 +42,128 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
+        // Static assets (JS, CSS) - cache lâu dài vì có hash trong tên file
+        source: '/_next/static/(.*)',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+      {
+        // Images và assets trong public folder - cache vừa phải
+        // Tách thành nhiều routes vì Next.js không cho phép capturing groups
+        source: '/:path*\\.jpg',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=86400, s-maxage=86400',
+          },
+        ],
+      },
+      {
+        source: '/:path*\\.jpeg',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=86400, s-maxage=86400',
+          },
+        ],
+      },
+      {
+        source: '/:path*\\.png',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=86400, s-maxage=86400',
+          },
+        ],
+      },
+      {
+        source: '/:path*\\.gif',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=86400, s-maxage=86400',
+          },
+        ],
+      },
+      {
+        source: '/:path*\\.svg',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=86400, s-maxage=86400',
+          },
+        ],
+      },
+      {
+        source: '/:path*\\.webp',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=86400, s-maxage=86400',
+          },
+        ],
+      },
+      {
+        source: '/:path*\\.ico',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=86400, s-maxage=86400',
+          },
+        ],
+      },
+      {
+        source: '/:path*\\.woff',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=86400, s-maxage=86400',
+          },
+        ],
+      },
+      {
+        source: '/:path*\\.woff2',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=86400, s-maxage=86400',
+          },
+        ],
+      },
+      {
+        source: '/:path*\\.ttf',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=86400, s-maxage=86400',
+          },
+        ],
+      },
+      {
+        source: '/:path*\\.eot',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=86400, s-maxage=86400',
+          },
+        ],
+      },
+      {
+        // API routes - không cache để luôn có dữ liệu mới
+        source: '/api/(.*)',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          },
+        ],
+      },
+      {
+        // HTML pages và tất cả routes khác - KHÔNG CACHE để luôn có phiên bản mới
         source: '/(.*)',
         headers: [
           {
@@ -64,16 +172,15 @@ const nextConfig: NextConfig = {
           },
           {
             key: 'Cache-Control',
-            value: 'public, max-age=31536000, immutable',
+            value: 'no-cache, no-store, must-revalidate, max-age=0',
           },
-        ],
-      },
-      {
-        source: '/api/(.*)',
-        headers: [
           {
-            key: 'Cache-Control',
-            value: 'public, max-age=300, s-maxage=300',
+            key: 'Pragma',
+            value: 'no-cache',
+          },
+          {
+            key: 'Expires',
+            value: '0',
           },
         ],
       },

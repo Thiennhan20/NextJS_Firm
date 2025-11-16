@@ -12,66 +12,12 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
   const [isVisible, setIsVisible] = useState(true);
   const [textIndex, setTextIndex] = useState(0);
   const [charIndex, setCharIndex] = useState(0);
-  const [versionChecked, setVersionChecked] = useState(false);
   
   const textIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const mainTimerRef = useRef<NodeJS.Timeout | null>(null);
   const completeTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const versionCheckRef = useRef<boolean>(false);
 
   const loadingTexts = useMemo(() => ["Welcome to E&G"], []);
-
-  // Version check function - chỉ chạy một lần duy nhất khi vào web
-  const checkVersion = useCallback(async () => {
-    if (versionCheckRef.current) {
-      return; // Đã check rồi, không check lại
-    }
-    
-    versionCheckRef.current = true;
-    
-    try {
-      const timestamp = Date.now();
-      const response = await fetch(`/api/version?t=${timestamp}`, {
-        method: 'GET',
-        cache: 'no-store',
-        headers: {
-          'Cache-Control': 'no-cache',
-          'Pragma': 'no-cache',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-
-      const latestVersion = await response.text();
-      const currentVersion = localStorage.getItem('app_version');
-
-      // Chỉ reload khi version thực sự khác nhau
-      if (currentVersion && currentVersion !== latestVersion) {
-        
-        // Set flag để skip splash lần sau
-        sessionStorage.setItem('version_updating', 'true');
-        
-        
-        // Reload ngay lập tức (không delay)
-        setTimeout(() => {
-          localStorage.setItem('app_version', latestVersion);
-          window.location.reload();
-        }, 1000); // Chỉ delay 1 giây để user thấy thông báo
-        
-        return; // Không tiếp tục splash nếu có update
-      } else {
-        // Lưu version hiện tại vào localStorage
-        localStorage.setItem('app_version', latestVersion);
-        setVersionChecked(true);
-      }
-    } catch (error) {
-      console.warn('⚠️ Version check failed:', error);
-      // Nếu lỗi, vẫn tiếp tục splash bình thường
-      setVersionChecked(true);
-    }
-  }, []);
 
   const animateText = useCallback(() => {
     setCharIndex((prev) => {
@@ -87,37 +33,24 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
   }, [loadingTexts, textIndex]);
 
   useEffect(() => {
-    // Check version ngay khi splash bắt đầu
-    checkVersion();
-    
     textIntervalRef.current = setInterval(animateText, 100);
     
-    // Chỉ hoàn thành splash sau khi version đã được check
     const completeSplash = () => {
       setIsVisible(false);
       completeTimerRef.current = setTimeout(onComplete, 800);
     };
     
-    // Nếu version check hoàn thành sớm, đợi ít nhất 2 giây để user thấy splash
-    const minSplashTime = setTimeout(() => {
-      if (versionChecked) {
-        completeSplash();
-      }
-    }, 2000);
-    
-    // Fallback: hoàn thành sau 4 giây dù version check chưa xong
+    // Hoàn thành splash sau 2 giây
     mainTimerRef.current = setTimeout(() => {
-      clearTimeout(minSplashTime);
       completeSplash();
-    }, 4000);
+    }, 2000);
 
     return () => {
       if (textIntervalRef.current) clearInterval(textIntervalRef.current);
       if (mainTimerRef.current) clearTimeout(mainTimerRef.current);
       if (completeTimerRef.current) clearTimeout(completeTimerRef.current);
-      if (minSplashTime) clearTimeout(minSplashTime);
     };
-  }, [onComplete, animateText, checkVersion, versionChecked]);
+  }, [onComplete, animateText]);
 
   return (
     <AnimatePresence mode="wait">
