@@ -93,6 +93,7 @@ export default function MovieDetail() {
           id: movie.id,
           title: movie.title,
           poster_path: movie.poster,
+          type: 'movie',
         });
         toast.success('Added movie to watchlist!');
         if (token) await fetchWatchlistFromServer(token);
@@ -361,7 +362,7 @@ export default function MovieDetail() {
                 onClick={handleToggleWatchlist}
                 className={`px-6 py-3 rounded-lg font-semibold transition-colors flex items-center gap-2 ${
                   isBookmarked
-                    ? 'bg-yellow-600 text-black hover:bg-yellow-700'
+                    ? 'bg-amber-700 text-white hover:bg-amber-800'
                     : 'bg-gray-700 text-white hover:bg-gray-600'
                 }`}
               >

@@ -5,8 +5,10 @@ import { motion } from 'framer-motion'
 import Image from 'next/image'
 import axios from 'axios'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline'
 import { useApiCache } from '@/hooks/useApiCache'
+import CardWithHover from '@/components/common/CardWithHover'
 
 interface Movie {
   id: number;
@@ -92,6 +94,7 @@ const getCountryName = (languageCode?: string): string => {
 
 export default function TrendingMovies() {
   const API_KEY = process.env.NEXT_PUBLIC_TMDB_API_KEY;
+  const router = useRouter();
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -241,7 +244,7 @@ export default function TrendingMovies() {
           
           <div
             ref={scrollRef}
-            className="flex gap-4 overflow-x-auto pb-3 scrollbar-none snap-x snap-mandatory relative horizontal-scroll-container"
+            className="flex gap-4 overflow-x-auto overflow-y-visible pb-3 scrollbar-none snap-x snap-mandatory relative horizontal-scroll-container"
             style={{ 
               WebkitOverflowScrolling: 'touch', 
               scrollbarWidth: 'none', 
@@ -255,29 +258,42 @@ export default function TrendingMovies() {
               <div className="text-red-400 text-center py-8">Error loading content</div>
             ) : (
               trending?.map((item) => (
-                <Link key={item.id} href={getRoute(item)} className="min-w-[150px] sm:min-w-[190px] md:min-w-[220px] max-w-[220px]">
-                  <motion.div
-                    whileHover={{ scale: 1.06 }}
-                    className="bg-gray-800 rounded-xl overflow-hidden shadow-lg snap-center cursor-pointer group relative"
+                <div key={item.id} className="min-w-[150px] sm:min-w-[190px] md:min-w-[220px] max-w-[220px]">
+                  <CardWithHover
+                    id={item.id}
+                    type={item.type}
+                    title={getTitle(item)}
+                    posterPath={item.image}
+                    onWatchClick={() => router.push(getRoute(item))}
+                    onDetailsClick={() => router.push(getRoute(item))}
                   >
-                    {item.image ? (
-                      <Image
-                        src={item.image}
-                        alt={getTitle(item)}
-                        width={400}
-                        height={600}
-                        className="w-full h-48 sm:h-60 object-contain bg-black group-hover:scale-105 transition-transform duration-300"
-                      />
-                    ) : (
-                      <div className="w-full h-56 sm:h-72 flex items-center justify-center bg-gray-700 text-3xl sm:text-4xl">🎬</div>
-                    )}
-                    <div className="absolute inset-x-0 bottom-0">
-                      <div className="bg-black/70 backdrop-blur-sm px-2 py-1.5 sm:px-3 sm:py-2">
-                        <div className="font-medium text-[13px] sm:text-sm text-white truncate">{getTitle(item)}</div>
-                      </div>
-                    </div>
-                  </motion.div>
-                </Link>
+                    <Link href={getRoute(item)}>
+                      <motion.div
+                        whileHover={{ scale: 1.06 }}
+                        className="bg-gray-800 rounded-xl overflow-hidden shadow-lg snap-center cursor-pointer group relative"
+                      >
+                        <div className="w-full h-48 sm:h-60 bg-black flex items-center justify-center overflow-hidden">
+                          {item.image ? (
+                            <Image
+                              src={item.image}
+                              alt={getTitle(item)}
+                              width={400}
+                              height={600}
+                              className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
+                            />
+                          ) : (
+                            <div className="text-3xl sm:text-4xl text-gray-500">🎬</div>
+                          )}
+                        </div>
+                        <div className="absolute inset-x-0 bottom-0">
+                          <div className="bg-black/70 backdrop-blur-sm px-2 py-1.5 sm:px-3 sm:py-2">
+                            <div className="font-medium text-[13px] sm:text-sm text-white truncate">{getTitle(item)}</div>
+                          </div>
+                        </div>
+                      </motion.div>
+                    </Link>
+                  </CardWithHover>
+                </div>
               ))
             )}
           </div>

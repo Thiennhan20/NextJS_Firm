@@ -40,9 +40,9 @@ const AutocompleteSearch = dynamic(() => import('@/components/common/Autocomplet
 });
 
 const mainNavItems = [
-  { name: 'Home', href: '/', icon: HomeIcon },
-  { name: 'Movies', href: '/movies', icon: FilmIcon },
-  { name: 'TV Shows', href: '/tvshows', icon: PlayCircleIcon },
+  { name: 'Home', href: '/', icon: HomeIcon, priority: 1 },
+  { name: 'Movies', href: '/movies', icon: FilmIcon, priority: 2 },
+  { name: 'TV Shows', href: '/tvshows', icon: PlayCircleIcon, priority: 3 },
 ]
 
 const moreNavItems = [
@@ -70,10 +70,69 @@ export default function Navigation() {
   const [isMobileUserDropdownOpen, setIsMobileUserDropdownOpen] = useState(false);
   const [isMobileMoreDropdownOpen, setIsMobileMoreDropdownOpen] = useState(false);
   const [isHeaderVisible, setIsHeaderVisible] = useState(true);
+  
+  // Adaptive navigation state - simplified
+  const [adaptiveStep, setAdaptiveStep] = useState(0);
+  const [visibleNavItems, setVisibleNavItems] = useState(mainNavItems);
+  const [hiddenNavItems, setHiddenNavItems] = useState<typeof mainNavItems>([]);
+  const [showSearchBar, setShowSearchBar] = useState(true);
 
   useEffect(() => {
     setNavDropdownOpen(isOpen || isMoreDropdownActive || isProfileDropdownActive);
   }, [isOpen, isMoreDropdownActive, isProfileDropdownActive, setNavDropdownOpen]);
+
+  // Simplified adaptive navigation logic
+  useEffect(() => {
+    const handleResize = () => {
+      const width = window.innerWidth;
+
+      // Adaptive steps based on width
+      let step = 0;
+      const visible = [...mainNavItems];
+      const hidden: typeof mainNavItems = [];
+      let searchBar = true;
+
+      if (width < 1200) {
+        // Step 1: Hide TV Shows
+        step = 1;
+        const tvIndex = visible.findIndex(item => item.name === 'TV Shows');
+        if (tvIndex !== -1) {
+          hidden.push(visible[tvIndex]);
+          visible.splice(tvIndex, 1);
+        }
+      }
+
+      if (width < 1050) {
+        // Step 2: Search bar → icon
+        step = 2;
+        searchBar = false;
+      }
+
+      if (width < 900) {
+        // Step 3: Hide Movies
+        step = 3;
+        const moviesIndex = visible.findIndex(item => item.name === 'Movies');
+        if (moviesIndex !== -1) {
+          hidden.push(visible[moviesIndex]);
+          visible.splice(moviesIndex, 1);
+        }
+      }
+
+      if (width < 700) {
+        // Step 4: Mobile menu
+        step = 4;
+      }
+
+      setAdaptiveStep(step);
+      setVisibleNavItems(visible);
+      setHiddenNavItems(hidden);
+      setShowSearchBar(searchBar);
+    };
+
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     let scrollTimeout: NodeJS.Timeout;
@@ -114,15 +173,15 @@ export default function Navigation() {
   }, []);
 
 
+  const HEADER_HEIGHT = 64
 
   return (
     <>
       {/* Header with auto-hide on scroll */}
       <motion.nav
         initial={false}
-        animate={{ 
-          y: isHeaderVisible ? 0 : -100
-        }}
+        style={{ height: HEADER_HEIGHT }}
+        animate={{ y: isHeaderVisible ? 0 : -HEADER_HEIGHT }}
         transition={{ 
           duration: 0.25, 
           ease: [0.4, 0, 0.2, 1], // Smooth easing curve
@@ -137,9 +196,9 @@ export default function Navigation() {
           {/* Enhanced Logo */}
           <Logo isScrolled={isScrolled} variant="header" />
 
-          {/* Desktop Navigation */}
-          <div className="hidden lg:flex lg:items-center lg:space-x-4">
-            {mainNavItems.map((item) => {
+          {/* Desktop Navigation - Adaptive (shows when step < 4) */}
+          <div className={`${adaptiveStep < 4 ? 'flex' : 'hidden'} items-center space-x-4`}>
+            {visibleNavItems.map((item) => {
               const isActive = pathname === item.href
               return (
                 <Link
@@ -173,7 +232,7 @@ export default function Navigation() {
                 </Link>
               )
             })}
-            {/* More dropdown */}
+            {/* More dropdown - includes hidden nav items + original more items */}
             <Menu as="div" className="relative inline-block text-left">
               <div>
                 <Menu.Button
@@ -183,6 +242,11 @@ export default function Navigation() {
                 >
                   <QueueListIcon className="h-5 w-5" />
                   <span>More</span>
+                  {hiddenNavItems.length > 0 && (
+                    <span className="ml-1 px-1.5 py-0.5 text-xs bg-red-500 text-white rounded-full">
+                      {hiddenNavItems.length}
+                    </span>
+                  )}
                 </Menu.Button>
               </div>
               <Transition
@@ -197,7 +261,28 @@ export default function Navigation() {
                 afterLeave={() => setIsMoreDropdownActive(false)}
               >
                 <Menu.Items className="absolute right-0 mt-2 w-48 origin-top-right bg-gray-900 backdrop-blur-md divide-y divide-gray-700 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-60">
-                  <div className="px-1 py-1 ">
+                  {/* Hidden nav items first */}
+                  {hiddenNavItems.length > 0 && (
+                    <div className="px-1 py-1">
+                      {hiddenNavItems.map((item) => (
+                        <Menu.Item key={item.name}>
+                          {({ active }) => (
+                            <Link
+                              href={item.href}
+                              className={`flex items-center space-x-2 px-4 py-2 rounded-md ${
+                                active ? 'bg-red-500 text-white' : 'text-gray-300'
+                              }`}
+                            >
+                              <item.icon className="h-5 w-5" />
+                              <span>{item.name}</span>
+                            </Link>
+                          )}
+                        </Menu.Item>
+                      ))}
+                    </div>
+                  )}
+                  {/* Original more items */}
+                  <div className="px-1 py-1">
                     {moreNavItems.map((item) => (
                       <Menu.Item key={item.name}>
                         {({ active }) => (
@@ -219,11 +304,24 @@ export default function Navigation() {
             </Menu>
           </div>
 
-          {/* Search and Auth */}
-          <div className="hidden lg:flex lg:items-center lg:space-x-4">
-            <div className="relative">
-              <AutocompleteSearch />
-            </div>
+          {/* Search and Auth - Adaptive (shows when step < 4) */}
+          <div className={`${adaptiveStep < 4 ? 'flex' : 'hidden'} items-center space-x-4`}>
+            {/* Search - Full bar or Icon */}
+            {showSearchBar ? (
+              <div className="relative">
+                <AutocompleteSearch />
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowMobileSearch(true)}
+                className={`p-2 rounded-full transition-colors ${
+                  isScrolled ? 'text-white hover:text-red-500' : 'text-gray-700 hover:text-red-500'
+                }`}
+                aria-label="Open search"
+              >
+                <MagnifyingGlassIcon className="h-5 w-5" />
+              </button>
+            )}
             
             {/* Language Selector */}
             <LanguageSelector isScrolled={isScrolled} />
@@ -339,8 +437,8 @@ export default function Navigation() {
             )}
           </div>
 
-          {/* Mobile search icon and menu button combined */}
-          <div className="flex lg:hidden items-center space-x-2">
+          {/* Mobile search icon and menu button combined (shows when step >= 4) */}
+          <div className={`${adaptiveStep >= 4 ? 'flex' : 'hidden'} items-center space-x-2`}>
             {/* Mobile Language Selector */}
             <LanguageSelector isScrolled={isScrolled} />
             
@@ -407,9 +505,7 @@ export default function Navigation() {
         afterLeave={() => setIsOpen(false)}
       >
         <motion.div
-          className={`lg:hidden overflow-y-auto max-h-[calc(100vh-4rem)] ${
-            'bg-white'
-          }`}
+          className={`${adaptiveStep >= 4 ? 'block' : 'hidden'} overflow-y-auto max-h-[calc(100vh-4rem)] bg-white`}
           initial={{ opacity: 0, height: 0 }}
           animate={{ opacity: 1, height: 'auto' }}
           exit={{ opacity: 0, height: 0 }}
@@ -529,7 +625,7 @@ export default function Navigation() {
                     <button
                       onClick={async () => {
                         await logout();
-                        toast.success('Đã đăng xuất!');
+                        toast.success('Logged out!');
                         setIsOpen(false);
                         setIsMobileUserDropdownOpen(false);
                       }}

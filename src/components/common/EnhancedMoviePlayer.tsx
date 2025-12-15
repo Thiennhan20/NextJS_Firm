@@ -45,6 +45,7 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
     const [isPlaying, setIsPlaying] = useState<boolean>(false);
     const [duration, setDuration] = useState<number>(0);
     const [currentTime, setCurrentTime] = useState<number>(0);
+    const [isEnded, setIsEnded] = useState<boolean>(false);
          const [speed, setSpeed] = useState<AvailableSpeed>(1);
      const [qualities, setQualities] = useState<Array<{ index: number; label: string }>>([]);
      const [currentQuality, setCurrentQuality] = useState<number>(-1); // -1: auto
@@ -292,11 +293,18 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
        const onCanPlay = () => setIsBuffering(false); // Video can play (buffer ready)
        const onSeeking = () => setIsSeeking(true); // User is seeking
        const onSeeked = () => setIsSeeking(false); // Seeking completed
-       const onPlay = () => setIsPlaying(true);
+       const onPlay = () => {
+         setIsPlaying(true);
+         setIsEnded(false);
+       };
        const onPause = () => {
          setIsPlaying(false);
          setIsBuffering(false); // Reset buffering when paused
          setIsSeeking(false); // Reset seeking when paused
+       };
+       const onEnded = () => {
+         setIsPlaying(false);
+         setIsEnded(true);
        };
       const onVolume = () => {
         // setVolume(video.volume); // Removed
@@ -306,6 +314,7 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
       video.addEventListener("timeupdate", onTimeUpdate);
       video.addEventListener("play", onPlay);
       video.addEventListener("pause", onPause);
+      video.addEventListener("ended", onEnded);
       video.addEventListener("volumechange", onVolume);
       video.addEventListener("waiting", onWaiting);
       video.addEventListener("canplay", onCanPlay);
@@ -327,6 +336,7 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
         video.removeEventListener("timeupdate", onTimeUpdate);
         video.removeEventListener("play", onPlay);
         video.removeEventListener("pause", onPause);
+        video.removeEventListener("ended", onEnded);
         video.removeEventListener("volumechange", onVolume);
         video.removeEventListener("waiting", onWaiting);
         video.removeEventListener("canplay", onCanPlay);
@@ -419,36 +429,23 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
         ? (ref as React.MutableRefObject<HTMLVideoElement | null>).current
         : innerRef.current) as HTMLVideoElement | null;
       if (!video) return;
+      
       const save = () => {
         if (video.currentTime > 0 && video.duration > 0) {
-          const remainingTime = video.duration - video.currentTime;
-          // Logged in: send to server (remove when near end)
+          // Logged in: send to server
           if (userId) {
-            if (remainingTime <= 240) {
-              api.delete('/recently-watched', {
-                data: {
-                  contentId: String(movieId),
-                  isTVShow: !!isTVShow,
-                  season: isTVShow ? season : null,
-                  episode: isTVShow ? episode : null,
-                  server,
-                  audio,
-                }
-              }).catch(() => {});
-            } else {
-              api.post('/recently-watched', {
-                contentId: String(movieId),
-                isTVShow: !!isTVShow,
-                season: isTVShow ? season : null,
-                episode: isTVShow ? episode : null,
-                server,
-                audio,
-                currentTime: video.currentTime,
-                duration: video.duration,
-                title: title || '',
-                poster: poster || ''
-              }).catch(() => {});
-            }
+            api.post('/recently-watched', {
+              contentId: String(movieId),
+              isTVShow: !!isTVShow,
+              season: isTVShow ? season : null,
+              episode: isTVShow ? episode : null,
+              server,
+              audio,
+              currentTime: video.currentTime,
+              duration: video.duration,
+              title: title || '',
+              poster: poster || ''
+            }).catch(() => {});
             return;
           }
 
@@ -456,22 +453,19 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
           const key = isTVShow && season && episode
             ? `tvshow-progress-${movieId}-${season}-${episode}-${server}-${audio}`
             : `movie-progress-${movieId}-${server}-${audio}`;
-          if (remainingTime <= 240) {
-            localStorage.removeItem(key);
-          } else {
-            const progressData = {
-              currentTime: video.currentTime,
-              duration: video.duration,
-              title: title || '',
-              poster: poster || '',
-              lastWatched: new Date().toISOString(),
-              expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-              ...(isTVShow && season && episode ? { season, episode } : {})
-            };
-            localStorage.setItem(key, JSON.stringify(progressData));
-          }
+          const progressData = {
+            currentTime: video.currentTime,
+            duration: video.duration,
+            title: title || '',
+            poster: poster || '',
+            lastWatched: new Date().toISOString(),
+            expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+            ...(isTVShow && season && episode ? { season, episode } : {})
+          };
+          localStorage.setItem(key, JSON.stringify(progressData));
         }
       };
+
       video.addEventListener('timeupdate', save);
       video.addEventListener('pause', save);
       window.addEventListener('beforeunload', save);
@@ -488,6 +482,14 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
       if (!v) return;
       if (v.paused) v.play().catch(() => {});
       else v.pause();
+    }, [ref]);
+
+    const handleReplay = useCallback(() => {
+      const v = (ref && typeof ref === "object" && ref !== null ? ref.current : innerRef.current) as HTMLVideoElement | null;
+      if (!v) return;
+      v.currentTime = 0;
+      setIsEnded(false);
+      v.play().catch(() => {});
     }, [ref]);
 
     const onSeek = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -620,13 +622,13 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
             case "arrowright":
               {
                 const v = (ref && typeof ref === "object" && ref !== null ? ref.current : innerRef.current) as HTMLVideoElement | null;
-                if (v) v.currentTime = Math.min(v.currentTime + 15, v.duration || v.currentTime + 15);
+                if (v) v.currentTime = Math.min(v.currentTime + 10, v.duration || v.currentTime + 10);
               }
               break;
             case "arrowleft":
               {
                 const v = (ref && typeof ref === "object" && ref !== null ? ref.current : innerRef.current) as HTMLVideoElement | null;
-                if (v) v.currentTime = Math.max(v.currentTime - 15, 0);
+                if (v) v.currentTime = Math.max(v.currentTime - 10, 0);
               }
               break;
             case "f":
@@ -721,62 +723,76 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
            {!isPlaying ? (
              <div className="pointer-events-auto flex items-center gap-4">
-               {/* Tua lùi 15s */}
-               <button
-                 onClick={(e) => {
-                   e.stopPropagation();
-                   const v = (ref && typeof ref === "object" && ref !== null ? ref.current : innerRef.current) as HTMLVideoElement | null;
-                   if (v) v.currentTime = Math.max(v.currentTime - 15, 0);
-                 }}
-                 className="flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-white/15 hover:bg-white/25 text-white transition"
-                 aria-label="Rewind 15 seconds"
-                 title="Rewind 15 seconds"
-               >
-                 <svg className="w-6 h-6 sm:w-7 sm:h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0019 16V8a1 1 0 00-1.6-.8l-5.334 4zM4.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0011 16V8a1 1 0 00-1.6-.8l-5.334 4z" />
-                 </svg>
-               </button>
+               {!isEnded && (
+                 <>
+                   {/* Tua lùi 10s */}
+                   <button
+                     onClick={(e) => {
+                       e.stopPropagation();
+                       const v = (ref && typeof ref === "object" && ref !== null ? ref.current : innerRef.current) as HTMLVideoElement | null;
+                       if (v) v.currentTime = Math.max(v.currentTime - 10, 0);
+                     }}
+                     className="flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-white/15 hover:bg-white/25 text-white transition"
+                     aria-label="Rewind 10 seconds"
+                     title="Rewind 10 seconds"
+                   >
+                     <svg className="w-6 h-6 sm:w-7 sm:h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0019 16V8a1 1 0 00-1.6-.8l-5.334 4zM4.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0011 16V8a1 1 0 00-1.6-.8l-5.334 4z" />
+                     </svg>
+                   </button>
+                 </>
+               )}
                
-               {/* Play button */}
+               {/* Play/Replay button */}
                <button
-                 onClick={togglePlay}
+                 onClick={isEnded ? handleReplay : togglePlay}
                  className="flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-white/15 hover:bg-white/25 text-white transition"
-                 aria-label="Play"
-                 title="Play"
+                 aria-label={isEnded ? "Replay" : "Play"}
+                 title={isEnded ? "Replay" : "Play"}
                >
-                 <PlayIcon className="w-8 h-8 sm:w-10 sm:h-10" />
+                 {isEnded ? (
+                   <svg className="w-8 h-8 sm:w-10 sm:h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                   </svg>
+                 ) : (
+                   <PlayIcon className="w-8 h-8 sm:w-10 sm:h-10" />
+                 )}
                </button>
                
-               {/* Tua tới 15s */}
-               <button
-                 onClick={(e) => {
-                   e.stopPropagation();
-                   const v = (ref && typeof ref === "object" && ref !== null ? ref.current : innerRef.current) as HTMLVideoElement | null;
-                   if (v) v.currentTime = Math.min(v.currentTime + 15, v.duration || v.currentTime + 15);
-                 }}
-                 className="flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-white/15 hover:bg-white/25 text-white transition"
-                 aria-label="Forward 15 seconds"
-                 title="Forward 15 seconds"
-               >
-                 <svg className="w-6 h-6 sm:w-7 sm:h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.934 12.8a1 1 0 000-1.6L6.6 7.2a1 1 0 00-1.6.8v8a1 1 0 001.6.8l5.334-4zM19.934 12.8a1 1 0 000-1.6L14.6 7.2a1 1 0 00-1.6.8v8a1 1 0 001.6.8l5.334-4z" />
-                 </svg>
-               </button>
+               {!isEnded && (
+                 <>
+                   {/* Tua tới 10s */}
+                   <button
+                     onClick={(e) => {
+                       e.stopPropagation();
+                       const v = (ref && typeof ref === "object" && ref !== null ? ref.current : innerRef.current) as HTMLVideoElement | null;
+                       if (v) v.currentTime = Math.min(v.currentTime + 10, v.duration || v.currentTime + 10);
+                     }}
+                     className="flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-white/15 hover:bg-white/25 text-white transition"
+                     aria-label="Forward 10 seconds"
+                     title="Forward 10 seconds"
+                   >
+                     <svg className="w-6 h-6 sm:w-7 sm:h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.934 12.8a1 1 0 000-1.6L6.6 7.2a1 1 0 00-1.6.8v8a1 1 0 001.6.8l5.334-4zM19.934 12.8a1 1 0 000-1.6L14.6 7.2a1 1 0 00-1.6.8v8a1 1 0 001.6.8l5.334-4z" />
+                     </svg>
+                   </button>
+                 </>
+               )}
              </div>
            ) : (
              <div className="pointer-events-auto flex items-center gap-4">
-               {/* Tua lùi 15s */}
+               {/* Tua lùi 10s */}
                <button
                  onClick={(e) => {
                    e.stopPropagation();
                    const v = (ref && typeof ref === "object" && ref !== null ? ref.current : innerRef.current) as HTMLVideoElement | null;
-                   if (v) v.currentTime = Math.max(v.currentTime - 15, 0);
+                   if (v) v.currentTime = Math.max(v.currentTime - 10, 0);
                  }}
                  className={`flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-transparent hover:bg-white/10 text-white transition ${
                    showControls ? 'opacity-100' : 'opacity-0 hover:opacity-100'
                  }`}
-                 aria-label="Rewind 15 seconds"
-                 title="Rewind 15 seconds"
+                 aria-label="Rewind 10 seconds"
+                 title="Rewind 10 seconds"
                >
                  <svg className="w-6 h-6 sm:w-7 sm:h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0019 16V8a1 1 0 00-1.6-.8l-5.334 4zM4.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0011 16V8a1 1 0 00-1.6-.8l-5.334 4z" />
@@ -795,18 +811,18 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
                  <PauseIcon className="w-8 h-8 sm:w-10 sm:h-10" />
                </button>
                
-               {/* Tua tới 15s */}
+               {/* Tua tới 10s */}
                <button
                  onClick={(e) => {
                    e.stopPropagation();
                    const v = (ref && typeof ref === "object" && ref !== null ? ref.current : innerRef.current) as HTMLVideoElement | null;
-                   if (v) v.currentTime = Math.min(v.currentTime + 15, v.duration || v.currentTime + 15);
+                   if (v) v.currentTime = Math.min(v.currentTime + 10, v.duration || v.currentTime + 10);
                  }}
                  className={`flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-transparent hover:bg-white/10 text-white transition ${
                    showControls ? 'opacity-100' : 'opacity-0 hover:opacity-100'
                  }`}
-                 aria-label="Forward 15 seconds"
-                 title="Forward 15 seconds"
+                 aria-label="Forward 10 seconds"
+                 title="Forward 10 seconds"
                >
                  <svg className="w-6 h-6 sm:w-7 sm:h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.934 12.8a1 1 0 000-1.6L6.6 7.2a1 1 0 00-1.6.8v8a1 1 0 001.6.8l5.334-4zM19.934 12.8a1 1 0 000-1.6L14.6 7.2a1 1 0 00-1.6.8v8a1 1 0 001.6.8l5.334-4z" />

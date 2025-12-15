@@ -9,6 +9,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Suspense } from 'react'
+import CardWithHover from '@/components/common/CardWithHover'
 
 // Định nghĩa kiểu TVShow rõ ràng
 interface TVShow {
@@ -650,46 +651,47 @@ function TVShowsPageContent() {
                 <motion.div
                   key={tvShow.id}
                   variants={itemVariants}
-                  whileHover={{ scale: 1.05 }}
-                  transition={{ type: 'spring', stiffness: 200, damping: 20 }}
                 >
-                  <Link key={tvShow.id} href={`/tvshows/${tvShow.id}?page=${page}&year=${selectedYear}&category=${selectedCategory}&country=${selectedCountry}&season=1`} className="block">
-                    <div className="border border-gray-700 rounded-lg overflow-hidden relative group bg-gray-800 hover:bg-gray-700 transition-colors duration-200">
-                      {/* Poster Image with fixed frame and fallback */}
-                      <div className="relative w-full h-[240px] md:h-[300px] lg:h-[360px] overflow-hidden bg-gray-900">
-                        <Image
-                          src={(tvShow.image && tvShow.image.length > 0) ? tvShow.image : '/window.svg'}
-                          alt={tvShow.name}
-                          fill
-                          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, 20vw"
-                          className="object-cover"
-                          priority={false}
-                        />
-                      </div>
-
-                      {/* TV Show Info */}
-                      <div className="p-2 md:p-3 bg-gray-900">
-                        <div className="flex items-start justify-between mb-1 md:mb-2">
-                          <h3 className="text-white font-semibold text-xs md:text-sm truncate leading-tight">
-                            {tvShow.name}
-                          </h3>
+                  <CardWithHover
+                    id={tvShow.id}
+                    type="tv"
+                    title={tvShow.name}
+                    posterPath={tvShow.image || '/window.svg'}
+                    onWatchClick={() => router.push(`/tvshows/${tvShow.id}?page=${page}&year=${selectedYear}&category=${selectedCategory}&country=${selectedCountry}&season=1`)}
+                    onDetailsClick={() => router.push(`/tvshows/${tvShow.id}?page=${page}&year=${selectedYear}&category=${selectedCategory}&country=${selectedCountry}&season=1`)}
+                  >
+                    <Link href={`/tvshows/${tvShow.id}?page=${page}&year=${selectedYear}&category=${selectedCategory}&country=${selectedCountry}&season=1`} className="block">
+                      <div className="border border-gray-700 rounded-lg overflow-hidden relative group bg-gray-800 hover:bg-gray-700 transition-colors duration-200">
+                        <div className="relative w-full h-[240px] md:h-[300px] lg:h-[360px] overflow-hidden bg-gray-900">
+                          <Image
+                            src={(tvShow.image && tvShow.image.length > 0) ? tvShow.image : '/window.svg'}
+                            alt={tvShow.name}
+                            fill
+                            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, 20vw"
+                            className="object-cover"
+                            priority={false}
+                          />
                         </div>
-                        
-                        {/* Date and Country */}
-                        <div className="flex items-center justify-between text-[10px] md:text-xs text-gray-400">
-                          <span className="truncate">
-                            {tvShow.first_air_date ? new Date(tvShow.first_air_date).toLocaleDateString('en-US', {
-                              year: 'numeric',
-                              month: 'short',
-                              day: 'numeric'
-                            }) : 'TBA'}
-                          </span>
-                          <span className="truncate ml-1">{tvShow.country}</span>
+                        <div className="p-2 md:p-3 bg-gray-900">
+                          <div className="flex items-start justify-between mb-1 md:mb-2">
+                            <h3 className="text-white font-semibold text-xs md:text-sm truncate leading-tight">
+                              {tvShow.name}
+                            </h3>
+                          </div>
+                          <div className="flex items-center justify-between text-[10px] md:text-xs text-gray-400">
+                            <span className="truncate">
+                              {tvShow.first_air_date ? new Date(tvShow.first_air_date).toLocaleDateString('en-US', {
+                                year: 'numeric',
+                                month: 'short',
+                                day: 'numeric'
+                              }) : 'TBA'}
+                            </span>
+                            <span className="truncate ml-1">{tvShow.country}</span>
+                          </div>
                         </div>
-                        
                       </div>
-                    </div>
-                  </Link>
+                    </Link>
+                  </CardWithHover>
                 </motion.div>
               ))}
             </motion.div>

@@ -1,65 +1,41 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { useEffect, useState } from 'react'
-import dynamic from 'next/dynamic'
+import { useEffect, useState, lazy, Suspense } from 'react'
 import { 
   SparklesIcon,
   StarIcon,
   HeartIcon,
   EyeIcon
 } from '@heroicons/react/24/outline'
+import LazySection from '@/components/common/LazySection'
 
-// Lazy load heavy components from home barrel
-const HeroMovies = dynamic(() => import('@/components/home').then(m => m.HeroMovies), {
-  loading: () => (
-    <div className="min-h-screen flex items-center justify-center">
-      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div>
+// ONLY load HeroMovies immediately (above the fold)
+import HeroMovies from '@/components/home/HeroMovies'
+
+// Lazy load all other components with React.lazy (true code splitting)
+const RecentlyWatchedMovies = lazy(() => import('@/components/home').then(m => ({ default: m.RecentlyWatched })))
+const EntertainmentFrames = lazy(() => import('@/components/home').then(m => ({ default: m.EntertainmentFrames })))
+const TrendingMovies = lazy(() => import('@/components/home').then(m => ({ default: m.TrendingMovies })))
+const ComingSoonMovies = lazy(() => import('@/components/home').then(m => ({ default: m.ComingSoonMovies })))
+const TopComments = lazy(() => import('@/components/home').then(m => ({ default: m.TopComments })))
+
+// Skeleton loader
+const SectionSkeleton = () => (
+  <div className="py-8 px-4">
+    <div className="max-w-7xl mx-auto">
+      <div className="h-8 w-64 bg-gray-800 rounded-lg mb-6 mx-auto animate-pulse" />
+      <div className="flex gap-4 overflow-hidden">
+        {[1, 2, 3, 4, 5].map((i) => (
+          <div
+            key={i}
+            className="min-w-[200px] h-64 bg-gray-800 rounded-xl animate-pulse"
+          />
+        ))}
+      </div>
     </div>
-  )
-});
-
-const TrendingMovies = dynamic(() => import('@/components/home').then(m => m.TrendingMovies), {
-  loading: () => (
-    <div className="py-8 flex items-center justify-center">
-      <div className="animate-pulse bg-gray-800 rounded-lg h-64 w-full max-w-7xl"></div>
-    </div>
-  )
-});
-
-const ComingSoonMovies = dynamic(() => import('@/components/home').then(m => m.ComingSoonMovies), {
-  loading: () => (
-    <div className="py-8 flex items-center justify-center">
-      <div className="animate-pulse bg-gray-800 rounded-lg h-64 w-full max-w-7xl"></div>
-    </div>
-  )
-});
-
-const TopComments = dynamic(() => import('@/components/home').then(m => m.TopComments), {
-  loading: () => (
-    <div className="py-8 flex items-center justify-center">
-      <div className="animate-pulse bg-gray-800 rounded-lg h-96 w-full max-w-7xl"></div>
-    </div>
-  )
-});
-
-const RecentlyWatchedMovies = dynamic(() => import('@/components/home').then(m => m.RecentlyWatched), {
-  loading: () => (
-    <div className="py-8 flex items-center justify-center">
-      <div className="animate-pulse bg-gray-800 rounded-lg h-64 w-full max-w-7xl"></div>
-    </div>
-  )
-});
-
-
-
-const EntertainmentFrames = dynamic(() => import('@/components/home').then(m => m.EntertainmentFrames), {
-  loading: () => (
-    <div className="py-8 flex items-center justify-center">
-      <div className="animate-pulse bg-gray-800 rounded-lg h-96 w-full max-w-6xl"></div>
-    </div>
-  )
-});
+  </div>
+)
 
 interface Particle {
   x: number;
@@ -86,12 +62,12 @@ export default function Home() {
           const newParticles = Array.from({ length: 8 }).map(() => ({
             x: Math.random() * 100,
             y: Math.random() * 100,
-            size: Math.random() * 1.5 + 0.5, // Smaller particles
-            duration: Math.random() * 10 + 6, // Shorter duration
+            size: Math.random() * 1.5 + 0.5,
+            duration: Math.random() * 10 + 6,
           }));
           setParticles(newParticles);
         } else if (mobile && particles.length > 0) {
-          setParticles([]); // Clear particles on mobile
+          setParticles([]);
         }
       }, 100);
     };
@@ -127,25 +103,45 @@ export default function Home() {
         </div>
       )}
 
-      {/* Hero Movies Section */}
+      {/* Hero Movies Section - Load immediately (above the fold) */}
       <HeroMovies />
 
-      {/* Recently Watched Movies Section */}
-      <RecentlyWatchedMovies />
+      {/* Recently Watched Movies Section - Lazy load when scrolling */}
+      <LazySection rootMargin="400px" minHeight="300px">
+        <Suspense fallback={<SectionSkeleton />}>
+          <RecentlyWatchedMovies />
+        </Suspense>
+      </LazySection>
 
-      {/* Entertainment Frames Section */}
-      <EntertainmentFrames />
+      {/* Entertainment Frames Section - Lazy load */}
+      <LazySection rootMargin="400px" minHeight="500px">
+        <Suspense fallback={<SectionSkeleton />}>
+          <EntertainmentFrames />
+        </Suspense>
+      </LazySection>
 
-      {/* Trending Movies Section */}
-      <div data-section="trending">
-        <TrendingMovies />
-      </div>
+      {/* Trending Movies Section - Lazy load */}
+      <LazySection rootMargin="400px" minHeight="350px">
+        <Suspense fallback={<SectionSkeleton />}>
+          <div data-section="trending">
+            <TrendingMovies />
+          </div>
+        </Suspense>
+      </LazySection>
 
-      {/* Coming Soon Movies Section */}
-      <ComingSoonMovies />
+      {/* Coming Soon Movies Section - Lazy load */}
+      <LazySection rootMargin="400px" minHeight="350px">
+        <Suspense fallback={<SectionSkeleton />}>
+          <ComingSoonMovies />
+        </Suspense>
+      </LazySection>
 
-      {/* Top Comments Section */}
-      <TopComments />
+      {/* Top Comments Section - Lazy load */}
+      <LazySection rootMargin="400px" minHeight="500px">
+        <Suspense fallback={<SectionSkeleton />}>
+          <TopComments />
+        </Suspense>
+      </LazySection>
 
       {/* Call to Action Section */}
       <section className="py-20 px-4 sm:px-6 lg:px-8 relative overflow-hidden">

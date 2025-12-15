@@ -12,6 +12,7 @@ import { useWatchlistStore } from '@/store/store'
 import useAuthStore from '@/store/useAuthStore'
 import { toast } from 'react-hot-toast'
 import api from '@/lib/axios'
+import { ChevronDownIcon } from 'lucide-react'
 
 interface Movie {
   id: number;
@@ -47,7 +48,6 @@ type HeroItem = (Movie | TVShow) & {
   image: string; 
   backdrop: string;
   type: 'movie' | 'tv';
-  status?: string;
   release_date?: string;
   first_air_date?: string;
   original_language?: string;
@@ -288,6 +288,8 @@ export default function HeroMovies() {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [isMobile, setIsMobile] = useState(false);
   const autoPlayRef = useRef<NodeJS.Timeout | null>(null);
+  const [contentScale, setContentScale] = useState(1);
+  const contentRef = useRef<HTMLDivElement>(null);
 
   // Watchlist functionality
   const { addToWatchlist, removeFromWatchlist, isInWatchlist, fetchWatchlistFromServer } = useWatchlistStore();
@@ -360,6 +362,42 @@ export default function HeroMovies() {
     };
   }, []);
 
+  // Auto-scale content when it gets close to header
+  useEffect(() => {
+    const checkContentOverflow = () => {
+      if (!contentRef.current) return;
+
+      const contentRect = contentRef.current.getBoundingClientRect();
+      const headerHeight = 64; // 4rem = 64px (navigation height)
+      const safeZone = 20; // 20px buffer zone
+      const minTopPosition = headerHeight + safeZone;
+
+      // Calculate how much content is overlapping with header
+      if (contentRect.top < minTopPosition) {
+        // Calculate scale factor based on overlap
+        const overlap = minTopPosition - contentRect.top;
+        const maxOverlap = 100; // Maximum expected overlap
+        const scaleReduction = Math.min(overlap / maxOverlap, 0.15); // Max 15% reduction
+        const newScale = 1 - scaleReduction;
+        setContentScale(Math.max(newScale, 0.85)); // Minimum scale 85%
+      } else {
+        setContentScale(1); // Reset to full scale
+      }
+    };
+
+    // Check on mount and resize
+    checkContentOverflow();
+    const debouncedCheck = debounce(checkContentOverflow, 50);
+    
+    window.addEventListener('resize', debouncedCheck);
+    window.addEventListener('scroll', debouncedCheck);
+
+    return () => {
+      window.removeEventListener('resize', debouncedCheck);
+      window.removeEventListener('scroll', debouncedCheck);
+    };
+  }, [currentIndex, heroItems]);
+
   useEffect(() => {
     const fetchHeroItems = async () => {
       setLoading(true);
@@ -376,7 +414,6 @@ export default function HeroMovies() {
           backdrop: movie.backdrop_path ? `https://image.tmdb.org/t/p/w1280${movie.backdrop_path}` : '',
           year: movie.release_date ? Number(movie.release_date.slice(0, 4)) : 0,
           type: 'movie' as const,
-          status: '🔥 Trending',
           release_date: movie.release_date || '',
           original_language: movie.original_language || 'en',
           description: movie.overview || '',
@@ -390,7 +427,6 @@ export default function HeroMovies() {
           backdrop: tvShow.backdrop_path ? `https://image.tmdb.org/t/p/w1280${tvShow.backdrop_path}` : '',
           year: tvShow.first_air_date ? Number(tvShow.first_air_date.slice(0, 4)) : 0,
           type: 'tv' as const,
-          status: '⭐ Popular',
           first_air_date: tvShow.first_air_date || '',
           original_language: tvShow.original_language || 'en',
           description: tvShow.overview || '',
@@ -458,6 +494,7 @@ export default function HeroMovies() {
         id: item.id,
         title: 'title' in item ? item.title : item.name,
         poster_path: item.image,
+        type: item.type,
       };
 
       if (isInWatchlist(item.id)) {
@@ -523,7 +560,10 @@ export default function HeroMovies() {
 
   if (loading) {
     return (
-      <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-gray-900 via-black to-gray-800">
+      <section 
+        className="relative min-h-[calc(100vh-4rem)] flex items-center justify-center overflow-hidden bg-gradient-to-br from-gray-900 via-black to-gray-800"
+        style={{ minHeight: 'calc(100vh - 4rem)' }}
+      >
         <motion.div
           className="flex flex-col items-center space-y-4"
           initial={{ opacity: 0, y: 20 }}
@@ -551,7 +591,10 @@ export default function HeroMovies() {
 
   if (!heroItems.length) {
     return (
-      <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-gray-900 via-black to-gray-800">
+      <section 
+        className="relative min-h-[calc(100vh-4rem)] flex items-center justify-center overflow-hidden bg-gradient-to-br from-gray-900 via-black to-gray-800"
+        style={{ minHeight: 'calc(100vh - 4rem)' }}
+      >
         <div className="text-center">
           <h2 className="text-2xl text-gray-300 mb-4">No content available</h2>
           <p className="text-gray-500">Please check your API configuration</p>
@@ -574,7 +617,11 @@ export default function HeroMovies() {
         </Head>
       ) : null}
     <section 
-      className="relative min-h-screen flex items-center justify-center overflow-hidden"
+      className="relative w-full min-h-[calc(100vh-4rem)] max-h-[calc(100vh-4rem)] overflow-hidden flex items-center justify-center"
+      style={{ 
+        minHeight: 'calc(100vh - 4rem)', 
+        maxHeight: 'calc(100vh - 4rem)' 
+      }}
       onMouseEnter={stopAutoPlay}
       onMouseLeave={startAutoPlay}
     >
@@ -582,9 +629,9 @@ export default function HeroMovies() {
       <AnimatePresence mode="wait">
         <motion.div
           key={currentIndex}
-          className="absolute inset-0 scale-110"
-          initial={{ opacity: 0, scale: 1.1 }}
-          animate={{ opacity: 1, scale: 1.05 }}
+          className="absolute inset-0"
+          initial={{ opacity: 0, scale: 1.02 }}
+          animate={{ opacity: 1, scale: 1.0 }}
           exit={{ opacity: 0, scale: 1 }}
           transition={{ duration: 0.8, ease: "easeInOut" }}
         >
@@ -599,7 +646,14 @@ export default function HeroMovies() {
         </motion.div>
       </AnimatePresence>
       
-      <div className="relative z-10 w-full max-w-7xl mx-auto px-4 py-4 sm:py-8">
+      <div 
+        ref={contentRef}
+        className="relative z-10 w-full max-w-7xl mx-auto px-4 py-2 sm:py-4 overflow-x-hidden transition-transform duration-300 ease-out"
+        style={{ 
+          transform: `scale(${contentScale})`,
+          transformOrigin: 'center center'
+        }}
+      >
         {/* Custom CSS to hide scrollbars */}
         <style jsx>{`
           .scrollbar-hide {
@@ -628,25 +682,9 @@ export default function HeroMovies() {
                 transition={{ duration: 0.6 }}
                 className="space-y-3"
               >
-                {/* Mobile Badges */}
-                <div className="flex items-center justify-center gap-2 flex-wrap">
-                  <motion.span
-                    className="px-3 py-1.5 bg-gradient-to-r from-red-500 to-pink-500 rounded-full text-xs font-bold shadow-lg"
-                    whileHover={{ scale: 1.05 }}
-                  >
-                    {currentItem.status}
-                  </motion.span>
-                  <motion.span
-                    className="px-3 py-1.5 bg-black/50 backdrop-blur-sm rounded-full text-xs font-semibold border border-white/20"
-                    whileHover={{ scale: 1.05 }}
-                  >
-                    {currentItem.type === 'movie' ? '🎬 Movie' : '📺 TV Show'}
-                  </motion.span>
-                </div>
-
                 {/* Mobile Title */}
                 <motion.h1
-                  className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold uppercase tracking-tight leading-tight px-4"
+                  className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold uppercase tracking-tight leading-tight px-4 min-h-[3.5rem] sm:min-h-[4rem] md:min-h-[5rem] flex items-center justify-center"
                   style={{
                     background: 'linear-gradient(135deg, #fff 0%, #f0f0f0 50%, #ddd 100%)',
                     WebkitBackgroundClip: 'text',
@@ -661,13 +699,17 @@ export default function HeroMovies() {
                 </motion.h1>
 
                 {/* Mobile Meta */}
-                <div className="flex items-center justify-center gap-2 text-xs sm:text-sm flex-wrap">
+                <div className="flex items-center justify-center gap-2 text-xs sm:text-sm flex-wrap mt-2">
                   <span className="text-gray-300 text-center">
                     {formatDate(currentItem.release_date || currentItem.first_air_date || '')}
                   </span>
-                  <span className="text-gray-300 hidden sm:inline">•</span>
+                  <span className="text-gray-300">•</span>
                   <span className="text-gray-300 text-center">
                     {getCountryName(currentItem.original_language)}
+                  </span>
+                  <span className="text-gray-300">•</span>
+                  <span className="text-gray-300 text-center">
+                    {currentItem.type === 'movie' ? '🎬 Movie' : '📺 TV Show'}
                   </span>
                 </div>
 
@@ -723,7 +765,7 @@ export default function HeroMovies() {
                     onClick={() => handleToggleWatchlist(currentItem)}
                     className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-full font-semibold text-sm transition-all duration-300 ${
                       isInWatchlist(currentItem.id)
-                        ? 'bg-yellow-600 text-black hover:bg-yellow-700'
+                        ? 'bg-amber-700 text-white hover:bg-amber-800'
                         : 'bg-gray-700 hover:bg-gray-600 text-white'
                     }`}
                     whileHover={{ scale: 1.02 }}
@@ -793,25 +835,9 @@ export default function HeroMovies() {
                 transition={{ duration: 0.6 }}
                 className="space-y-3"
               >
-                {/* Status and Type Badges */}
-                <div className="flex items-center gap-3">
-                  <motion.span
-                    className="px-4 py-2 bg-gradient-to-r from-red-500 to-pink-500 rounded-full text-sm font-bold shadow-lg"
-                    whileHover={{ scale: 1.05 }}
-                  >
-                    {currentItem.status}
-                  </motion.span>
-                  <motion.span
-                    className="px-4 py-2 bg-black/50 backdrop-blur-sm rounded-full text-sm font-semibold border border-white/20"
-                    whileHover={{ scale: 1.05 }}
-                  >
-                    {currentItem.type === 'movie' ? '🎬 Movie' : '📺 TV Show'}
-                  </motion.span>
-                </div>
-
                 {/* Title */}
                 <motion.h1
-                  className="text-3xl lg:text-4xl xl:text-5xl 2xl:text-6xl font-bold uppercase tracking-tight leading-tight"
+                  className="text-3xl lg:text-4xl xl:text-5xl 2xl:text-6xl font-bold uppercase tracking-tight leading-tight min-h-[5rem] lg:min-h-[6rem] xl:min-h-[7rem] 2xl:min-h-[8rem] flex items-center"
                   style={{
                     background: 'linear-gradient(135deg, #fff 0%, #f0f0f0 50%, #ddd 100%)',
                     WebkitBackgroundClip: 'text',
@@ -825,14 +851,18 @@ export default function HeroMovies() {
                   {getTitle(currentItem)}
                 </motion.h1>
 
-                {/* Rating and Meta Info */}
-                <div className="flex items-center gap-4 text-sm">
+                {/* Meta Info */}
+                <div className="flex items-center gap-4 text-sm mt-2">
                   <span className="text-gray-300">
                     {formatDate(currentItem.release_date || currentItem.first_air_date || '')}
                   </span>
                   <span className="text-gray-300">•</span>
                   <span className="text-gray-300">
                     {getCountryName(currentItem.original_language)}
+                  </span>
+                  <span className="text-gray-300">•</span>
+                  <span className="text-gray-300">
+                    {currentItem.type === 'movie' ? '🎬 Movie' : '📺 TV Show'}
                   </span>
                 </div>
 
@@ -846,8 +876,8 @@ export default function HeroMovies() {
                 >
                   <Link href={getRoute(currentItem)}>
                     <motion.button
-                      className="flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 rounded-full font-bold text-base shadow-xl transition-all duration-300"
-                      whileHover={{ scale: 1.05, boxShadow: "0 25px 50px rgba(239, 68, 68, 0.4)" }}
+                      className="flex items-center gap-3 px-6 py-3 bg-yellow-500 hover:bg-yellow-600 rounded-full font-bold text-black shadow-xl transition-all duration-300"
+                      whileHover={{ scale: 1.05}}
                       whileTap={{ scale: 0.95 }}
                     >
                       <PlayIcon className="w-5 h-5" />
@@ -859,7 +889,7 @@ export default function HeroMovies() {
                     onClick={() => handleToggleWatchlist(currentItem)}
                     className={`flex items-center gap-3 px-6 py-3 rounded-full font-semibold text-base transition-all duration-300 ${
                       isInWatchlist(currentItem.id)
-                        ? 'bg-yellow-600 text-black hover:bg-yellow-700'
+                        ? 'bg-amber-700 text-white hover:bg-amber-800'
                         : 'bg-gray-700 hover:bg-gray-600 text-white'
                     }`}
                     whileHover={{ scale: 1.05 }}
@@ -893,10 +923,10 @@ export default function HeroMovies() {
                 animate={{ opacity: 1, rotateY: 0 }}
                 exit={{ opacity: 0, rotateY: -90 }}
                 transition={{ duration: 0.6 }}
-                whileHover={{ scale: 1.05 }}
+                whileHover={{ scale: 1.02 }}
               >
                 <div 
-                  className="w-80 h-96 rounded-2xl overflow-hidden shadow-2xl relative cursor-pointer transition-transform duration-300 hover:scale-105"
+                  className="w-80 h-96 rounded-2xl overflow-hidden shadow-2xl relative cursor-pointer transition-transform duration-300 hover:scale-102"
                   onClick={() => handleTrailerClick(currentItem)}
                 >
                   <Image
@@ -974,6 +1004,36 @@ export default function HeroMovies() {
           isTransitioning={isTransitioning} 
           showTrailer={showTrailer} 
         />
+
+        {/* Mobile Scroll Down Indicator - Below navigation controls */}
+        <motion.div
+          className="lg:hidden flex flex-col items-center gap-0.5 cursor-pointer mt-4"
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 1 }}
+          onClick={() => {
+            window.scrollTo({ 
+              top: window.innerHeight, 
+              behavior: 'smooth' 
+            });
+          }}
+        >
+          <motion.p
+            className="text-gray-400 text-[10px] font-light"
+            animate={{ opacity: [0.4, 0.8, 0.4] }}
+            transition={{ duration: 2, repeat: Infinity }}
+          >
+            Scroll to explore
+          </motion.p>
+          <motion.div
+            className="flex flex-col items-center -space-y-1.5"
+            animate={{ y: [0, 6, 0] }}
+            transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+          >
+            <ChevronDownIcon className="w-4 h-4 text-red-500" />
+            <ChevronDownIcon className="w-4 h-4 text-red-500" />
+          </motion.div>
+        </motion.div>
       </div>
       
       {/* Trailer Modal */}

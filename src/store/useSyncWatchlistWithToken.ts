@@ -1,5 +1,5 @@
 "use client";
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useWatchlistStore } from './store';
 
 /**
@@ -7,13 +7,21 @@ import { useWatchlistStore } from './store';
  * Token nên được lấy từ AuthStore và truyền vào hook này.
  */
 export default function useSyncWatchlistWithToken(token: string | null) {
-  const { fetchWatchlistFromServer, clearWatchlist } = useWatchlistStore();
+  const prevTokenRef = useRef<string | null>(null);
+  
   useEffect(() => {
+    // Only run when token actually changes, not when functions change
+    if (prevTokenRef.current === token) {
+      return;
+    }
+    
+    prevTokenRef.current = token;
+    
     if (token) {
-      fetchWatchlistFromServer(token);
+      useWatchlistStore.getState().fetchWatchlistFromServer(token);
     } else {
       // Clear watchlist khi không có token (logout hoặc chưa đăng nhập)
-      clearWatchlist();
+      useWatchlistStore.getState().clearWatchlist();
     }
-  }, [token, fetchWatchlistFromServer, clearWatchlist]);
+  }, [token]); // Only depend on token, not the functions
 } 

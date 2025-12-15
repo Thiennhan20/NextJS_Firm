@@ -26,13 +26,27 @@ const nextConfig: NextConfig = {
         hostname: 'phimapi.com',
       },
     ],
+    localPatterns: [
+      {
+        pathname: '/api/**',
+        search: '*',
+      },
+    ],
   },
   experimental: {
     // Enable optimizations for better performance
-    optimizePackageImports: ['@react-three/fiber', '@react-three/drei', 'three', 'framer-motion'],
+    optimizePackageImports: [
+      '@react-three/fiber', 
+      '@react-three/drei', 
+      'three', 
+      'framer-motion',
+      '@heroicons/react'
+    ],
     // Enable modern bundling
     esmExternals: true,
   },
+  // Enable SWC minification for better performance
+
   // Compiler optimizations
   compiler: {
     // Remove console logs in production

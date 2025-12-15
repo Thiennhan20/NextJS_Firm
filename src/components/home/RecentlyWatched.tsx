@@ -98,7 +98,7 @@ const ContentCard = memo(({ item, index, onContinue, onRemove }: {
         ease: [0.25, 0.1, 0.25, 1]
       }}
       onClick={() => onContinue(item)}
-      className="group relative bg-gray-900/50 backdrop-blur-sm rounded-2xl overflow-hidden border border-gray-800/50 hover:border-red-500/50 transition-all duration-300 flex-shrink-0 snap-center cursor-pointer"
+      className="group relative bg-gray-900/50 backdrop-blur-sm rounded-2xl overflow-hidden border border-gray-800/50 hover:border-red-500/50 transition-all duration-300 flex-shrink-0 snap-center cursor-pointer [&:hover_img]:scale-105"
       style={{ 
         width: 'clamp(180px, 25vw, 260px)',
         minWidth: '180px'
@@ -110,7 +110,8 @@ const ContentCard = memo(({ item, index, onContinue, onRemove }: {
             src={`/api/cache-image?id=${item.id}&url=${encodeURIComponent(item.poster)}`}
             alt={item.title || `Content ${item.id}`}
             fill
-            className="object-cover transition-transform duration-300 group-hover:scale-105"
+            className="object-cover transition-transform duration-300"
+            style={{ transform: 'scale(1)' }}
             sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 260px"
             priority={index < 3} // Chỉ priority 3 items đầu
             quality={70} // Giảm quality từ 75 xuống 70

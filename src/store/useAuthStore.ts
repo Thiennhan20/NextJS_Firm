@@ -158,7 +158,6 @@ const useAuthStore = create<AuthStore>()(
         if (cachedUserData) {
           try {
             const cachedUser = JSON.parse(cachedUserData) as User;
-            console.log('Using cached user data for instant display');
             set({
               user: cachedUser,
               token,
@@ -177,8 +176,6 @@ const useAuthStore = create<AuthStore>()(
             headers: { Authorization: `Bearer ${token}` },
           });
           const prof = response.data.user;
-          console.log('checkAuth - Raw profile data:', prof);
-          console.log('checkAuth - Avatar value:', prof.avatar);
           const normalizedUser: User = {
             id: prof.id || prof._id,
             name: prof.name,
@@ -189,7 +186,6 @@ const useAuthStore = create<AuthStore>()(
             createdAt: prof.createdAt,
             updatedAt: prof.updatedAt,
           };
-          console.log('checkAuth - Normalized user:', normalizedUser);
           
           // Cache user data for next time
           localStorage.setItem('cached_user_data', JSON.stringify(normalizedUser));

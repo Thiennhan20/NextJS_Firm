@@ -1,56 +1,35 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import SplashScreen from './SplashScreen';
 
 export default function SplashWrapper() {
   const [showSplash, setShowSplash] = useState(true);
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const cleanupTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Memoized cleanup function
-  const cleanup = useCallback(() => {
-    document.documentElement.classList.remove('splash-screen-active');
-    document.body.classList.remove('splash-screen-active');
-  }, []);
-
-  // Check if we're updating version (skip splash)
   useEffect(() => {
-    const isUpdating = sessionStorage.getItem('version_updating');
-    
-    if (isUpdating) {
-      // Đang update version → Skip splash
-      sessionStorage.removeItem('version_updating');
-      setShowSplash(false);
-      cleanup();
-      return;
-    }
+    // Prevent scrolling during splash
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
 
-    // Normal splash flow
-    // Add CSS class to prevent scrolling
-    document.documentElement.classList.add('splash-screen-active');
-    document.body.classList.add('splash-screen-active');
-
-    // Force show splash screen for 2 seconds on every visit/reload
-    timeoutRef.current = setTimeout(() => {
+    // Auto hide after 2s
+    timerRef.current = setTimeout(() => {
       setShowSplash(false);
-      // Remove CSS classes after splash screen fade out completes
-      cleanupTimeoutRef.current = setTimeout(cleanup, 1200); // Wait for fade out animation to complete (1.2s)
+      
+      // Restore scroll immediately after hiding
+      document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
     }, 2000);
 
     return () => {
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-      if (cleanupTimeoutRef.current) clearTimeout(cleanupTimeoutRef.current);
-      cleanup();
+      if (timerRef.current) clearTimeout(timerRef.current);
+      // Always restore scroll on cleanup
+      document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
     };
-  }, [cleanup]);
-
-  const handleSplashComplete = useCallback(() => {
-    setShowSplash(false);
-    cleanup();
-  }, [cleanup]);
+  }, []);
 
   if (!showSplash) return null;
 
-  return <SplashScreen onComplete={handleSplashComplete} />;
+  return <SplashScreen onComplete={() => setShowSplash(false)} />;
 }

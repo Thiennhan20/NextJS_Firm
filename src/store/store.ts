@@ -6,6 +6,7 @@ interface Movie {
   id: number;
   title: string;
   poster_path: string;
+  type?: 'movie' | 'tv'; // Optional for backward compatibility
 }
 
 interface WatchlistState {

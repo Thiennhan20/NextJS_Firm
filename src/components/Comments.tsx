@@ -57,15 +57,16 @@ export default function Comments({ movieId, type, title }: CommentsProps) {
   const [editText, setEditText] = useState('')
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   
-  const { isAuthenticated, user, checkAuth } = useAuthStore()
+  const { isAuthenticated, user } = useAuthStore()
   const router = useRouter()
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const replyTextareaRef = useRef<HTMLTextAreaElement>(null)
 
-  // Check auth on component mount
-  useEffect(() => {
-    checkAuth()
-  }, [checkAuth])
+  // Check auth on component mount - REMOVED to prevent infinite loop
+  // AuthChecker in layout.tsx already handles this
+  // useEffect(() => {
+  //   checkAuth()
+  // }, [checkAuth])
 
   // Close action menu when clicking outside or pressing Escape
   useEffect(() => {
@@ -408,11 +409,6 @@ export default function Comments({ movieId, type, title }: CommentsProps) {
                       {newComment.length}/500 characters
                       {newComment.length >= 500 && ' (limit reached)'}
                     </span>
-                    {isAuthenticated && (
-                      <span className="text-xs text-gray-500">
-                        Press Enter to post, Shift+Enter for new line
-                      </span>
-                    )}
                   </div>
                   {!isAuthenticated && (
                     <div className="flex items-center gap-2 mt-1">

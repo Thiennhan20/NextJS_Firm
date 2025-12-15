@@ -245,7 +245,6 @@ export default function WatchNowTVShows({
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
     async function fetchPhimApiEmbed() {
-      
       // Nếu đã có audio links cho season hiện tại thì không cần tìm kiếm lại
       if (tvShowLinks.currentSeason === selectedSeason && !tvShowLinks.seasonChanged && 
           (tvShowLinks.vietsub || tvShowLinks.dubbed)) {
@@ -266,169 +265,131 @@ export default function WatchNowTVShows({
         return;
       }
       
-      // Tiến hành tìm kiếm
-      
       setTVShowLinksLoading(true);
       setApiSearchCompleted(false);
       setDataReady(false);
 
       timeoutId = setTimeout(() => {
+        // Timeout handler
       }, 60000);
       try {
         if (typeof id !== 'string') {
           return;
         }
         let slug = null;
-        let logged = false;
-        // 1) Try TMDB ID direct search on PhimAPI first
-        try {
-          if (!slug && typeof id === 'string') {
-            const tmdbSearchUrl = `https://phimapi.com/v1/api/tim-kiem?keyword=${encodeURIComponent(id)}`;
-            const tmdbRes = await fetch(tmdbSearchUrl);
-            const tmdbData = await tmdbRes.json();
-            if (tmdbData?.status === 'success' && Array.isArray(tmdbData?.data?.items)) {
-              const tmdbMatch = tmdbData.data.items.find((it: { tmdb?: { id?: string | number }; slug?: string; name?: string }) => it?.tmdb?.id && String(it.tmdb.id) === String(id));
-              if (tmdbMatch?.slug) {
-                slug = tmdbMatch.slug;
-              }
-            }
-          }
-        } catch {
-        }
-
-        // 2) English keyword-based search (from TMDB title)
-        if (!slug && tvShow?.name) {
+        
+        // OPTIMIZED: Sequential search with early exit on high-confidence match
+        
+        if (tvShow?.name) {
+          const originNameWithSeason = `${tvShow.name} (Season ${selectedSeason})`;
+          const normalizedName = tvShow.name.toLowerCase().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ').trim();
           
-          // Chuẩn hóa tên phim để tìm kiếm chính xác hơn
-          const normalizedName = tvShow.name
-            .toLowerCase()
-            .replace(/[^\w\s]/g, '') // Loại bỏ ký tự đặc biệt
-            .replace(/\s+/g, ' ') // Chuẩn hóa khoảng trắng
-            .trim();
-          
-          const keywords = [normalizedName, tvShow.name].filter(Boolean);
-          
-          outer: for (const keyword of keywords) {
-            // Trừ năm ra - chỉ tìm kiếm theo tên phim
-            const url = `https://phimapi.com/v1/api/tim-kiem?keyword=${encodeURIComponent(keyword)}`;
+          // Unified scoring function
+          const scoreMatch = (item: { 
+            tmdb?: { id?: string | number }; 
+            origin_name?: string; 
+            name?: string; 
+            slug?: string;
+          }): number => {
+            let score = 0;
             
-            if (!logged) {
-              logged = true;
-            }
-            const res = await fetch(url);
-            const data = await res.json();
+            if (item.tmdb?.id && String(item.tmdb.id) === String(id)) score += 100;
+            if (item.origin_name && item.origin_name.toLowerCase() === originNameWithSeason.toLowerCase()) score += 90;
             
-            if (
-              data.status === 'success' &&
-              data.data &&
-              Array.isArray(data.data.items) &&
-              data.data.items.length > 0
-            ) {
-              // Tìm kiếm chính xác hơn bằng cách so sánh với nhiều trường và kiểm tra season
-              let bestMatch = null;
-              let bestScore = 0;
+            if (item.origin_name) {
+              const originLower = item.origin_name.toLowerCase();
+              if (originLower.includes(`season ${selectedSeason}`) || originLower.includes(`(season ${selectedSeason})`)) score += 70;
+            }
+            
+            if (item.name) {
+              const nameLower = item.name.toLowerCase();
+              const seasonPatterns = [`phần ${selectedSeason}`, `part ${selectedSeason}`, `season ${selectedSeason}`, `mùa ${selectedSeason}`];
               
-              for (const item of data.data.items) {
-                let score = 0;
-                
-                // So sánh với name
-                if (item.name && item.name.toLowerCase().includes(normalizedName)) {
-                  score += 3;
-                }
-                
-                // So sánh với slug
-                if (item.slug && item.slug.toLowerCase().includes(normalizedName.replace(/\s+/g, '-'))) {
-                  score += 2;
-                }
-                
-                // So sánh với origin_name
-                if (item.origin_name && item.origin_name.toLowerCase().includes(normalizedName)) {
-                  score += 2;
-                }
-                
-                // Kiểm tra season trong tên phim - ưu tiên season đang được chọn
-                if (item.name) {
-                  const itemName = item.name.toLowerCase();
-                  
-                  // Kiểm tra xem có phải là season đang được chọn không
-                  if (selectedSeason === 1) {
-                    // Nếu đang ở season 1, ưu tiên "Phần 1" hoặc không có "Phần"
-                    if (itemName.includes('phần 1') || itemName.includes('part 1')) {
-                      score += 5; // Điểm cao nhất cho season 1
-                    } else if (itemName.includes('phần 2') || itemName.includes('part 2')) {
-                      score -= 3; // Trừ điểm cho season 2
-                    } else if (!itemName.includes('phần') && !itemName.includes('part')) {
-                      score += 4; // Điểm cao cho phim không có phần
-                    }
-                  } else if (selectedSeason === 2) {
-                    // Nếu đang ở season 2, ưu tiên "Phần 2"
-                    if (itemName.includes('phần 2') || itemName.includes('part 2')) {
-                      score += 5;
-                    } else if (itemName.includes('phần 1') || itemName.includes('part 1')) {
-                      score -= 3;
-                    }
-                  } else if (selectedSeason === 3) {
-                    // Nếu đang ở season 3, ưu tiên "Phần 3"
-                    if (itemName.includes('phần 3') || itemName.includes('part 3')) {
-                      score += 5;
-                    } else if (itemName.includes('phần 1') || itemName.includes('part 1') || itemName.includes('phần 2') || itemName.includes('part 2')) {
-                      score -= 3;
-                    }
-                  }
-                }
-                
-                
-                if (score > bestScore) {
-                  bestScore = score;
-                  bestMatch = item;
+              for (const pattern of seasonPatterns) {
+                if (nameLower.includes(pattern)) {
+                  score += 60;
+                  break;
                 }
               }
               
-              if (bestMatch && bestMatch.slug && bestScore >= 2) {
-                slug = bestMatch.slug;
-                break outer;
-              } else {
-              }
+              if (nameLower.includes(normalizedName)) score += 30;
+              if (nameLower === tvShow.name.toLowerCase()) score += 40;
             }
-          }
-        }
-        // 3) Vietnamese keyword fallback using TMDB translations/alternative names
-        if (!slug && tvShow?.name) {
-          try {
-            const viNames: string[] = [];
-            if (typeof id === 'string') {
-              const API_KEY = process.env.NEXT_PUBLIC_TMDB_API_KEY;
-              if (API_KEY) {
-                const [transRes, altRes] = await Promise.all([
-                  fetch(`https://api.themoviedb.org/3/tv/${id}/translations?api_key=${API_KEY}`).then(r => r.json()).catch(() => null),
-                  fetch(`https://api.themoviedb.org/3/tv/${id}/alternative_titles?api_key=${API_KEY}`).then(r => r.json()).catch(() => null)
-                ]);
-                const trans = transRes?.translations || [];
-                const viTrans = trans.find((t: { iso_639_1?: string; iso_3166_1?: string; data?: { name?: string; title?: string } }) => t?.iso_639_1 === 'vi' || t?.iso_3166_1 === 'VN');
-                if (viTrans?.data?.name) viNames.push(viTrans.data.name);
-                if (viTrans?.data?.title) viNames.push(viTrans.data.title);
-                const alt = altRes?.results || altRes?.titles || [];
-                alt.forEach((n: { title?: string }) => { if (n?.title) viNames.push(n.title); });
-              }
-            }
-            const viNoAccents = viNames.map(n => String(n).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\w\s-]/g, '').replace(/\s+/g, ' ').trim());
-            const viSlugs = viNoAccents.map(n => n.replace(/\s+/g, '-'));
-            const viKeywords = [...viNames, ...viNoAccents, ...viSlugs].filter(Boolean).map(String);
-
-            outerVi: for (const keyword of viKeywords) {
+            
+            if (item.origin_name && item.origin_name.toLowerCase().includes(tvShow.name.toLowerCase())) score += 25;
+            if (item.slug && item.slug.toLowerCase().includes(normalizedName.replace(/\s+/g, '-'))) score += 15;
+            
+            return score;
+          };
+          
+          // Helper function to search and score
+          const searchAndScore = async (keyword: string, strategyName: string) => {
+            try {
               const url = `https://phimapi.com/v1/api/tim-kiem?keyword=${encodeURIComponent(keyword)}`;
               const res = await fetch(url);
               const data = await res.json();
-              if (data?.status === 'success' && Array.isArray(data?.data?.items) && data.data.items.length > 0) {
-                // pick first slug (simple for fallback)
-                const item = data.data.items[0];
-                if (item?.slug) {
-                  slug = item.slug;
-                  break outerVi;
+              
+              if (data?.status === 'success' && Array.isArray(data?.data?.items)) {
+                let bestMatch = null;
+                let bestScore = 0;
+                
+                for (const item of data.data.items) {
+                  const score = scoreMatch(item);
+                  if (score > bestScore) {
+                    bestScore = score;
+                    bestMatch = item;
+                  }
+                }
+                
+                if (bestMatch?.slug && bestScore > 0) {
+                  return { 
+                    slug: bestMatch.slug, 
+                    name: bestMatch.name || '', 
+                    score: bestScore,
+                    strategy: strategyName
+                  };
+                }
+              }
+            } catch { 
+              // Search error
+            }
+            return null;
+          };
+          
+          try {
+            // Priority-ordered keywords (most likely to least likely)
+            const searchPriorities = [
+              { keyword: id, name: 'TMDB ID', minScore: 100 },
+              { keyword: originNameWithSeason, name: 'Origin name', minScore: 80 },
+              { keyword: `${normalizedName} phần ${selectedSeason}`, name: 'Vietnamese', minScore: 60 },
+              { keyword: tvShow.name, name: 'Show name', minScore: 40 }
+            ];
+            
+            let bestResult = null;
+            let bestScore = 0;
+            
+            // Try each keyword sequentially, but stop early if we get a high-confidence match
+            for (const { keyword, name, minScore } of searchPriorities) {
+              const result = await searchAndScore(keyword, name);
+              
+              if (result && result.score > bestScore) {
+                bestScore = result.score;
+                bestResult = result;
+                
+                // Early exit if we have a high-confidence match
+                if (result.score >= minScore) {
+                  slug = result.slug;
+                  break;
                 }
               }
             }
+            
+            // If no early exit, use best result found
+            if (!slug && bestResult) {
+              slug = bestResult.slug;
+            }
           } catch {
+            // Search error
           }
         }
         
@@ -550,8 +511,7 @@ export default function WatchNowTVShows({
             ? finalDetailData.link_embed.split('?url=')[1] 
             : finalDetailData.link_embed;
         }
-        
-        
+
         // Lưu episodes data để tái sử dụng khi đổi episode
         setEpisodesData(finalDetailData.episodes);
         
@@ -566,17 +526,19 @@ export default function WatchNowTVShows({
         };
         
         setTVShowLinks(updatedLinks);
-        setDataReady(true);
         
       } catch {
+        // Error handling
       } finally {
         clearTimeout(timeoutId);
         setTVShowLinksLoading(false);
         setApiSearchCompleted(true);
+        setDataReady(true);
       }
     }
     fetchPhimApiEmbed();
-  }, [id, tvShow?.name, tvShow?.year, tvShowLinks, selectedSeason, selectedEpisode]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, tvShow?.name, selectedSeason, selectedEpisode]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 text-white">

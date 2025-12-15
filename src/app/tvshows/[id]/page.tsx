@@ -231,6 +231,7 @@ export default function TVShowDetail() {
           id: tvShow.id,
           title: tvShow.name,
           poster_path: tvShow.poster,
+          type: 'tv',
         })
         toast.success('Added TV show to watchlist!')
         if (token) await fetchWatchlistFromServer(token)
@@ -251,6 +252,7 @@ export default function TVShowDetail() {
   const [seasons, setSeasons] = useState<{ id: number; name: string; season_number: number; episode_count: number; poster_path?: string; overview?: string; air_date?: string }[]>([])
   const [isSeasonDropdownOpen, setIsSeasonDropdownOpen] = useState(false)
   const seasonDropdownRef = useRef<HTMLDivElement>(null)
+  const [isEpisodesCompact, setIsEpisodesCompact] = useState(true)
 
 
 
@@ -661,7 +663,7 @@ export default function TVShowDetail() {
                 onClick={handleToggleWatchlist}
                 className={`px-6 py-3 rounded-lg font-semibold transition-colors flex items-center gap-2 ${
                   isBookmarked
-                    ? 'bg-yellow-600 text-black hover:bg-yellow-700'
+                    ? 'bg-amber-700 text-white hover:bg-amber-800'
                     : 'bg-gray-700 text-white hover:bg-gray-600'
                 }`}
               >
@@ -679,7 +681,7 @@ export default function TVShowDetail() {
                            {/* Episodes Section */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 text-white">
           <div className="mb-6">
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center justify-between mb-3">
               <h2 className="text-3xl font-bold">Episodes</h2>
               {totalSeasons && totalSeasons > 1 && (
                 <div className="flex items-center gap-2">
@@ -715,18 +717,45 @@ export default function TVShowDetail() {
                 </div>
               )}
             </div>
-            {totalSeasons && totalEpisodes && (
-              <p className="text-gray-300 text-sm">
-                {totalSeasons} Season{(totalSeasons || 0) > 1 ? 's' : ''} • {totalEpisodes} Episode{(totalEpisodes || 0) > 1 ? 's' : ''}
-              </p>
-            )}
+            <div className="flex items-center justify-between">
+              {totalSeasons && totalEpisodes && (
+                <p className="text-gray-300 text-sm">
+                  {totalSeasons} Season{(totalSeasons || 0) > 1 ? 's' : ''} • {totalEpisodes} Episode{(totalEpisodes || 0) > 1 ? 's' : ''}
+                </p>
+              )}
+              <button
+                onClick={() => setIsEpisodesCompact(!isEpisodesCompact)}
+                className="flex items-center gap-1.5 bg-gray-700 text-white text-xs px-2.5 py-1 rounded-md border border-gray-600 hover:bg-gray-600 transition-colors"
+                title={isEpisodesCompact ? "Expand view" : "Compact view"}
+              >
+                {isEpisodesCompact ? (
+                  <>
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                    </svg>
+                    <span>Expand</span>
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25" />
+                    </svg>
+                    <span>Compact</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
          {episodesLoading ? (
            <div className="flex justify-center">
              <div className="w-16 h-16 border-4 border-red-500 border-t-transparent rounded-full animate-spin"></div>
            </div>
          ) : episodes.length > 0 ? (
-           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-3 sm:gap-4">
+           <div className={`grid gap-3 sm:gap-4 ${
+             isEpisodesCompact 
+               ? 'grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 2xl:grid-cols-16' 
+               : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8'
+           }`}>
              {episodes.map((episode) => (
                <motion.div
                  key={episode.id}
@@ -740,38 +769,53 @@ export default function TVShowDetail() {
                  }`}
                  onClick={() => handleEpisodeSelect(episode.episode_number)}
                >
-                 {episode.still_path ? (
-                   <div className="relative aspect-[4/3]">
-                     <Image
-                       src={`https://image.tmdb.org/t/p/w500${episode.still_path}`}
-                       alt={episode.name}
-                       fill
-                       className="object-cover transition-transform duration-300 group-hover:scale-110"
-                     />
-                                           <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
-                        <div className="bg-gray-300/10 text-red-600 px-3 py-1 rounded-full text-sm font-semibold">
-                          S{selectedSeason} E{episode.episode_number}
-                        </div>
-                      </div>
-                   </div>
+                 {!isEpisodesCompact ? (
+                   <>
+                     {episode.still_path ? (
+                       <div className="relative aspect-[4/3]">
+                         <Image
+                           src={`https://image.tmdb.org/t/p/w500${episode.still_path}`}
+                           alt={episode.name}
+                           fill
+                           className="object-cover transition-transform duration-300 group-hover:scale-110"
+                         />
+                         <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
+                           <div className="bg-gray-300/10 text-red-600 px-3 py-1 rounded-full text-sm font-semibold">
+                             S{selectedSeason} E{episode.episode_number}
+                           </div>
+                         </div>
+                       </div>
+                     ) : (
+                       <div className="aspect-[4/3] bg-gradient-to-br from-gray-700 to-gray-800 flex items-center justify-center">
+                         <div className="text-center">
+                           <div className="text-2xl sm:text-3xl mb-1">📺</div>
+                           <div className="bg-gray-300/10 text-red-600 px-3 py-1 rounded-full text-sm font-semibold">
+                             S{selectedSeason} E{episode.episode_number}
+                           </div>
+                         </div>
+                       </div>
+                     )}
+                     <div className="p-2 sm:p-3">
+                       <h3 className="font-semibold text-xs sm:text-sm text-center leading-tight truncate" title={episode.name}>
+                         {episode.name}
+                       </h3>
+                     </div>
+                   </>
                  ) : (
-                   <div className="aspect-[4/3] bg-gradient-to-br from-gray-700 to-gray-800 flex items-center justify-center">
+                   <div className="aspect-square bg-gradient-to-br from-gray-700 to-gray-800 flex items-center justify-center p-2">
                      <div className="text-center">
-                       <div className="text-2xl sm:text-3xl mb-1">📺</div>
-                                               <div className="bg-gray-300/10 text-red-600 px-3 py-1 rounded-full text-sm font-semibold">
-                          S{selectedSeason} E{episode.episode_number}
-                        </div>
+                       <div className="text-red-500 text-xs sm:text-sm font-bold">
+                         S{selectedSeason}
+                       </div>
+                       <div className="text-white text-lg sm:text-xl font-bold">
+                         E{episode.episode_number}
+                       </div>
                      </div>
                    </div>
                  )}
-                                   <div className="p-2 sm:p-3">
-                    <h3 className="font-semibold text-xs sm:text-sm text-center leading-tight truncate" title={episode.name}>
-                      {episode.name}
-                    </h3>
-                  </div>
                  {selectedEpisode === episode.episode_number && (
-                   <div className="absolute top-2 right-2">
-                     <div className="bg-red-500 text-white rounded-full w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center text-xs sm:text-sm font-bold shadow-lg">
+                   <div className="absolute top-1 right-1 sm:top-2 sm:right-2">
+                     <div className="bg-red-500 text-white rounded-full w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center text-[10px] sm:text-xs font-bold shadow-lg">
                        ✓
                      </div>
                    </div>

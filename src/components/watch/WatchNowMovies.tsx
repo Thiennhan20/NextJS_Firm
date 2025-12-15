@@ -217,7 +217,6 @@ export default function WatchNowMovies({ movie }: WatchNowMoviesProps) {
     let timeoutId: NodeJS.Timeout;
     
     async function fetchPhimApiEmbed() {
-      
       if (movieLinks.m3u8) {
         return;
       }
@@ -225,6 +224,7 @@ export default function WatchNowMovies({ movie }: WatchNowMoviesProps) {
       setMovieLinksLoading(true);
       setApiSearchCompleted(false);
       timeoutId = setTimeout(() => {
+        // Timeout handler
       }, 60000);
 
       try {
@@ -234,84 +234,70 @@ export default function WatchNowMovies({ movie }: WatchNowMoviesProps) {
 
         let slug = null;
 
-        if (movie?.title) {
-          // Strategy 1: Search by exact title with year
-          const searchResults1 = await searchPhimApi(movie.title, movie.year as number);
-          const match1 = findBestMatch(searchResults1, movie.title, movie.year as number, id);
-          if (match1) {
-            slug = match1.slug;
+        // UNIFIED STRATEGY: Try TMDB direct API first, then search with all keywords in parallel
+        
+        // Step 1: Try TMDB ID direct API (HIGHEST PRIORITY)
+        try {
+          const tmdbDirectUrl = `https://phimapi.com/tmdb/movie/${id}`;
+          const tmdbDirectRes = await fetch(tmdbDirectUrl);
+          const tmdbDirectData = await tmdbDirectRes.json();
+          
+          if (tmdbDirectData?.status === true && tmdbDirectData?.movie?.slug) {
+            slug = tmdbDirectData.movie.slug;
+          }
+        } catch {
+          // TMDB direct API failed
+        }
+
+        // Step 2: If TMDB fails, search with ALL keywords in parallel
+        if (!slug && movie?.title) {
+          
+          // Collect ALL keywords from all strategies
+          const normalizedTitle = normalizeTitle(movie.title);
+          const keywords = extractKeywords(movie.title);
+          const titleVariations = [
+            movie.title,
+            movie.title.replace(/[^\w\s]/g, ''),
+            movie.title.toLowerCase(),
+            movie.title.split(' ').slice(0, 3).join(' ')
+          ];
+          
+          // Combine all unique keywords
+          const allKeywords = [
+            movie.title,           // Original
+            normalizedTitle,       // Normalized
+            ...keywords,           // Keywords
+            ...titleVariations     // Variations
+          ].filter((v, i, a) => a.indexOf(v) === i); // Remove duplicates
+          
+          // Search all keywords in parallel using Promise.race
+          const searchPromises = allKeywords.map(async (keyword) => {
+            const searchResults = await searchPhimApi(keyword, movie.year as number);
+            if (searchResults.length > 0) {
+              const match = findBestMatch(searchResults, movie.title, movie.year as number, id);
+              if (match) {
+                return { keyword, match };
+              }
+            }
+            return null;
+          });
+          
+          // Race all searches - first one to find a match wins
+          const result = await Promise.race(
+            searchPromises.map(async (promise, index) => {
+              const res = await promise;
+              return res ? { ...res, index } : null;
+            })
+          );
+          
+          if (result) {
+            slug = result.match.slug;
           } else {
-          }
-
-          // Strategy 2: Search by exact title without year
-          if (!slug) {
-            const searchResults2 = await searchPhimApi(movie.title);
-            const match2 = findBestMatch(searchResults2, movie.title, movie.year as number, id);
-            if (match2) {
-              slug = match2.slug;
-            } else {
-            }
-          }
-
-          // Strategy 3: Search by title with special characters removed
-          if (!slug) {
-            const normalizedTitle = normalizeTitle(movie.title);
-            const searchResults3 = await searchPhimApi(normalizedTitle, movie.year as number);
-            const match3 = findBestMatch(searchResults3, movie.title, movie.year as number, id);
-            if (match3) {
-              slug = match3.slug;
-            } else {
-            }
-          }
-
-          // Strategy 4: Search by keywords from title
-          if (!slug) {
-            const keywords = extractKeywords(movie.title);
-            for (const keyword of keywords) {
-              const searchResults4 = await searchPhimApi(keyword, movie.year as number);
-              const match4 = findBestMatch(searchResults4, movie.title, movie.year as number, id);
-              if (match4) {
-                slug = match4.slug;
-                break;
-              }
-            }
-            if (!slug) {
-            }
-          }
-
-          // Strategy 5: Search by year range (±1 year)
-          if (!slug && movie.year) {
-            const years = [movie.year - 1, movie.year + 1];
-            for (const yearVariant of years) {
-              const searchResults5 = await searchPhimApi(movie.title, yearVariant);
-              const match5 = findBestMatch(searchResults5, movie.title, movie.year as number, id);
-              if (match5) {
-                slug = match5.slug;
-                break;
-              }
-            }
-            if (!slug) {
-            }
-          }
-
-          // Strategy 6: Search by origin_name field (for movies with English titles)
-          if (!slug) {
-            const englishTitleVariations = [
-              movie.title,
-              movie.title.replace(/[^\w\s]/g, ''),
-              movie.title.toLowerCase(),
-              movie.title.split(' ').slice(0, 3).join(' ')
-            ];
-            
-            for (const variation of englishTitleVariations) {
-              const searchResults6 = await searchPhimApi(variation, movie.year as number);
-              const match6 = findBestMatch(searchResults6, movie.title, movie.year as number, id);
-              if (match6) {
-                slug = match6.slug;
-                break;
-              }
-            }
-            if (!slug) {
+            // Wait for all to complete if race didn't find anything
+            const allResults = await Promise.all(searchPromises);
+            const firstMatch = allResults.find(r => r !== null);
+            if (firstMatch) {
+              slug = firstMatch.match.slug;
             }
           }
         }
@@ -319,7 +305,6 @@ export default function WatchNowMovies({ movie }: WatchNowMoviesProps) {
         if (!slug) {
           return;
         }
-
 
         // Get movie details and extract embed link
         const detailRes = await fetch(`https://phimapi.com/phim/${slug}`);
@@ -384,8 +369,7 @@ export default function WatchNowMovies({ movie }: WatchNowMoviesProps) {
         // Clean up URLs if they contain ?url= parameter
         const cleanUrl = (url: string) => {
           if (url && url.includes('?url=')) {
-            const cleaned = url.split('?url=')[1];
-            return cleaned;
+            return url.split('?url=')[1];
           }
           return url;
         };
@@ -409,10 +393,10 @@ export default function WatchNowMovies({ movie }: WatchNowMoviesProps) {
           setMovieLinks(links => ({ ...links, m3u8: defaultEmbed }));
           setMovieLinksLoading(false);
           setApiSearchCompleted(true);
-        } else {
         }
 
       } catch {
+        // Error handling
       } finally {
         clearTimeout(timeoutId);
         setMovieLinksLoading(false);
@@ -559,7 +543,8 @@ export default function WatchNowMovies({ movie }: WatchNowMoviesProps) {
     }
 
     fetchPhimApiEmbed();
-  }, [id, movie?.title, movie?.year, movieLinks.m3u8]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, movie?.title, movie?.year]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 text-white">

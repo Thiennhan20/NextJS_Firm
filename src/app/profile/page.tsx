@@ -86,7 +86,6 @@ export default function ProfilePage() {
       // Create image object to preload
       const img = new Image()
       img.src = user.avatar
-      console.log('Preloading avatar base64 image')
     }
   }, [user?.avatar])
 
@@ -149,18 +148,9 @@ export default function ProfilePage() {
     return null
   }, [user?.avatar, previewAvatar])
 
-  // Debug: Log avatar data
+  // Avatar data validation
   useEffect(() => {
-    if (user) {
-      console.log('Profile Page - User avatar data:', {
-        hasAvatar: !!user.avatar,
-        avatar: user.avatar,
-        avatarType: typeof user.avatar,
-        avatarLength: user.avatar?.length,
-        isValid: user.avatar ? isValidAvatarUrl(user.avatar) : false,
-        avatarUrl: avatarUrl,
-      })
-    }
+    // Validation logic runs silently
   }, [user, avatarUrl])
 
   // Handle avatar upload
@@ -193,28 +183,21 @@ export default function ProfilePage() {
         initialQuality: 0.85, // Higher quality, server will optimize
       }
       
-      console.log('Original file size:', (file.size / 1024).toFixed(2), 'KB')
       const compressedFile = await imageCompression(file, options)
-      console.log('Client compressed size:', (compressedFile.size / 1024).toFixed(2), 'KB')
-      console.log('Server will optimize to WebP ~100KB')
 
       // Convert to base64
       const reader = new FileReader()
       reader.onloadend = async () => {
         try {
           const base64String = reader.result as string
-          console.log('Base64 string length:', base64String.length)
           
           // Show preview immediately
           setPreviewAvatar(base64String)
 
           // Upload to server
-          console.log('Uploading avatar to server...')
           const response = await api.put('/auth/profile', {
             avatar: base64String,
           })
-
-          console.log('Avatar upload response:', response.data)
 
           // Update user in store
           if (response.data?.user) {
@@ -223,9 +206,7 @@ export default function ProfilePage() {
             setPreviewAvatar(null) // Clear preview after successful upload
           }
         } catch (error: unknown) {
-          console.error('Avatar upload error:', error)
           const err = error as { response?: { data?: { message?: string } } }
-          console.error('Error response:', err.response?.data)
           toast.error(err.response?.data?.message || 'Failed to upload avatar')
           setPreviewAvatar(null)
           setAvatarError(true)
@@ -239,8 +220,7 @@ export default function ProfilePage() {
         setPreviewAvatar(null)
       }
       reader.readAsDataURL(compressedFile)
-    } catch (error: unknown) {
-      console.error('Image compression error:', error)
+    } catch {
       toast.error('Failed to process image')
       setIsUploading(false)
       setPreviewAvatar(null)
@@ -285,7 +265,6 @@ export default function ProfilePage() {
         setAvatarError(false)
       }
     } catch (error: unknown) {
-      console.error('Avatar remove error:', error)
       const err = error as { response?: { data?: { message?: string } } }
       toast.error(err.response?.data?.message || 'Failed to remove avatar')
     } finally {
@@ -381,13 +360,10 @@ export default function ProfilePage() {
                         src={avatarUrl}
                         alt={user.name}
                         className="w-full h-full object-cover"
-                        onError={(e) => {
-                          console.error('Avatar image failed to load:', avatarUrl);
-                          console.error('Error event:', e);
+                        onError={() => {
                           setAvatarError(true);
                         }}
                         onLoad={() => {
-                          console.log('Avatar image loaded successfully:', avatarUrl);
                           setAvatarError(false);
                         }}
                         loading="eager"

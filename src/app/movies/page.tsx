@@ -9,6 +9,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Suspense } from 'react'
+import CardWithHover from '@/components/common/CardWithHover'
 
 // Định nghĩa kiểu Movie rõ ràng
 interface Movie {
@@ -651,30 +652,31 @@ function MoviesPageContent() {
                  <motion.div
                    key={movie.id}
                    variants={itemVariants}
-                   whileHover={{ scale: 1.05 }}
-                   transition={{ type: 'spring', stiffness: 200, damping: 20 }}
                  >
-                   <Link key={movie.id} href={`/movies/${movie.id}?page=${page}&year=${selectedYear}&category=${selectedCategory}&country=${selectedCountry}`} className="block">
-                    <div className="border border-gray-700 rounded-lg overflow-hidden relative group bg-gray-800 hover:bg-gray-700 transition-colors duration-200">
-                      {/* Poster Image with fixed frame and fallback */}
-                      <div className="relative w-full h-[240px] md:h-[300px] lg:h-[360px] overflow-hidden bg-gray-900">
-                        <Image
-                          src={(movie.image && movie.image.length > 0) ? movie.image : '/window.svg'}
-                          alt={movie.title}
-                          fill
-                          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, 20vw"
-                          className="object-cover"
-                          priority={false}
-                        />
-                      </div>
-
-                        {/* Movie Info */}
+                   <CardWithHover
+                     id={movie.id}
+                     type="movie"
+                     title={movie.title}
+                     posterPath={movie.image || '/window.svg'}
+                     onWatchClick={() => router.push(`/movies/${movie.id}?page=${page}&year=${selectedYear}&category=${selectedCategory}&country=${selectedCountry}`)}
+                     onDetailsClick={() => router.push(`/movies/${movie.id}?page=${page}&year=${selectedYear}&category=${selectedCategory}&country=${selectedCountry}`)}
+                   >
+                     <Link href={`/movies/${movie.id}?page=${page}&year=${selectedYear}&category=${selectedCategory}&country=${selectedCountry}`} className="block">
+                      <div className="border border-gray-700 rounded-lg overflow-hidden relative group bg-gray-800 hover:bg-gray-700 transition-colors duration-200">
+                        <div className="relative w-full h-[240px] md:h-[300px] lg:h-[360px] overflow-hidden bg-gray-900">
+                          <Image
+                            src={(movie.image && movie.image.length > 0) ? movie.image : '/window.svg'}
+                            alt={movie.title}
+                            fill
+                            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, 20vw"
+                            className="object-cover"
+                            priority={false}
+                          />
+                        </div>
                         <div className="p-2 md:p-3 bg-gray-900">
                           <h3 className="text-white font-semibold text-xs md:text-sm mb-1 md:mb-2 truncate leading-tight">
                             {movie.title}
                           </h3>
-                          
-                          {/* Date and Country */}
                           <div className="flex items-center justify-between text-[10px] md:text-xs text-gray-400">
                             <span className="truncate">
                               {movie.release_date ? new Date(movie.release_date).toLocaleDateString('en-US', {
@@ -686,8 +688,9 @@ function MoviesPageContent() {
                             <span className="truncate ml-1">{movie.country}</span>
                           </div>
                         </div>
-                     </div>
-                   </Link>
+                      </div>
+                    </Link>
+                   </CardWithHover>
                  </motion.div>
                ))}
             </motion.div>

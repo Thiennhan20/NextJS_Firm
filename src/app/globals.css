@@ -626,3 +626,47 @@ select {
   line-height: 24px;
   padding: 8px 12px;
 }
+
+/* Adaptive Navigation Transitions */
+.nav-item-enter {
+  opacity: 0;
+  transform: translateX(-10px);
+}
+
+.nav-item-enter-active {
+  opacity: 1;
+  transform: translateX(0);
+  transition: opacity 300ms ease-out, transform 300ms ease-out;
+}
+
+.nav-item-exit {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.nav-item-exit-active {
+  opacity: 0;
+  transform: translateX(10px);
+  transition: opacity 200ms ease-in, transform 200ms ease-in;
+}
+
+/* Smooth transitions for adaptive elements */
+.adaptive-nav-transition {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Badge animation for More menu */
+@keyframes badge-pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.8;
+  }
+}
+
+.more-badge {
+  animation: badge-pulse 2s ease-in-out infinite;
+}
