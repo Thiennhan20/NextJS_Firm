@@ -2,8 +2,43 @@ import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import axios, { CancelTokenSource } from 'axios';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { MagnifyingGlassIcon, SparklesIcon } from '@heroicons/react/24/outline';
+import { MagnifyingGlassIcon, SparklesIcon, MicrophoneIcon } from '@heroicons/react/24/outline';
 import { motion, AnimatePresence } from 'framer-motion';
+
+// Type definitions for Web Speech API
+interface SpeechRecognitionEvent extends Event {
+  results: SpeechRecognitionResultList;
+  resultIndex: number;
+}
+
+interface SpeechRecognitionErrorEvent extends Event {
+  error: string;
+  message?: string;
+}
+
+interface SpeechRecognition extends EventTarget {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  start(): void;
+  stop(): void;
+  abort(): void;
+  onresult: ((event: SpeechRecognitionEvent) => void) | null;
+  onerror: ((event: SpeechRecognitionErrorEvent) => void) | null;
+  onend: (() => void) | null;
+  onstart: (() => void) | null;
+}
+
+interface SpeechRecognitionConstructor {
+  new (): SpeechRecognition;
+}
+
+declare global {
+  interface Window {
+    SpeechRecognition?: SpeechRecognitionConstructor;
+    webkitSpeechRecognition?: SpeechRecognitionConstructor;
+  }
+}
 
 const API_KEY = process.env.NEXT_PUBLIC_TMDB_API_KEY;
 const DEBOUNCE_DELAY = 600;
@@ -84,11 +119,110 @@ export default function AutocompleteSearch({
   const [isFocused, setIsFocused] = useState(false);
   const [cache, setCache] = useState<{ [key: string]: CacheEntry }>({});
   
+  // Voice search states
+  const [isListening, setIsListening] = useState(false);
+  const [voiceSupported, setVoiceSupported] = useState(false);
+  const [interimTranscript, setInterimTranscript] = useState('');
+  
   const dropdownRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const cancelTokenRef = useRef<CancelTokenSource | null>(null);
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
   const router = useRouter();
+
+  // Check if voice recognition is supported
+  useEffect(() => {
+    const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
+    setVoiceSupported(!!SpeechRecognitionAPI);
+  }, []);
+
+  // Initialize speech recognition
+  const startVoiceSearch = useCallback(() => {
+    const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
+    
+    if (!SpeechRecognitionAPI) {
+      console.error('Speech recognition not supported');
+      return;
+    }
+
+    // Stop any existing recognition
+    if (recognitionRef.current) {
+      recognitionRef.current.abort();
+    }
+
+    const recognition = new SpeechRecognitionAPI();
+    recognitionRef.current = recognition;
+
+    recognition.continuous = false;
+    recognition.interimResults = true;
+    recognition.lang = 'vi-VN'; // Vietnamese, change to 'en-US' for English
+
+    recognition.onstart = () => {
+      setIsListening(true);
+      setInterimTranscript('');
+    };
+
+    recognition.onresult = (event: SpeechRecognitionEvent) => {
+      let finalTranscript = '';
+      let interim = '';
+
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          finalTranscript += transcript;
+        } else {
+          interim += transcript;
+        }
+      }
+
+      if (finalTranscript) {
+        setQuery(prev => prev + finalTranscript);
+        setInterimTranscript('');
+      } else {
+        setInterimTranscript(interim);
+      }
+    };
+
+    recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+      console.error('Speech recognition error:', event.error);
+      setIsListening(false);
+      setInterimTranscript('');
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+      setInterimTranscript('');
+      inputRef.current?.focus();
+    };
+
+    recognition.start();
+  }, []);
+
+  const stopVoiceSearch = useCallback(() => {
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+    }
+    setIsListening(false);
+    setInterimTranscript('');
+  }, []);
+
+  const toggleVoiceSearch = useCallback(() => {
+    if (isListening) {
+      stopVoiceSearch();
+    } else {
+      startVoiceSearch();
+    }
+  }, [isListening, startVoiceSearch, stopVoiceSearch]);
+
+  // Cleanup recognition on unmount
+  useEffect(() => {
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.abort();
+      }
+    };
+  }, []);
 
   // Parse search query for season information
   const parseSearchQuery = useCallback((query: string) => {
@@ -460,8 +594,8 @@ export default function AutocompleteSearch({
   const inputClassNames = useMemo(() => 
     `px-4 py-2 rounded-full transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-red-500 ${
       menu
-        ? 'w-full bg-gray-800 text-white border-2 border-red-400 placeholder-gray-300 focus:bg-gray-900 pr-16'
-        : 'w-full sm:w-48 sm:focus:w-64 bg-gray-200 text-gray-900 placeholder-gray-600 focus:bg-gray-900/50 focus:text-white focus:placeholder-gray-400 backdrop-blur-sm pr-16'
+        ? 'w-full bg-gray-800 text-white border-2 border-red-400 placeholder-gray-300 focus:bg-gray-900 pr-24'
+        : 'w-full sm:w-48 sm:focus:w-64 bg-gray-200 text-gray-900 placeholder-gray-600 focus:bg-gray-900/50 focus:text-white focus:placeholder-gray-400 backdrop-blur-sm pr-24'
     } ${inputClassName || ''}`
   , [menu, inputClassName]);
 
@@ -479,20 +613,59 @@ export default function AutocompleteSearch({
           ref={inputRef}
           type="text"
           className={inputClassNames}
-          placeholder={menu ? "Search Movies,..." : "Search movies, TV shows & seasons (e.g. 'Game of Thrones season 2')..."}
-          value={query}
+          placeholder={menu ? "Search" : "Search"}
+          value={isListening ? query + interimTranscript : query}
           onChange={e => setQuery(e.target.value)}
           onKeyDown={handleKeyDown}
           onFocus={handleFocus}
           onBlur={handleBlur}
           autoComplete="off"
         />
+        
+        {/* Voice Search Button */}
+        {voiceSupported && (
+          <button
+            type="button"
+            onClick={toggleVoiceSearch}
+            className={`absolute right-10 top-1/2 -translate-y-1/2 p-1.5 rounded-full transition-all duration-300 ${
+              isListening 
+                ? 'bg-red-500 text-white animate-pulse' 
+                : 'hover:bg-gray-200/50 hover:scale-110 active:scale-95'
+            }`}
+            tabIndex={-1}
+            aria-label={isListening ? "Stop voice search" : "Start voice search"}
+          >
+            <motion.div
+              animate={{
+                scale: isListening ? [1, 1.2, 1] : 1,
+              }}
+              transition={{ 
+                duration: 0.8, 
+                repeat: isListening ? Infinity : 0,
+                ease: "easeInOut"
+              }}
+            >
+              <MicrophoneIcon 
+                className={`h-5 w-5 transition-all duration-300 ${
+                  isListening 
+                    ? 'text-white' 
+                    : menu 
+                      ? 'text-gray-400 hover:text-red-400' 
+                      : isFocused 
+                        ? 'text-red-500 hover:text-red-600' 
+                        : 'text-gray-500 hover:text-red-500'
+                }`}
+              />
+            </motion.div>
+          </button>
+        )}
+        
         <button
           type="button"
           onClick={handleSearchClick}
-          className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-full transition-all duration-300 hover:bg-gray-200/50 hover:scale-110 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100"
+          className={`absolute ${voiceSupported ? 'right-3' : 'right-3'} top-1/2 -translate-y-1/2 p-1.5 rounded-full transition-all duration-300 hover:bg-gray-200/50 hover:scale-110 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100`}
           tabIndex={-1}
-          disabled={!query.trim()}
+          disabled={!query.trim() && !interimTranscript}
           aria-label="Search"
         >
           <motion.div
@@ -513,7 +686,7 @@ export default function AutocompleteSearch({
         {showClose && (
           <button
             type="button"
-            className="absolute right-12 top-1/2 -translate-y-1/2 p-1 rounded-full bg-transparent hover:bg-red-100 text-red-500 text-xl transition-colors"
+            className={`absolute ${voiceSupported ? 'right-[4.5rem]' : 'right-12'} top-1/2 -translate-y-1/2 p-1 rounded-full bg-transparent hover:bg-red-100 text-red-500 text-xl transition-colors`}
             onClick={onClose}
             tabIndex={-1}
             aria-label="Close search"
@@ -524,6 +697,50 @@ export default function AutocompleteSearch({
           </button>
         )}
       </div>
+      
+      {/* Voice Listening Indicator */}
+      <AnimatePresence>
+        {isListening && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="absolute left-0 right-0 mt-2 p-3 bg-red-50 border border-red-200 rounded-xl shadow-lg z-50"
+          >
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1">
+                {[0, 0.15, 0.3, 0.45, 0.6].map((delay, i) => (
+                  <motion.div
+                    key={i}
+                    className="w-1 bg-red-500 rounded-full"
+                    animate={{ 
+                      height: [8, 20, 8],
+                    }}
+                    transition={{ 
+                      duration: 0.5, 
+                      repeat: Infinity, 
+                      delay,
+                      ease: "easeInOut"
+                    }}
+                  />
+                ))}
+              </div>
+              <div className="flex-1">
+                <p className="text-sm text-red-600 font-medium">Đang nghe...</p>
+                {interimTranscript && (
+                  <p className="text-xs text-gray-600 mt-1 italic">&quot;{interimTranscript}&quot;</p>
+                )}
+              </div>
+              <button
+                onClick={stopVoiceSearch}
+                className="px-3 py-1 text-xs bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+              >
+                Dừng
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       
       <AnimatePresence>
         {showDropdown && (

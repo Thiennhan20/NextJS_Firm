@@ -2,7 +2,7 @@
 
 import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Stars, Sphere, Box } from '@react-three/drei';
-import { useRef, useMemo } from 'react';
+import { useRef, useMemo, useEffect, useState } from 'react';
 import { Mesh } from 'three';
 
 type SpinningProps = {
@@ -48,6 +48,16 @@ function SpinningSphere({ args, color, ...restProps }: SpinningProps) {
 }
 
 export default function ThreeBackground() {
+  const [isVisible, setIsVisible] = useState(true);
+  
+  // Cleanup on unmount
+  useEffect(() => {
+    setIsVisible(true);
+    return () => {
+      setIsVisible(false);
+    };
+  }, []);
+
   // Memoize colors array to prevent re-creation
   const colors = useMemo(() => ['#B8860B', '#FFD700', '#8B0000', '#A52A2A', '#000000'], []);
   
@@ -69,12 +79,24 @@ export default function ThreeBackground() {
     })), [colors]
   );
 
+  if (!isVisible) {
+    return <div className="absolute inset-0 z-0 bg-black" />;
+  }
+
   return (
     <div className="absolute inset-0 z-0 bg-black">
       <Canvas 
         camera={{ position: [0, 0, 20], fov: 50 }}
         performance={{ min: 0.5 }}
         dpr={[1, 1.5]}
+        frameloop="demand"
+        gl={{ 
+          antialias: false,
+          powerPreference: "high-performance",
+        }}
+        onCreated={({ gl }) => {
+          gl.setClearColor('#000000');
+        }}
       >
         <ambientLight intensity={0.3} />
         <pointLight position={[15, 15, 15]} intensity={1.2} color="#FFD700" />

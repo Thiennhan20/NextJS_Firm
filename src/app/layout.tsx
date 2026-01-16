@@ -3,7 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import "../styles/scrollbar.css";
 import Navigation from "@/components/Navigation";
-import { Toaster } from 'react-hot-toast';
+import CustomToaster from "@/components/CustomToaster";
 import Footer from '@/components/Footer';
 import AuthChecker from '../components/AuthChecker';
 import { SplashWrapper } from '@/components/splash';
@@ -66,27 +66,7 @@ export default function RootLayout({
           </ContentWrapper>
           <Footer />
           <FloatingChatbox />
-          <Toaster
-            position="top-right"
-            toastOptions={{
-              style: {
-                background: '#1F2937',
-                color: '#fff',
-              },
-              success: {
-                iconTheme: {
-                  primary: '#10B981',
-                  secondary: '#fff',
-                },
-              },
-              error: {
-                iconTheme: {
-                  primary: '#EF4444',
-                  secondary: '#fff',
-                },
-              },
-            }}
-          />
+          <CustomToaster />
           <SpeedInsights />
         </HeaderProvider>
       </body>

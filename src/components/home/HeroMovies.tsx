@@ -381,7 +381,7 @@ export default function HeroMovies() {
         const newScale = 1 - scaleReduction;
         setContentScale(Math.max(newScale, 0.85)); // Minimum scale 85%
       } else {
-        setContentScale(1); // Reset to full scale
+        setContentScale(0.85); // Keep at 85% instead of resetting to full scale
       }
     };
 
@@ -752,7 +752,7 @@ export default function HeroMovies() {
                 >
                   <Link href={getRoute(currentItem)} className="w-auto">
                     <motion.button
-                      className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 rounded-full font-semibold text-sm shadow-lg transition-all duration-300"
+                      className="flex items-center justify-center gap-2 px-4 py-2.5 bg-yellow-500 hover:bg-yellow-600 rounded-full font-bold text-black shadow-lg transition-all duration-300"
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
                     >

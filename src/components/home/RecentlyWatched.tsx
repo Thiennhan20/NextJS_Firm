@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo, memo, useRef } from 'react'
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
-import { Play, Clock, Trash2, ChevronDown, Eye, AlertCircle } from 'lucide-react'
+import { Play, Clock, Trash2, ChevronDown, AlertCircle } from 'lucide-react'
 import useAuthStore from '@/store/useAuthStore'
 import api from '@/lib/axios'
 
@@ -27,8 +27,6 @@ interface RecentlyWatchedProps {
 }
 
 // ✅ OPTIMIZATION 1: Cache localStorage parsing
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const CACHE_KEY = '__recently_watched_cache__'
 const CACHE_DURATION = 5000 // 5s
 
 let cachedData: { items: RecentlyWatchedItem[], timestamp: number } | null = null
@@ -131,7 +129,7 @@ const ContentCard = memo(({ item, index, onContinue, onRemove }: {
         </div>
 
         <div className="absolute inset-0 flex items-center justify-center z-30 pointer-events-none">
-          <div className="bg-red-600 group-hover:bg-red-700 text-white p-3 rounded-full shadow-2xl transition-all duration-300 group-hover:scale-110">
+          <div className="bg-red-600 text-white p-3 rounded-full shadow-2xl">
             <Play className="w-5 h-5 ml-0.5" fill="currentColor" />
           </div>
         </div>
@@ -182,11 +180,42 @@ ContentCard.displayName = 'ContentCard'
 export default function RecentlyWatched({ className = '' }: RecentlyWatchedProps) {
   const [recentItems, setRecentItems] = useState<RecentlyWatchedItem[]>([])
   const [loading, setLoading] = useState(true)
+  const [canScrollLeft, setCanScrollLeft] = useState(false)
+  const [canScrollRight, setCanScrollRight] = useState(false)
   const router = useRouter()
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const shouldReduceMotion = useReducedMotion()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const userId = useAuthStore((s) => (s.user as any)?.id || (s.user as any)?._id)
+
+  // Check scroll position to show/hide buttons
+  const checkScrollPosition = useCallback(() => {
+    if (scrollContainerRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = scrollContainerRef.current
+      setCanScrollLeft(scrollLeft > 5)
+      setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 5)
+    }
+  }, [])
+
+  // Check scroll position on mount, resize, scroll, and when items change
+  useEffect(() => {
+    checkScrollPosition()
+    const timeoutId = setTimeout(checkScrollPosition, 350)
+    
+    const container = scrollContainerRef.current
+    if (container) {
+      container.addEventListener('scroll', checkScrollPosition)
+    }
+    window.addEventListener('resize', checkScrollPosition)
+    
+    return () => {
+      clearTimeout(timeoutId)
+      if (container) {
+        container.removeEventListener('scroll', checkScrollPosition)
+      }
+      window.removeEventListener('resize', checkScrollPosition)
+    }
+  }, [checkScrollPosition, recentItems])
 
   const scrollToTrending = useCallback(() => {
     const trendingSection = document.querySelector('[data-section="trending"]')
@@ -415,7 +444,6 @@ export default function RecentlyWatched({ className = '' }: RecentlyWatchedProps
           className="mb-8"
         >
           <div className="flex items-center gap-2 mb-4">
-            <Eye className="w-6 h-6 sm:w-7 sm:h-7 text-red-500" />
             <h2 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-red-500 to-pink-500 text-transparent bg-clip-text">
               Continue Watching
             </h2>
@@ -530,28 +558,32 @@ export default function RecentlyWatched({ className = '' }: RecentlyWatchedProps
           
           {recentItems.length > 0 && (
             <>
-              <button
-                onClick={() => {
-                  if (scrollContainerRef.current) {
-                    scrollContainerRef.current.scrollBy({ left: -300, behavior: 'smooth' });
-                  }
-                }}
-                className="absolute top-1/2 -translate-y-1/2 left-2 bg-black/70 hover:bg-black/90 text-white p-2 rounded-full flex items-center justify-center z-20 transition-all duration-300 hover:scale-110"
-                aria-label="Scroll left"
-              >
-                <ChevronDown className="w-5 h-5 text-white rotate-90" />
-              </button>
-              <button
-                onClick={() => {
-                  if (scrollContainerRef.current) {
-                    scrollContainerRef.current.scrollBy({ left: 300, behavior: 'smooth' });
-                  }
-                }}
-                className="absolute top-1/2 -translate-y-1/2 right-2 bg-black/70 hover:bg-black/90 text-white p-2 rounded-full flex items-center justify-center z-20 transition-all duration-300 hover:scale-110"
-                aria-label="Scroll right"
-              >
-                <ChevronDown className="w-5 h-5 text-white -rotate-90" />
-              </button>
+              {canScrollLeft && (
+                <button
+                  onClick={() => {
+                    if (scrollContainerRef.current) {
+                      scrollContainerRef.current.scrollBy({ left: -300, behavior: 'smooth' });
+                    }
+                  }}
+                  className="absolute top-1/2 -translate-y-1/2 left-2 bg-black/70 hover:bg-black/90 text-white p-2 rounded-full flex items-center justify-center z-20 transition-all duration-300 hover:scale-110"
+                  aria-label="Scroll left"
+                >
+                  <ChevronDown className="w-5 h-5 text-white rotate-90" />
+                </button>
+              )}
+              {canScrollRight && (
+                <button
+                  onClick={() => {
+                    if (scrollContainerRef.current) {
+                      scrollContainerRef.current.scrollBy({ left: 300, behavior: 'smooth' });
+                    }
+                  }}
+                  className="absolute top-1/2 -translate-y-1/2 right-2 bg-black/70 hover:bg-black/90 text-white p-2 rounded-full flex items-center justify-center z-20 transition-all duration-300 hover:scale-110"
+                  aria-label="Scroll right"
+                >
+                  <ChevronDown className="w-5 h-5 text-white -rotate-90" />
+                </button>
+              )}
             </>
           )}
         </motion.div>

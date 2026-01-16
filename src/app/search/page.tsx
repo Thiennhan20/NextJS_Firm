@@ -9,6 +9,8 @@ import axios, { CancelTokenSource } from 'axios'
 import { MagnifyingGlassIcon, ExclamationCircleIcon } from '@heroicons/react/24/outline'
 import Pagination from '@/components/Pagination'
 import FilterIcon from '@/components/FilterIcon'
+import CardWithHover from '@/components/common/CardWithHover'
+import { useRouter as useNavRouter } from 'next/navigation'
 
 const API_KEY = process.env.NEXT_PUBLIC_TMDB_API_KEY
 const DEBOUNCE_DELAY = 600
@@ -60,6 +62,7 @@ interface SearchMetadata {
 
 function SearchPageContent() {
   const router = useRouter()
+  const navRouter = useNavRouter()
   const searchParams = useSearchParams()
   
   // URL params
@@ -893,55 +896,63 @@ function SearchPageContent() {
                     whileHover={{ scale: 1.05 }}
                     transition={{ type: 'spring', stiffness: 200, damping: 20 }}
                   >
-                    <Link
-                      href={item.type === 'movie' ? `/movies/${item.id}` : `/tvshows/${item.id}`}
-                      className="block"
+                    <CardWithHover
+                      id={item.id}
+                      type={item.type}
+                      title={item.type === 'movie' ? item.title : item.name}
+                      posterPath={item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : ''}
+                      onWatchClick={() => navRouter.push(item.type === 'movie' ? `/movies/${item.id}` : `/tvshows/${item.id}`)}
                     >
-                      <div className="border border-gray-700 rounded-lg overflow-hidden relative group bg-gray-800 hover:bg-gray-700 transition-colors duration-200">
-                        {/* Poster Image */}
-                        <div className="relative w-full h-[240px] md:h-[300px] lg:h-[360px] overflow-hidden bg-gray-900">
-                          {item.poster_path ? (
-                            <Image
-                              src={`https://image.tmdb.org/t/p/w500${item.poster_path}`}
-                              alt={item.type === 'movie' ? item.title : item.name}
-                              fill
-                              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, 20vw"
-                              className="object-cover"
-                              priority={false}
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center bg-gray-800">
-                              <span className="text-gray-600 text-4xl">🎬</span>
-                            </div>
-                          )}
-                        </div>
-                        
-                        {/* Content Info */}
-                        <div className="p-2 md:p-3 bg-gray-900">
-                          <h3 className="text-white font-semibold text-xs md:text-sm truncate leading-tight mb-1 md:mb-2">
-                            {item.type === 'movie' ? item.title : item.name}
-                          </h3>
+                      <Link
+                        href={item.type === 'movie' ? `/movies/${item.id}` : `/tvshows/${item.id}`}
+                        className="block"
+                      >
+                        <div className="border border-gray-700 rounded-lg overflow-hidden relative group bg-gray-800 hover:bg-gray-700 transition-colors duration-200">
+                          {/* Poster Image */}
+                          <div className="relative w-full h-[240px] md:h-[300px] lg:h-[360px] overflow-hidden bg-gray-900">
+                            {item.poster_path ? (
+                              <Image
+                                src={`https://image.tmdb.org/t/p/w500${item.poster_path}`}
+                                alt={item.type === 'movie' ? item.title : item.name}
+                                fill
+                                sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, 20vw"
+                                className="object-cover"
+                                priority={false}
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center bg-gray-800">
+                                <span className="text-gray-600 text-4xl">🎬</span>
+                              </div>
+                            )}
+                          </div>
                           
-                          {/* Date */}
-                          <div className="flex items-center justify-between text-[10px] md:text-xs text-gray-400">
-                            <span className="truncate">
-                              {item.type === 'movie' 
-                                ? item.release_date ? new Date(item.release_date).toLocaleDateString('en-US', {
-                                    year: 'numeric',
-                                    month: 'short',
-                                    day: 'numeric'
-                                  }) : 'TBA'
-                                : item.first_air_date ? new Date(item.first_air_date).toLocaleDateString('en-US', {
-                                    year: 'numeric',
-                                    month: 'short',
-                                    day: 'numeric'
-                                  }) : 'TBA'
-                              }
-                            </span>
+                          {/* Content Info */}
+                          <div className="p-2 md:p-3 bg-gray-900">
+                            <h3 className="text-white font-semibold text-xs md:text-sm truncate leading-tight mb-1 md:mb-2">
+                              {item.type === 'movie' ? item.title : item.name}
+                            </h3>
+                            
+                            {/* Date */}
+                            <div className="flex items-center justify-between text-[10px] md:text-xs text-gray-400">
+                              <span className="truncate">
+                                {item.type === 'movie' 
+                                  ? item.release_date ? new Date(item.release_date).toLocaleDateString('en-US', {
+                                      year: 'numeric',
+                                      month: 'short',
+                                      day: 'numeric'
+                                    }) : 'TBA'
+                                  : item.first_air_date ? new Date(item.first_air_date).toLocaleDateString('en-US', {
+                                      year: 'numeric',
+                                      month: 'short',
+                                      day: 'numeric'
+                                    }) : 'TBA'
+                                }
+                              </span>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </Link>
+                      </Link>
+                    </CardWithHover>
                   </motion.div>
                 ))}
               </motion.div>

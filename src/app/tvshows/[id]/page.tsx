@@ -16,6 +16,7 @@ import useAuthStore from '@/store/useAuthStore'
 import api from '@/lib/axios'
 import Comments from '@/components/Comments'
 import WatchNowTVShows from '@/components/watch/WatchNowTVShows'
+import RelatedContent from '@/components/RelatedContent'
 
 
 // Định nghĩa kiểu TVShow rõ ràng
@@ -644,32 +645,45 @@ export default function TVShowDetail() {
               </div>
             )}
 
-            <div className="flex flex-wrap gap-4">
+            <div className="flex flex-wrap gap-2 sm:gap-3">
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => setShowTrailer(true)}
-                className="px-6 py-3 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition-colors flex items-center gap-2"
+                className="flex-1 sm:flex-none px-4 sm:px-6 py-2 sm:py-3 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition-colors flex items-center justify-center gap-2 text-sm sm:text-base"
               >
-                <PlayIcon className="h-5 w-5" />
+                <PlayIcon className="h-4 w-4 sm:h-5 sm:w-5" />
                 Trailer
               </motion.button>
-              
-                             
 
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={handleToggleWatchlist}
-                className={`px-6 py-3 rounded-lg font-semibold transition-colors flex items-center gap-2 ${
+                className={`flex-1 sm:flex-none px-4 sm:px-6 py-2 sm:py-3 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2 text-sm sm:text-base ${
                   isBookmarked
                     ? 'bg-amber-700 text-white hover:bg-amber-800'
                     : 'bg-gray-700 text-white hover:bg-gray-600'
                 }`}
               >
-                <BookmarkIcon className="h-5 w-5" />
-                {isBookmarked ? 'Added to list' : 'Save to list'}
+                <BookmarkIcon className="h-4 w-4 sm:h-5 sm:w-5" />
+                <span className="hidden xs:inline">{isBookmarked ? 'Added' : 'Save'}</span>
+                <span className="xs:hidden">{isBookmarked ? '✓' : 'Save'}</span>
               </motion.button>
+
+              {scenes.length > 0 && (
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setActiveScene(0)}
+                  className="flex-1 sm:flex-none px-4 sm:px-6 py-2 sm:py-3 bg-gray-700 text-white rounded-lg font-semibold hover:bg-gray-600 transition-colors flex items-center justify-center gap-2 text-sm sm:text-base"
+                >
+                  <svg className="h-4 w-4 sm:h-5 sm:w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  Scenes
+                </motion.button>
+              )}
             </div>
           </div>
         </motion.div>
@@ -874,32 +888,6 @@ export default function TVShowDetail() {
 
 
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <h2 className="text-3xl font-bold text-white mb-8">TV Show Scenes</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {scenes.map((scene: string, index: number) => (
-            <motion.div
-              key={index}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.2 }}
-              className="relative aspect-video rounded-xl overflow-hidden cursor-pointer"
-              onClick={() => setActiveScene(index)}
-            >
-              <Image
-                src={scene}
-                alt={`Scene ${index + 1}`}
-                fill
-                className="object-cover transition-transform hover:scale-110"
-              />
-              <div className="absolute inset-0 bg-black/50 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center">
-                <span className="text-white text-lg font-semibold">View Scene {index + 1}</span>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-      </div>
-
       {/* Comments Section */}
       <Comments 
         movieId={tvShow.id} 
@@ -907,36 +895,88 @@ export default function TVShowDetail() {
         title={tvShow.name} 
       />
 
+      {/* Related TV Shows */}
+      <RelatedContent 
+        id={tvShow.id} 
+        type="tv" 
+        title={tvShow.name} 
+      />
+
+      {/* Scenes Modal */}
       <AnimatePresence>
         {activeScene !== null && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4"
+            className="fixed inset-0 bg-black/95 z-50 flex flex-col items-center justify-center p-4"
             onClick={() => setActiveScene(null)}
           >
             <motion.div
-              initial={{ scale: 0.9 }}
-              animate={{ scale: 1 }}
-              exit={{ scale: 0.9 }}
-              className="relative w-full max-w-4xl aspect-video"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="relative w-full max-w-5xl"
               onClick={e => e.stopPropagation()}
             >
-              <Image
-                src={scenes[activeScene || 0]}
-                alt={`Scene ${(activeScene || 0) + 1}`}
-                fill
-                className="object-contain"
-              />
-              <button
-                className="absolute top-4 right-4 text-white bg-black/50 rounded-full p-2 hover:bg-black/80 transition-colors"
-                onClick={() => setActiveScene(null)}
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
+              {/* Header */}
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-white text-lg font-semibold">TV Show Scenes ({activeScene + 1}/{scenes.length})</h3>
+                <button
+                  className="text-white bg-gray-800 hover:bg-gray-700 rounded-full p-2 transition-colors"
+                  onClick={() => setActiveScene(null)}
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              
+              {/* Main Image */}
+              <div className="relative aspect-video rounded-lg overflow-hidden bg-gray-900">
+                <Image
+                  src={scenes[activeScene]}
+                  alt={`Scene ${activeScene + 1}`}
+                  fill
+                  className="object-contain"
+                />
+              </div>
+              
+              {/* Navigation */}
+              <div className="flex items-center justify-center gap-4 mt-4">
+                <button
+                  onClick={() => setActiveScene(prev => prev !== null && prev > 0 ? prev - 1 : scenes.length - 1)}
+                  className="p-2 bg-gray-800 hover:bg-gray-700 text-white rounded-full transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+                
+                {/* Thumbnails */}
+                <div className="flex gap-2">
+                  {scenes.map((scene, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setActiveScene(index)}
+                      className={`relative w-16 h-10 rounded overflow-hidden transition-all ${
+                        activeScene === index ? 'ring-2 ring-red-500 scale-110' : 'opacity-60 hover:opacity-100'
+                      }`}
+                    >
+                      <Image src={scene} alt={`Thumb ${index + 1}`} fill className="object-cover" />
+                    </button>
+                  ))}
+                </div>
+                
+                <button
+                  onClick={() => setActiveScene(prev => prev !== null && prev < scenes.length - 1 ? prev + 1 : 0)}
+                  className="p-2 bg-gray-800 hover:bg-gray-700 text-white rounded-full transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </div>
             </motion.div>
           </motion.div>
         )}

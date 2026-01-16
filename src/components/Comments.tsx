@@ -43,6 +43,8 @@ interface CommentsProps {
   title: string
 }
 
+const COMMENTS_PER_PAGE = 2
+
 export default function Comments({ movieId, type, title }: CommentsProps) {
   const [comments, setComments] = useState<Comment[]>([])
   const [newComment, setNewComment] = useState('')
@@ -51,11 +53,15 @@ export default function Comments({ movieId, type, title }: CommentsProps) {
   const [showReplies, setShowReplies] = useState<Set<string>>(new Set())
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'popular'>('newest')
   const [isLoading, setIsLoading] = useState(false)
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [actionOpenId, setActionOpenId] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editText, setEditText] = useState('')
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  const [page, setPage] = useState(1)
+  const [hasMore, setHasMore] = useState(true)
+  const [totalComments, setTotalComments] = useState(0)
   
   const { isAuthenticated, user } = useAuthStore()
   const router = useRouter()
@@ -91,10 +97,13 @@ export default function Comments({ movieId, type, title }: CommentsProps) {
   useEffect(() => {
     const fetchComments = async () => {
       setIsLoading(true)
+      setPage(1)
       try {
-        const response = await api.get(`/comments/${movieId}/${type}?sortBy=${sortBy}`)
+        const response = await api.get(`/comments/${movieId}/${type}?sortBy=${sortBy}&page=1&limit=${COMMENTS_PER_PAGE}`)
         if (response.data.success) {
           setComments(response.data.data)
+          setTotalComments(response.data.total)
+          setHasMore(response.data.page < response.data.totalPages)
         }
       } catch (error) {
         console.error('Error fetching comments:', error)
@@ -106,6 +115,28 @@ export default function Comments({ movieId, type, title }: CommentsProps) {
 
     fetchComments()
   }, [movieId, type, sortBy])
+
+  // Load more comments
+  const loadMoreComments = async () => {
+    if (isLoadingMore || !hasMore) return
+    
+    setIsLoadingMore(true)
+    const nextPage = page + 1
+    
+    try {
+      const response = await api.get(`/comments/${movieId}/${type}?sortBy=${sortBy}&page=${nextPage}&limit=${COMMENTS_PER_PAGE}`)
+      if (response.data.success) {
+        setComments(prev => [...prev, ...response.data.data])
+        setPage(nextPage)
+        setHasMore(response.data.page < response.data.totalPages)
+      }
+    } catch (error) {
+      console.error('Error loading more comments:', error)
+      toast.error('Failed to load more comments')
+    } finally {
+      setIsLoadingMore(false)
+    }
+  }
 
   const handleSubmitComment = async () => {
     if (!isAuthenticated) {
@@ -129,6 +160,7 @@ export default function Comments({ movieId, type, title }: CommentsProps) {
       
       if (response.data.success) {
         setComments(prev => [response.data.data, ...prev])
+        setTotalComments(prev => prev + 1)
         setNewComment('')
         toast.success('Comment added successfully!')
       }
@@ -316,6 +348,7 @@ export default function Comments({ movieId, type, title }: CommentsProps) {
       const res = await api.delete(`/comments/${id}`)
       if (res.data.success) {
         setComments(prev => prev.filter(c => c._id !== id))
+        setTotalComments(prev => Math.max(0, prev - 1))
         toast.success('Deleted')
       }
     } catch (error: unknown) {
@@ -348,7 +381,7 @@ export default function Comments({ movieId, type, title }: CommentsProps) {
           <ChatBubbleLeftRightIcon className="h-6 w-6 sm:h-8 sm:w-8 text-red-500" />
           <h2 className="text-2xl sm:text-3xl font-bold text-white">Comments</h2>
           <span className="bg-gray-700 text-gray-300 px-2 py-1 sm:px-3 sm:py-1 rounded-full text-xs sm:text-sm">
-            {comments.length}
+            {totalComments}
           </span>
         </div>
 
@@ -794,6 +827,51 @@ export default function Comments({ movieId, type, title }: CommentsProps) {
             <ChatBubbleLeftRightIcon className="h-12 w-12 sm:h-16 sm:w-16 text-gray-600 mx-auto mb-3 sm:mb-4" />
             <h3 className="text-lg sm:text-xl font-semibold text-gray-400 mb-2">No comments yet</h3>
             <p className="text-gray-500 text-sm sm:text-base">Be the first to share your thoughts about this {type}!</p>
+          </div>
+        )}
+
+        {/* Show More / Show Less Buttons */}
+        {!isLoading && comments.length > 0 && (
+          <div className="flex justify-center gap-3 pt-4">
+            {hasMore && (
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={loadMoreComments}
+                disabled={isLoadingMore}
+                className="px-6 py-2.5 bg-gray-700/50 hover:bg-gray-700 text-gray-300 hover:text-white rounded-lg font-medium transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isLoadingMore ? (
+                  <>
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
+                      className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full"
+                    />
+                    <span>Loading...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Show more</span>
+                    <span className="text-gray-500 text-sm">({comments.length}/{totalComments})</span>
+                  </>
+                )}
+              </motion.button>
+            )}
+            {!hasMore && totalComments > COMMENTS_PER_PAGE && (
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => {
+                  setPage(1)
+                  setHasMore(true)
+                  setComments(prev => prev.slice(0, COMMENTS_PER_PAGE))
+                }}
+                className="px-6 py-2.5 bg-gray-700/50 hover:bg-gray-700 text-gray-300 hover:text-white rounded-lg font-medium transition-colors"
+              >
+                Show less
+              </motion.button>
+            )}
           </div>
         )}
       </div>

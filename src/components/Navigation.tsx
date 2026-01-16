@@ -69,7 +69,6 @@ export default function Navigation() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileUserDropdownOpen, setIsMobileUserDropdownOpen] = useState(false);
   const [isMobileMoreDropdownOpen, setIsMobileMoreDropdownOpen] = useState(false);
-  const [isHeaderVisible, setIsHeaderVisible] = useState(true);
   
   // Adaptive navigation state - simplified
   const [adaptiveStep, setAdaptiveStep] = useState(0);
@@ -135,41 +134,12 @@ export default function Navigation() {
   }, []);
 
   useEffect(() => {
-    let scrollTimeout: NodeJS.Timeout;
-    let isScrolling = false;
-
     const handleScroll = () => {
-      const currentScrollY = window.scrollY;
-
-      // Update scrolled state for background color
-      setIsScrolled(currentScrollY > 20);
-
-      // Hide header immediately when scrolling starts
-      if (!isScrolling) {
-        isScrolling = true;
-        setIsHeaderVisible(false);
-      }
-
-      // Clear previous timeout
-      if (scrollTimeout) {
-        clearTimeout(scrollTimeout);
-      }
-
-      // Show header after a brief pause (80ms - sweet spot for smooth feel)
-      scrollTimeout = setTimeout(() => {
-        isScrolling = false;
-        setIsHeaderVisible(true);
-      }, 80);
+      setIsScrolled(window.scrollY > 20);
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
-
-    return () => {
-      window.removeEventListener('scroll', handleScroll);
-      if (scrollTimeout) {
-        clearTimeout(scrollTimeout);
-      }
-    };
+    return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
 
@@ -177,16 +147,9 @@ export default function Navigation() {
 
   return (
     <>
-      {/* Header with auto-hide on scroll */}
-      <motion.nav
-        initial={false}
+      {/* Header */}
+      <nav
         style={{ height: HEADER_HEIGHT }}
-        animate={{ y: isHeaderVisible ? 0 : -HEADER_HEIGHT }}
-        transition={{ 
-          duration: 0.25, 
-          ease: [0.4, 0, 0.2, 1], // Smooth easing curve
-          type: "tween"
-        }}
         className={`fixed w-full z-50 ${
           isScrolled ? 'bg-black/90 backdrop-blur-md' : 'bg-white shadow-lg'
         }`}
@@ -492,25 +455,20 @@ export default function Navigation() {
       )}
 
       {/* Mobile menu, show/hide based on menu state. */}
-      <Transition
-        show={isOpen}
-        as={Fragment}
-        enter="duration-300 ease-out"
-        enterFrom="opacity-0 scale-95"
-        enterTo="opacity-100 scale-100"
-        leave="duration-200 ease-in"
-        leaveFrom="opacity-100 scale-100"
-        leaveTo="opacity-0 scale-95"
-        beforeEnter={() => setIsOpen(true)}
-        afterLeave={() => setIsOpen(false)}
+      <motion.div
+        className={`${adaptiveStep >= 4 ? 'block' : 'hidden'} overflow-hidden bg-white shadow-lg`}
+        initial={false}
+        animate={{
+          height: isOpen ? 'auto' : 0,
+          opacity: isOpen ? 1 : 0
+        }}
+        transition={{
+          duration: 0.3,
+          ease: [0.4, 0, 0.2, 1],
+          opacity: { duration: 0.2 }
+        }}
       >
-        <motion.div
-          className={`${adaptiveStep >= 4 ? 'block' : 'hidden'} overflow-y-auto max-h-[calc(100vh-4rem)] bg-white`}
-          initial={{ opacity: 0, height: 0 }}
-          animate={{ opacity: 1, height: 'auto' }}
-          exit={{ opacity: 0, height: 0 }}
-          transition={{ duration: 0.3 }}
-        >
+        <div className="overflow-y-auto max-h-[calc(100vh-4rem)]">
           <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
             {mainNavItems.map((item) => {
               const isActive = pathname === item.href;
@@ -547,8 +505,19 @@ export default function Navigation() {
               <span>More</span>
               <svg className={`ml-auto h-4 w-4 transition-transform ${isMobileMoreDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
             </button>
-            {isMobileMoreDropdownOpen && (
-              <div className="pl-6 space-y-1 animate-fadeIn">
+            <motion.div
+              initial={false}
+              animate={{
+                height: isMobileMoreDropdownOpen ? 'auto' : 0,
+                opacity: isMobileMoreDropdownOpen ? 1 : 0
+              }}
+              transition={{
+                duration: 0.2,
+                ease: [0.4, 0, 0.2, 1]
+              }}
+              className="overflow-hidden"
+            >
+              <div className="pl-6 space-y-1">
                 {moreNavItems.map((item) => {
                   const isActive = pathname === item.href;
                   return (
@@ -568,7 +537,7 @@ export default function Navigation() {
                   );
                 })}
               </div>
-            )}
+            </motion.div>
             {/* Mobile Watchlist, User/Login, Logout */}
             {!hydrated || isLoading ? (
               <div className="block w-full px-4 py-2 mt-4">
@@ -596,8 +565,19 @@ export default function Navigation() {
                   <span className="truncate">{user?.name || 'User'}</span>
                   <svg className={`ml-auto h-4 w-4 transition-transform ${isMobileUserDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
                 </button>
-                {isMobileUserDropdownOpen && (
-                  <div className="bg-gray-50 rounded-md divide-y divide-gray-200 shadow-sm animate-fadeIn">
+                <motion.div
+                  initial={false}
+                  animate={{
+                    height: isMobileUserDropdownOpen ? 'auto' : 0,
+                    opacity: isMobileUserDropdownOpen ? 1 : 0
+                  }}
+                  transition={{
+                    duration: 0.2,
+                    ease: [0.4, 0, 0.2, 1]
+                  }}
+                  className="overflow-hidden"
+                >
+                  <div className="bg-gray-50 rounded-md divide-y divide-gray-200 shadow-sm">
                     <Link
                       href="/watchlist"
                       onClick={() => { setIsOpen(false); setIsMobileUserDropdownOpen(false); }}
@@ -637,7 +617,7 @@ export default function Navigation() {
                       </div>
                     </button>
                   </div>
-                )}
+                </motion.div>
               </div>
             ) : (
               <Link
@@ -651,9 +631,9 @@ export default function Navigation() {
               </Link>
             )}
           </div>
-        </motion.div>
-      </Transition>
-      </motion.nav>
+        </div>
+      </motion.div>
+      </nav>
     </>
   )
 }
