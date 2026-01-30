@@ -180,16 +180,7 @@ export default function HeroMovies() {
     }, 600);
   }, [heroItems.length, isTransitioning, showTrailer]);
 
-  const prevSlide = useCallback(() => {
-    if (isTransitioning || heroItems.length === 0 || showTrailer) return;
-    
-    setIsTransitioning(true);
-    setCurrentIndex(prev => (prev - 1 + heroItems.length) % heroItems.length);
-    
-    setTimeout(() => {
-      setIsTransitioning(false);
-    }, 600);
-  }, [heroItems.length, isTransitioning, showTrailer]);
+
 
   const goToSlide = useCallback((index: number) => {
     if (isTransitioning || index === currentIndex || showTrailer) return;
