@@ -6,7 +6,7 @@ import Image from 'next/image'
 import Head from 'next/head'
 import axios from 'axios'
 import Link from 'next/link'
-import { ChevronLeftIcon, ChevronRightIcon, PlayIcon, BookmarkIcon, XMarkIcon, ArrowUpRightIcon } from '@heroicons/react/24/outline'
+import { PlayIcon, BookmarkIcon, XMarkIcon, ArrowUpRightIcon } from '@heroicons/react/24/outline'
 import { BookmarkIcon as BookmarkSolidIcon } from '@heroicons/react/24/solid'
 import { useWatchlistStore } from '@/store/store'
 import useAuthStore from '@/store/useAuthStore'
@@ -148,133 +148,6 @@ const DesktopTrailerHint = () => (
     <ArrowUpRightIcon className="w-5 h-5 text-white/80" />
     <span className="text-sm text-white/80 font-light">Click for trailer</span>
   </motion.div>
-);
-
-// Component cho navigation controls trên Desktop
-const DesktopNavigationControls = ({ 
-  prevSlide, 
-  nextSlide, 
-  goToSlide, 
-  heroItems, 
-  currentIndex, 
-  isTransitioning, 
-  showTrailer 
-}: {
-  prevSlide: () => void;
-  nextSlide: () => void;
-  goToSlide: (index: number) => void;
-  heroItems: HeroItem[];
-  currentIndex: number;
-  isTransitioning: boolean;
-  showTrailer: boolean;
-}) => (
-  <div className="hidden lg:flex absolute bottom-8 left-1/2 transform -translate-x-1/2 items-center gap-4">
-    <motion.button
-      onClick={prevSlide}
-      className="w-12 h-12 rounded-full border border-white/30 bg-black/50 backdrop-blur-sm text-white hover:bg-white/20 transition-all duration-300 flex items-center justify-center disabled:opacity-50"
-      whileHover={{ scale: 1.1 }}
-      whileTap={{ scale: 0.9 }}
-      disabled={isTransitioning || showTrailer}
-    >
-      <ChevronLeftIcon className="w-6 h-6" />
-    </motion.button>
-
-    {/* Dots Indicator */}
-    <div className="flex items-center gap-2">
-      {heroItems.map((_, index) => (
-        <motion.button
-          key={index}
-          className={`w-3 h-3 rounded-full transition-all duration-300 ${
-            index === currentIndex 
-              ? 'bg-red-500 w-8' 
-              : 'bg-white/30 hover:bg-white/50'
-          }`}
-          onClick={() => goToSlide(index)}
-          whileHover={{ scale: 1.2 }}
-          whileTap={{ scale: 0.8 }}
-        />
-      ))}
-    </div>
-
-    <motion.button
-      onClick={nextSlide}
-      className="w-12 h-12 rounded-full border border-white/30 bg-black/50 backdrop-blur-sm text-white hover:bg-white/20 transition-all duration-300 flex items-center justify-center disabled:opacity-50"
-      whileHover={{ scale: 1.1 }}
-      whileTap={{ scale: 0.9 }}
-      disabled={isTransitioning || showTrailer}
-    >
-      <ChevronRightIcon className="w-6 h-6" />
-    </motion.button>
-  </div>
-);
-
-// Component cho navigation controls trên Mobile & Tablet
-const MobileNavigationControls = ({ 
-  prevSlide, 
-  nextSlide, 
-  goToSlide, 
-  heroItems, 
-  currentIndex, 
-  isTransitioning, 
-  showTrailer 
-}: {
-  prevSlide: () => void;
-  nextSlide: () => void;
-  goToSlide: (index: number) => void;
-  heroItems: HeroItem[];
-  currentIndex: number;
-  isTransitioning: boolean;
-  showTrailer: boolean;
-}) => (
-  <>
-    {/* Mobile & Tablet Swipe Indicators */}
-    <div className="lg:hidden text-center mt-8 mb-4">
-      <motion.p
-        className="text-gray-400 text-sm"
-        animate={{ opacity: [0.5, 1, 0.5] }}
-        transition={{ duration: 2, repeat: Infinity }}
-      >
-        Swipe or tap arrows to navigate
-      </motion.p>
-    </div>
-
-    {/* Mobile & Tablet Navigation Controls */}
-    <div className="lg:hidden flex justify-center items-center gap-4 mt-2">
-      <motion.button
-        onClick={prevSlide}
-        className="w-10 h-10 rounded-full border border-white/30 bg-black/50 backdrop-blur-sm text-white active:bg-white/20 transition-all duration-300 flex items-center justify-center disabled:opacity-50"
-        whileTap={{ scale: 0.9 }}
-        disabled={isTransitioning || showTrailer}
-      >
-        <ChevronLeftIcon className="w-5 h-5" />
-      </motion.button>
-
-      {/* Mobile Dots Indicator */}
-      <div className="flex items-center gap-2">
-        {heroItems.map((_, index) => (
-          <motion.button
-            key={index}
-            className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${
-              index === currentIndex 
-                ? 'bg-red-500 w-6' 
-                : 'bg-white/30'
-            }`}
-            onClick={() => goToSlide(index)}
-            whileTap={{ scale: 0.8 }}
-          />
-        ))}
-      </div>
-
-      <motion.button
-        onClick={nextSlide}
-        className="w-10 h-10 rounded-full border border-white/30 bg-black/50 backdrop-blur-sm text-white active:bg-white/20 transition-all duration-300 flex items-center justify-center disabled:opacity-50"
-        whileTap={{ scale: 0.9 }}
-        disabled={isTransitioning || showTrailer}
-      >
-        <ChevronRightIcon className="w-5 h-5" />
-      </motion.button>
-    </div>
-  </>
 );
 
 export default function HeroMovies() {
@@ -791,7 +664,6 @@ export default function HeroMovies() {
                           : 'border-white/20'
                       }`}
                       onClick={() => goToSlide(index)}
-                      whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
                     >
                       <Image
@@ -960,7 +832,6 @@ export default function HeroMovies() {
                       : 'border-white/20 hover:border-white/40'
                   }`}
                   onClick={() => goToSlide(index)}
-                  whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.95 }}
                 >
                   <Image
@@ -983,29 +854,7 @@ export default function HeroMovies() {
           </motion.div>
         </div>
 
-        {/* Navigation Controls - Hidden on Mobile & Tablet */}
-        <DesktopNavigationControls 
-          prevSlide={prevSlide} 
-          nextSlide={nextSlide} 
-          goToSlide={goToSlide} 
-          heroItems={heroItems} 
-          currentIndex={currentIndex} 
-          isTransitioning={isTransitioning} 
-          showTrailer={showTrailer} 
-        />
-
-        {/* Mobile & Tablet Swipe Indicators */}
-        <MobileNavigationControls 
-          prevSlide={prevSlide} 
-          nextSlide={nextSlide} 
-          goToSlide={goToSlide} 
-          heroItems={heroItems} 
-          currentIndex={currentIndex} 
-          isTransitioning={isTransitioning} 
-          showTrailer={showTrailer} 
-        />
-
-        {/* Mobile Scroll Down Indicator - Below navigation controls */}
+        {/* Mobile Scroll Down Indicator */}
         <motion.div
           className="lg:hidden flex flex-col items-center gap-0.5 cursor-pointer mt-4"
           initial={{ opacity: 0, y: -10 }}

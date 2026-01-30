@@ -710,6 +710,29 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
           }}
         />
 
+         {/* Start Streaming Button - Top Right Corner */}
+         {src && (
+           <div className={`absolute top-3 right-3 sm:top-4 sm:right-4 transition-all duration-500 ease-in-out ${
+             showControls ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0'
+           }`}>
+             <button
+               onClick={(e) => {
+                 e.stopPropagation();
+                 // TODO: Navigate to streaming lobby with video info
+                 console.log('Start Streaming clicked', { movieId, season, episode, isTVShow, title });
+               }}
+               className="flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2.5 rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white text-xs sm:text-sm font-semibold transition-all duration-200 shadow-lg hover:shadow-purple-500/50 hover:scale-105"
+               aria-label="Start Streaming Room"
+               title="Start Streaming Room"
+             >
+               <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+               </svg>
+               <span className="hidden sm:inline">Stream</span>
+             </button>
+           </div>
+         )}
+
          {/* Loading Indicator */}
          {isLoading && (
            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">

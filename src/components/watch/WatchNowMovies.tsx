@@ -234,22 +234,48 @@ export default function WatchNowMovies({ movie }: WatchNowMoviesProps) {
 
         let slug = null;
 
-        // UNIFIED STRATEGY: Try TMDB direct API first, then search with all keywords in parallel
+        // UNIFIED STRATEGY: Try TMDB direct API with verification, then search with all keywords in parallel
         
-        // Step 1: Try TMDB ID direct API (HIGHEST PRIORITY)
+        // Step 1: Try TMDB ID direct API with title/year verification (HIGHEST PRIORITY)
         try {
           const tmdbDirectUrl = `https://phimapi.com/tmdb/movie/${id}`;
           const tmdbDirectRes = await fetch(tmdbDirectUrl);
           const tmdbDirectData = await tmdbDirectRes.json();
           
-          if (tmdbDirectData?.status === true && tmdbDirectData?.movie?.slug) {
-            slug = tmdbDirectData.movie.slug;
+          if (tmdbDirectData?.status === true && tmdbDirectData?.movie) {
+            const apiMovie = tmdbDirectData.movie;
+            const apiName = apiMovie.name || '';
+            const apiOriginName = apiMovie.origin_name || '';
+            const apiTitle = apiMovie.title || '';
+            const apiYear = apiMovie.year;
+            const apiSlug = apiMovie.slug;
+            
+            // Verify title match - check against name, origin_name, or title
+            const normalizedTarget = normalizeTitle(movie?.title || '');
+            const nameMatch = normalizeTitle(apiName) === normalizedTarget;
+            const originNameMatch = normalizeTitle(apiOriginName) === normalizedTarget;
+            const titleMatch = normalizeTitle(apiTitle) === normalizedTarget;
+            
+            // Accept if ANY of the title fields match
+            const anyTitleMatch = nameMatch || originNameMatch || titleMatch;
+            const yearMatch = apiYear && parseInt(String(apiYear)) === (movie?.year as number);
+            
+            if (apiSlug && anyTitleMatch && yearMatch) {
+              slug = apiSlug;
+            } else if (apiSlug && anyTitleMatch) {
+              // Accept if title matches even if year is slightly off
+              const yearDiff = Math.abs(parseInt(String(apiYear || '0')) - (movie?.year as number || 0));
+              
+              if (yearDiff <= 1) {
+                slug = apiSlug;
+              }
+            }
           }
         } catch {
           // TMDB direct API failed
         }
 
-        // Step 2: If TMDB fails, search with ALL keywords in parallel
+        // Step 2: If TMDB verification fails, search with ALL keywords in parallel
         if (!slug && movie?.title) {
           
           // Collect ALL keywords from all strategies
@@ -425,7 +451,6 @@ export default function WatchNowMovies({ movie }: WatchNowMoviesProps) {
 
     // Helper function to find best matching movie
     function findBestMatch(items: PhimApiMovie[], targetTitle: string, targetYear: number, tmdbId: string): PhimApiMovie | null {
-      
       if (!items || items.length === 0) {
         return null;
       }
