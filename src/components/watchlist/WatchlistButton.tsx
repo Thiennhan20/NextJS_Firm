@@ -10,6 +10,7 @@ interface WatchlistButtonProps {
     id: number;
     title: string;
     poster_path: string;
+    type?: 'movie' | 'tv';
   };
 }
 
@@ -35,6 +36,7 @@ export default function WatchlistButton({ movie }: WatchlistButtonProps) {
           id: movie.id,
           title: movie.title,
           poster_path: movie.poster_path,
+          type: movie.type || 'movie',
         });
         addToWatchlist(movie);
         toast.success('Added to watchlist');
@@ -55,11 +57,10 @@ export default function WatchlistButton({ movie }: WatchlistButtonProps) {
       whileHover={{ scale: 1.1 }}
       whileTap={{ scale: 0.9 }}
       onClick={handleClick}
-      className={`p-2 rounded-full transition-colors duration-200 ${
-        isBookmarked
+      className={`p-2 rounded-full transition-colors duration-200 ${isBookmarked
           ? 'bg-blue-600 text-white'
           : 'bg-white/10 text-gray-300 hover:bg-white/20'
-      }`}
+        }`}
       aria-label={isBookmarked ? 'Remove from watchlist' : 'Add to watchlist'}
     >
       <FaBookmark className="w-5 h-5" />

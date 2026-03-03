@@ -39,7 +39,6 @@ interface TMDBTV {
 }
 
 function TVShowsPageContent() {
-  const API_KEY = process.env.NEXT_PUBLIC_TMDB_API_KEY
   const router = useRouter();
   const searchParams = useSearchParams();
   
@@ -297,9 +296,13 @@ function TVShowsPageContent() {
 
   // Hàm fetch 1 trang TV shows
   const fetchTVShowsPage = async (pageToFetch: number) => {
-    let url = `https://api.themoviedb.org/3/discover/tv?api_key=${API_KEY}&sort_by=popularity.desc&page=${pageToFetch}`;
+    const params = new URLSearchParams({
+      sort_by: 'popularity.desc',
+      page: String(pageToFetch)
+    });
+    
     if (selectedYear !== 'All') {
-      url += `&first_air_date_year=${selectedYear}`;
+      params.append('first_air_date_year', String(selectedYear));
     }
     if (selectedCategory !== 'All') {
       // Sử dụng genre ID thay vì tên genre
@@ -323,7 +326,7 @@ function TVShowsPageContent() {
       };
       const genreId = genreMap[selectedCategory];
       if (genreId) {
-        url += `&with_genres=${genreId}`;
+        params.append('with_genres', genreId.toString());
       }
     }
     if (selectedCountry !== 'All') {
@@ -352,10 +355,10 @@ function TVShowsPageContent() {
       };
       const countryCode = countryToCodeMap[selectedCountry];
       if (countryCode) {
-        url += `&with_origin_country=${countryCode}`;
+        params.append('with_origin_country', countryCode);
       }
     }
-    const response = await axios.get(url);
+    const response = await axios.get(`/api/tmdb-proxy?endpoint=/discover/tv&${params.toString()}`);
     const fetchedTVShows = response.data.results;
     
     return fetchedTVShows.map((tvShow: TMDBTV) => ({
@@ -393,7 +396,7 @@ function TVShowsPageContent() {
     loadPage();
     return () => { ignore = true; }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, selectedYear, selectedCategory, selectedCountry, API_KEY]);
+  }, [page, selectedYear, selectedCategory, selectedCountry]);
 
   // Hàm load thêm 10 trang tiếp theo (khi bấm vào 1 trong 2 trang kế tiếp)
   const loadNext10Pages = async (startPage: number) => {

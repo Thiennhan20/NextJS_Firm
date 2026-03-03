@@ -23,7 +23,6 @@ interface TMDBMovie {
 }
 
 export default function MovieNews() {
-  const API_KEY = process.env.NEXT_PUBLIC_TMDB_API_KEY;
   const [news, setNews] = useState<News[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -32,7 +31,7 @@ export default function MovieNews() {
       setLoading(true);
       try {
         const response = await axios.get(
-          `https://api.themoviedb.org/3/movie/now_playing?api_key=${API_KEY}&language=en-US&page=1`
+          '/api/tmdb-proxy?endpoint=/movie/now_playing&language=en-US&page=1'
         );
         const movies = response.data.results.map((movie: TMDBMovie) => ({
           id: movie.id,
@@ -49,7 +48,7 @@ export default function MovieNews() {
       setLoading(false);
     };
     fetchNews();
-  }, [API_KEY]);
+  }, []);
 
   return (
     <section className="py-8 sm:py-16 px-1 sm:px-4 bg-gradient-to-b from-black to-gray-900">

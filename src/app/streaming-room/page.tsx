@@ -40,7 +40,6 @@ function StreamingRoomContent() {
   const { user } = useAuthStore();
   const { isNavDropdownOpen } = useUIStore();
   const searchParams = useSearchParams();
-  const API_KEY = process.env.NEXT_PUBLIC_TMDB_API_KEY;
   const [streamMovie, setStreamMovie] = useState<StreamMovie | null>(null);
   const [loading, setLoading] = useState(true);
   const [username, setUsername] = useState(user?.name || `User${Math.floor(Math.random() * 1000)}`);
@@ -116,7 +115,7 @@ function StreamingRoomContent() {
       try {
         // Lấy một phim popular làm demo stream
         const response = await axios.get(
-          `https://api.themoviedb.org/3/movie/popular?api_key=${API_KEY}&page=1`
+          '/api/tmdb-proxy?endpoint=/movie/popular&page=1'
         );
         const movie = response.data.results[0];
         setStreamMovie({
@@ -135,7 +134,7 @@ function StreamingRoomContent() {
       setLoading(false);
     };
     fetchMovie();
-  }, [API_KEY]);
+  }, []);
 
 
 

@@ -71,10 +71,9 @@ const HoverCard = memo(function HoverCard({
   const { isAuthenticated, token } = useAuthStore()
   const [details, setDetails] = useState<MovieDetails | null>(null)
   const [loading, setLoading] = useState(false)
-  const API_KEY = process.env.NEXT_PUBLIC_TMDB_API_KEY
 
   useEffect(() => {
-    if (!isVisible || !API_KEY) return
+    if (!isVisible) return
 
     const cacheKey = `${type}-${id}`
     
@@ -94,7 +93,7 @@ const HoverCard = memo(function HoverCard({
     const timeoutId = setTimeout(() => controller.abort(), 5000) // 5s timeout
 
     axios
-      .get(`https://api.themoviedb.org/3/${type}/${id}?api_key=${API_KEY}`, {
+      .get(`/api/tmdb-proxy?endpoint=/${type}/${id}`, {
         signal: controller.signal,
       })
       .then((response) => {
@@ -120,7 +119,7 @@ const HoverCard = memo(function HoverCard({
         clearTimeout(timeoutId)
         setLoading(false)
       })
-  }, [isVisible, id, type, details, API_KEY])
+  }, [isVisible, id, type, details])
 
   const getYear = () => {
     const date = details?.release_date || details?.first_air_date

@@ -6,6 +6,7 @@ import { useParams, useSearchParams, useRouter } from 'next/navigation'
 import EnhancedMoviePlayer from '@/components/common/EnhancedMoviePlayer'
 import useAuthStore from '@/store/useAuthStore'
 import { setupAudioNodes, cleanupAudioNodes, AudioNodes } from '@/lib/audioUtils'
+import WatchNowMoviesServer3 from './WatchNowMoviesServer3'
 
 // Định nghĩa kiểu Movie
 interface Movie {
@@ -57,25 +58,25 @@ export default function WatchNowMovies({ movie }: WatchNowMoviesProps) {
   const { id } = useParams();
   const searchParams = useSearchParams();
   const router = useRouter();
-  
-  const [selectedServer, setSelectedServer] = useState<'server1' | 'server2'>('server1');
+
+  const [selectedServer, setSelectedServer] = useState<'server1' | 'server2' | 'server3'>('server1');
   const hasInitialized = useRef(false);
-  
+
   // Read audio parameter from URL
   const audioFromUrl = searchParams.get('audio');
 
   // Cập nhật URL khi thay đổi server
-  const updateServerInUrl = (server: 'server1' | 'server2') => {
+  const updateServerInUrl = (server: 'server1' | 'server2' | 'server3') => {
     const params = new URLSearchParams(searchParams.toString());
     const currentServer = searchParams.get('server');
-    
+
     // Chỉ cập nhật nếu server thực sự thay đổi
     if (currentServer !== server) {
       params.set('server', server);
       const newUrl = `${window.location.pathname}${params.toString() ? '?' + params.toString() : ''}`;
-      
-      // Nếu đang từ server2 về server1, sử dụng replace để không tạo history entry mới
-      if (currentServer === 'server2' && server === 'server1') {
+
+      // Nếu đang từ server khác về server1, sử dụng replace để không tạo history entry mới
+      if (currentServer !== 'server1' && server === 'server1') {
         router.replace(newUrl, { scroll: false });
       } else {
         router.push(newUrl, { scroll: false });
@@ -84,7 +85,7 @@ export default function WatchNowMovies({ movie }: WatchNowMoviesProps) {
   };
 
   // Cập nhật server và URL
-  const handleServerChange = (server: 'server1' | 'server2') => {
+  const handleServerChange = (server: 'server1' | 'server2' | 'server3') => {
     if (selectedServer !== server) {
       setSelectedServer(server);
       updateServerInUrl(server);
@@ -101,10 +102,15 @@ export default function WatchNowMovies({ movie }: WatchNowMoviesProps) {
   const [apiSearchCompleted, setApiSearchCompleted] = useState(false);
   const [selectedAudio, setSelectedAudio] = useState<'vietsub' | 'dubbed' | null>(null);
 
+  // Server 3 states
+  const [server3Links, setServer3Links] = useState({ vietsub: '', dubbed: '', m3u8: '' });
+  const [server3Loading, setServer3Loading] = useState(false);
+  const [server3SearchCompleted, setServer3SearchCompleted] = useState(false);
+
   // Đọc server từ URL khi component mount hoặc URL thay đổi
   useEffect(() => {
     const serverFromUrl = searchParams.get('server');
-    if (serverFromUrl === 'server1' || serverFromUrl === 'server2') {
+    if (serverFromUrl === 'server1' || serverFromUrl === 'server2' || serverFromUrl === 'server3') {
       setSelectedServer(serverFromUrl);
       hasInitialized.current = true;
     } else {
@@ -116,13 +122,15 @@ export default function WatchNowMovies({ movie }: WatchNowMoviesProps) {
 
   // Sync selectedAudio when audioFromUrl changes
   useEffect(() => {
-    if (audioFromUrl === 'vietsub' && movieLinks.vietsub && selectedAudio !== 'vietsub') {
+    const currentLinks = selectedServer === 'server3' ? server3Links : movieLinks;
+    if (audioFromUrl === 'vietsub' && currentLinks.vietsub && selectedAudio !== 'vietsub') {
       setSelectedAudio('vietsub');
-    } else if (audioFromUrl === 'dubbed' && movieLinks.dubbed && selectedAudio !== 'dubbed') {
+    } else if (audioFromUrl === 'dubbed' && currentLinks.dubbed && selectedAudio !== 'dubbed') {
       setSelectedAudio('dubbed');
     }
-  }, [audioFromUrl, movieLinks.vietsub, movieLinks.dubbed, selectedAudio]);
-  
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [audioFromUrl, movieLinks.vietsub, movieLinks.dubbed, server3Links.vietsub, server3Links.dubbed, selectedAudio, selectedServer]);
+
   // State cho server 2
   const [server2Link, setServer2Link] = useState('');
 
@@ -139,51 +147,55 @@ export default function WatchNowMovies({ movie }: WatchNowMoviesProps) {
       setMovieLinksLoading(true);
       fetch(`/api/subtitles?query=${encodeURIComponent(movie.title)}&year=${movie.year.toString()}`)
         .then(res => res.json())
-        .then(() => {})
-        .catch(() => {})
+        .then(() => { })
+        .catch(() => { })
         .finally(() => setMovieLinksLoading(false));
     }
   }, [movie?.title, movie?.year]);
 
   // Tự động chọn audio khi có sẵn, ưu tiên từ URL
   useEffect(() => {
+    const currentLinks = selectedServer === 'server3' ? server3Links : movieLinks;
     if (!selectedAudio) {
       // Nếu URL có tham số audio, ưu tiên sử dụng audio từ URL
-      if (audioFromUrl === 'dubbed' && movieLinks.dubbed) {
+      if (audioFromUrl === 'dubbed' && currentLinks.dubbed) {
         setSelectedAudio('dubbed');
         return;
       }
-      if (audioFromUrl === 'vietsub' && movieLinks.vietsub) {
+      if (audioFromUrl === 'vietsub' && currentLinks.vietsub) {
         setSelectedAudio('vietsub');
         return;
       }
-      
+
       // Nếu không có audio từ URL hoặc audio từ URL không khả dụng, chọn mặc định
       // Nếu có cả hai, ưu tiên Vietsub
-      if (movieLinks.vietsub && movieLinks.dubbed) {
+      if (currentLinks.vietsub && currentLinks.dubbed) {
         setSelectedAudio('vietsub');
         return;
       }
       // Nếu chỉ có một loại audio, tự động chọn
-      if (movieLinks.vietsub) {
+      if (currentLinks.vietsub) {
         setSelectedAudio('vietsub');
         return;
       }
-      if (movieLinks.dubbed) {
+      if (currentLinks.dubbed) {
         setSelectedAudio('dubbed');
         return;
       }
     }
-  }, [movieLinks.vietsub, movieLinks.dubbed, selectedAudio, audioFromUrl]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [movieLinks.vietsub, movieLinks.dubbed, server3Links.vietsub, server3Links.dubbed, selectedAudio, audioFromUrl, selectedServer]);
 
   // Audio hiệu lực để hiển thị ngoài player
   const effectiveAudio = useMemo<('vietsub' | 'dubbed' | null)>(() => {
-    if (selectedAudio === 'vietsub' && movieLinks.vietsub) return 'vietsub';
-    if (selectedAudio === 'dubbed' && movieLinks.dubbed) return 'dubbed';
-    if (movieLinks.vietsub) return 'vietsub';
-    if (movieLinks.dubbed) return 'dubbed';
+    const currentLinks = selectedServer === 'server3' ? server3Links : movieLinks;
+    if (selectedAudio === 'vietsub' && currentLinks.vietsub) return 'vietsub';
+    if (selectedAudio === 'dubbed' && currentLinks.dubbed) return 'dubbed';
+    if (currentLinks.vietsub) return 'vietsub';
+    if (currentLinks.dubbed) return 'dubbed';
     return null;
-  }, [selectedAudio, movieLinks.vietsub, movieLinks.dubbed]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedAudio, movieLinks.vietsub, movieLinks.dubbed, server3Links.vietsub, server3Links.dubbed, selectedServer]);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   // State cho các bộ lọc âm thanh (không hiển thị trong UI)
@@ -215,12 +227,12 @@ export default function WatchNowMovies({ movie }: WatchNowMoviesProps) {
   // Replace the existing fetchPhimApiEmbed function in your useEffect with this improved version
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
-    
+
     async function fetchPhimApiEmbed() {
       if (movieLinks.m3u8) {
         return;
       }
-      
+
       setMovieLinksLoading(true);
       setApiSearchCompleted(false);
       timeoutId = setTimeout(() => {
@@ -235,13 +247,13 @@ export default function WatchNowMovies({ movie }: WatchNowMoviesProps) {
         let slug = null;
 
         // UNIFIED STRATEGY: Try TMDB direct API with verification, then search with all keywords in parallel
-        
+
         // Step 1: Try TMDB ID direct API with title/year verification (HIGHEST PRIORITY)
         try {
           const tmdbDirectUrl = `https://phimapi.com/tmdb/movie/${id}`;
           const tmdbDirectRes = await fetch(tmdbDirectUrl);
           const tmdbDirectData = await tmdbDirectRes.json();
-          
+
           if (tmdbDirectData?.status === true && tmdbDirectData?.movie) {
             const apiMovie = tmdbDirectData.movie;
             const apiName = apiMovie.name || '';
@@ -249,23 +261,23 @@ export default function WatchNowMovies({ movie }: WatchNowMoviesProps) {
             const apiTitle = apiMovie.title || '';
             const apiYear = apiMovie.year;
             const apiSlug = apiMovie.slug;
-            
+
             // Verify title match - check against name, origin_name, or title
             const normalizedTarget = normalizeTitle(movie?.title || '');
             const nameMatch = normalizeTitle(apiName) === normalizedTarget;
             const originNameMatch = normalizeTitle(apiOriginName) === normalizedTarget;
             const titleMatch = normalizeTitle(apiTitle) === normalizedTarget;
-            
+
             // Accept if ANY of the title fields match
             const anyTitleMatch = nameMatch || originNameMatch || titleMatch;
             const yearMatch = apiYear && parseInt(String(apiYear)) === (movie?.year as number);
-            
+
             if (apiSlug && anyTitleMatch && yearMatch) {
               slug = apiSlug;
             } else if (apiSlug && anyTitleMatch) {
               // Accept if title matches even if year is slightly off
               const yearDiff = Math.abs(parseInt(String(apiYear || '0')) - (movie?.year as number || 0));
-              
+
               if (yearDiff <= 1) {
                 slug = apiSlug;
               }
@@ -277,7 +289,7 @@ export default function WatchNowMovies({ movie }: WatchNowMoviesProps) {
 
         // Step 2: If TMDB verification fails, search with ALL keywords in parallel
         if (!slug && movie?.title) {
-          
+
           // Collect ALL keywords from all strategies
           const normalizedTitle = normalizeTitle(movie.title);
           const keywords = extractKeywords(movie.title);
@@ -287,7 +299,7 @@ export default function WatchNowMovies({ movie }: WatchNowMoviesProps) {
             movie.title.toLowerCase(),
             movie.title.split(' ').slice(0, 3).join(' ')
           ];
-          
+
           // Combine all unique keywords
           const allKeywords = [
             movie.title,           // Original
@@ -295,7 +307,7 @@ export default function WatchNowMovies({ movie }: WatchNowMoviesProps) {
             ...keywords,           // Keywords
             ...titleVariations     // Variations
           ].filter((v, i, a) => a.indexOf(v) === i); // Remove duplicates
-          
+
           // Search all keywords in parallel using Promise.race
           const searchPromises = allKeywords.map(async (keyword) => {
             const searchResults = await searchPhimApi(keyword, movie.year as number);
@@ -307,7 +319,7 @@ export default function WatchNowMovies({ movie }: WatchNowMoviesProps) {
             }
             return null;
           });
-          
+
           // Race all searches - first one to find a match wins
           const result = await Promise.race(
             searchPromises.map(async (promise, index) => {
@@ -315,7 +327,7 @@ export default function WatchNowMovies({ movie }: WatchNowMoviesProps) {
               return res ? { ...res, index } : null;
             })
           );
-          
+
           if (result) {
             slug = result.match.slug;
           } else {
@@ -344,16 +356,16 @@ export default function WatchNowMovies({ movie }: WatchNowMoviesProps) {
         if (detailData.episodes && detailData.episodes.length > 0) {
           detailData.episodes.forEach((episode: PhimApiEpisode) => {
             const serverName = episode.server_name?.toLowerCase() || '';
-            
+
             if (episode.server_data && episode.server_data.length > 0) {
               // Check server_name first to determine audio type
               const isVietsub = serverName.includes('vietsub');
               const isDubbed = serverName.includes('thuyết minh') || serverName.includes('lồng tiếng') || serverName.includes('dubbed');
-              
+
               // If server_name matches, take the first available link from server_data
               if ((isVietsub || isDubbed) && episode.server_data[0]?.link_embed) {
                 const linkEmbed = episode.server_data[0].link_embed;
-                
+
                 if (isVietsub && !vietsubLink) {
                   vietsubLink = linkEmbed;
                 } else if (isDubbed && !dubbedLink) {
@@ -367,16 +379,16 @@ export default function WatchNowMovies({ movie }: WatchNowMoviesProps) {
         // Try to get embed from direct link as fallback
         if (detailData.link_embed) {
           defaultEmbed = detailData.link_embed;
-        } 
+        }
         // Try to get embed from first episode as fallback
         else if (detailData.episodes && detailData.episodes[0]?.server_data) {
           const firstEpisode = detailData.episodes[0];
           let foundFallback = false;
-          
+
           for (const serverData of firstEpisode.server_data) {
             const dataName = serverData.name?.toLowerCase() || '';
             const dataSlug = serverData.slug?.toLowerCase() || '';
-            
+
             if (serverData.link_embed && (
               dataName.includes('full') || dataName.includes('vietsub') ||
               dataSlug.includes('full') || dataSlug.includes('vietsub')
@@ -386,7 +398,7 @@ export default function WatchNowMovies({ movie }: WatchNowMoviesProps) {
               break;
             }
           }
-          
+
           if (!foundFallback && firstEpisode.server_data[0]?.link_embed) {
             defaultEmbed = firstEpisode.server_data[0].link_embed;
           }
@@ -407,8 +419,8 @@ export default function WatchNowMovies({ movie }: WatchNowMoviesProps) {
         // Set the appropriate link based on availability
         if (vietsubLink || dubbedLink) {
           const finalLink = vietsubLink || dubbedLink || defaultEmbed;
-          setMovieLinks(links => ({ 
-            ...links, 
+          setMovieLinks(links => ({
+            ...links,
             vietsub: vietsubLink,
             dubbed: dubbedLink,
             m3u8: finalLink
@@ -435,14 +447,14 @@ export default function WatchNowMovies({ movie }: WatchNowMoviesProps) {
       try {
         let url = `https://phimapi.com/v1/api/tim-kiem?keyword=${encodeURIComponent(keyword)}`;
         if (year) url += `&year=${year}`;
-        
+
         const res = await fetch(url);
         const data = await res.json();
 
         if (data.status === 'success' && data.data && Array.isArray(data.data.items)) {
           return data.data.items;
         }
-        
+
         return [];
       } catch {
         return [];
@@ -456,7 +468,7 @@ export default function WatchNowMovies({ movie }: WatchNowMoviesProps) {
       }
 
       // Priority 1: Exact TMDB ID match
-      const tmdbMatch = items.find(item => 
+      const tmdbMatch = items.find(item =>
         item.tmdb && item.tmdb.id && item.tmdb.id.toString() === tmdbId.toString()
       );
       if (tmdbMatch) {
@@ -524,7 +536,7 @@ export default function WatchNowMovies({ movie }: WatchNowMoviesProps) {
     function extractKeywords(title: string): string[] {
       const normalized = normalizeTitle(title);
       const words = normalized.split(' ').filter(word => word.length > 2);
-      
+
       // Return combinations: full title, major words, individual significant words
       const keywords = [
         title, // Original title
@@ -539,9 +551,9 @@ export default function WatchNowMovies({ movie }: WatchNowMoviesProps) {
     function calculateSimilarity(str1: string, str2: string): number {
       const longer = str1.length > str2.length ? str1 : str2;
       const shorter = str1.length > str2.length ? str2 : str1;
-      
+
       if (longer.length === 0) return 1.0;
-      
+
       const distance = levenshteinDistance(longer, shorter);
       return (longer.length - distance) / longer.length;
     }
@@ -549,10 +561,10 @@ export default function WatchNowMovies({ movie }: WatchNowMoviesProps) {
     // Helper function to calculate Levenshtein distance
     function levenshteinDistance(str1: string, str2: string): number {
       const matrix = Array(str2.length + 1).fill(null).map(() => Array(str1.length + 1).fill(null));
-      
+
       for (let i = 0; i <= str1.length; i++) matrix[0][i] = i;
       for (let j = 0; j <= str2.length; j++) matrix[j][0] = j;
-      
+
       for (let j = 1; j <= str2.length; j++) {
         for (let i = 1; i <= str1.length; i++) {
           const indicator = str1[i - 1] === str2[j - 1] ? 0 : 1;
@@ -563,24 +575,34 @@ export default function WatchNowMovies({ movie }: WatchNowMoviesProps) {
           );
         }
       }
-      
+
       return matrix[str2.length][str1.length];
     }
 
     fetchPhimApiEmbed();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, movie?.title, movie?.year]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 text-white">
       <h2 className="text-3xl font-bold mb-6">Watch Now</h2>
+
+      {/* Server 3 Component - Load tự động sau Server 1 */}
+      <WatchNowMoviesServer3
+        movie={movie}
+        server1Ready={apiSearchCompleted}
+        onLinksChange={setServer3Links}
+        onLoadingChange={setServer3Loading}
+        onSearchComplete={setServer3SearchCompleted}
+      />
+
       <div className="mb-4 flex flex-wrap items-start gap-3">
         <div className="flex flex-col gap-2">
           <button
             className={`whitespace-nowrap px-4 py-2 rounded-md text-sm font-semibold transition-colors ${selectedServer === 'server1' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-200 hover:bg-gray-600'}`}
             onClick={() => handleServerChange('server1')}
           >
-            Server 1 
+            Server 1
           </button>
           {selectedServer === 'server1' && (
             (movieLinks.vietsub || movieLinks.dubbed) && (
@@ -621,12 +643,55 @@ export default function WatchNowMovies({ movie }: WatchNowMoviesProps) {
             className={`whitespace-nowrap px-4 py-2 rounded-md text-sm font-semibold transition-colors ${selectedServer === 'server2' ? 'bg-green-600 text-white' : 'bg-gray-700 text-gray-200 hover:bg-gray-600'}`}
             onClick={() => handleServerChange('server2')}
           >
-            Server 2 
+            Server 2
           </button>
           {selectedServer === 'server2' && (
             <span className="text-xs text-yellow-300 bg-yellow-900/40 px-2 py-1 rounded w-max">
               This server may contain ads.
             </span>
+          )}
+        </div>
+        <div className="flex flex-col gap-2">
+          <button
+            className={`whitespace-nowrap px-4 py-2 rounded-md text-sm font-semibold transition-colors ${selectedServer === 'server3' ? 'bg-amber-700 text-white' : 'bg-gray-700 text-gray-200 hover:bg-gray-600'}`}
+            onClick={() => handleServerChange('server3')}
+          >
+            Server 3
+          </button>
+          {selectedServer === 'server3' && (
+            <>
+              {(server3Links.vietsub || server3Links.dubbed) && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-300">Audio:</span>
+                  {server3Links.vietsub && (
+                    <button
+                      className={`px-3 py-1 rounded text-xs font-semibold transition-colors ${selectedAudio === 'vietsub' ? 'bg-gradient-to-r from-fuchsia-600 to-pink-600 text-white' : 'bg-gray-700 text-gray-200 hover:bg-gray-600'}`}
+                      onClick={() => {
+                        setSelectedAudio('vietsub');
+                        const params = new URLSearchParams(searchParams.toString());
+                        params.set('audio', 'vietsub');
+                        router.push(`${window.location.pathname}?${params.toString()}`, { scroll: false });
+                      }}
+                    >
+                      Vietsub
+                    </button>
+                  )}
+                  {server3Links.dubbed && (
+                    <button
+                      className={`px-3 py-1 rounded text-xs font-semibold transition-colors ${selectedAudio === 'dubbed' ? 'bg-gradient-to-r from-fuchsia-600 to-pink-600 text-white' : 'bg-gray-700 text-gray-200 hover:bg-gray-600'}`}
+                      onClick={() => {
+                        setSelectedAudio('dubbed');
+                        const params = new URLSearchParams(searchParams.toString());
+                        params.set('audio', 'dubbed');
+                        router.push(`${window.location.pathname}?${params.toString()}`, { scroll: false });
+                      }}
+                    >
+                      Dubbed
+                    </button>
+                  )}
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
@@ -635,7 +700,7 @@ export default function WatchNowMovies({ movie }: WatchNowMoviesProps) {
       <div className="mb-2 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
           <h3 className="text-white text-xs sm:text-sm md:text-base font-semibold truncate" title={movie.title}>{movie.title}</h3>
-          {selectedServer === 'server1' && effectiveAudio && (
+          {((selectedServer === 'server1' || selectedServer === 'server3') && effectiveAudio) && (
             <span className="px-2 py-0.5 text-[10px] sm:text-xs font-semibold rounded bg-gradient-to-r from-fuchsia-600 to-pink-600 text-white whitespace-nowrap">
               {effectiveAudio === 'vietsub' ? 'Vietsub' : 'Vietnamese Dubbed'}
             </span>
@@ -650,7 +715,7 @@ export default function WatchNowMovies({ movie }: WatchNowMoviesProps) {
               return (
                 <div className="flex items-center justify-center h-full text-white">
                   <div className="flex flex-col items-center gap-4">
-                    <motion.div 
+                    <motion.div
                       animate={{ rotate: 360 }}
                       transition={{ repeat: Infinity, duration: 1.5, ease: 'linear' }}
                       className="w-12 h-12 border-4 border-red-500 border-t-transparent rounded-full"
@@ -724,6 +789,69 @@ export default function WatchNowMovies({ movie }: WatchNowMoviesProps) {
             title={movie.title + ' - Server 2'}
             referrerPolicy="origin"
           />
+        )}
+        {selectedServer === 'server3' && (
+          (() => {
+            if (!server3SearchCompleted || server3Loading) {
+              return (
+                <div className="flex items-center justify-center h-full text-white">
+                  <div className="flex flex-col items-center gap-4">
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{ repeat: Infinity, duration: 1.5, ease: 'linear' }}
+                      className="w-12 h-12 border-4 border-red-500 border-t-transparent rounded-full"
+                    />
+                    <p className="text-sm text-gray-400">Please wait a moment</p>
+                  </div>
+                </div>
+              );
+            }
+
+            const hasVideoSource = server3Links.vietsub || server3Links.dubbed || server3Links.m3u8;
+            if (!hasVideoSource) {
+              return (
+                <div className="flex items-center justify-center h-full text-white">
+                  <div className="flex flex-col items-center gap-4">
+                    <svg className="w-12 h-12 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <p className="text-lg font-semibold">No video source available</p>
+                    <p className="text-sm text-gray-400">Please try another server</p>
+                  </div>
+                </div>
+              );
+            }
+
+            // Server 3 sử dụng iframe vì nguonc.com không cho phép embed trực tiếp
+            let embedSrc = '';
+            if (selectedAudio === 'vietsub' && server3Links.vietsub) {
+              embedSrc = server3Links.vietsub;
+            } else if (selectedAudio === 'dubbed' && server3Links.dubbed) {
+              embedSrc = server3Links.dubbed;
+            } else if (server3Links.vietsub) {
+              embedSrc = server3Links.vietsub;
+            } else if (server3Links.dubbed) {
+              embedSrc = server3Links.dubbed;
+            } else {
+              embedSrc = server3Links.m3u8;
+            }
+
+            return embedSrc ? (
+              <iframe
+                key={embedSrc}
+                src={embedSrc}
+                className="w-full h-full"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                title={movie.title + ' - Server 3'}
+                referrerPolicy="origin"
+              />
+            ) : (
+              <div className="flex items-center justify-center h-full text-white text-lg font-semibold">
+                No video source available
+              </div>
+            );
+          })()
         )}
       </div>
     </div>

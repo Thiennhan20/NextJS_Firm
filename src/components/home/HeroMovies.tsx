@@ -151,7 +151,6 @@ const DesktopTrailerHint = () => (
 );
 
 export default function HeroMovies() {
-  const API_KEY = process.env.NEXT_PUBLIC_TMDB_API_KEY;
   const [heroItems, setHeroItems] = useState<HeroItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -267,8 +266,8 @@ export default function HeroMovies() {
       setLoading(true);
       try {
         const [moviesResponse, tvShowsResponse] = await Promise.all([
-          axios.get(`https://api.themoviedb.org/3/trending/movie/week?api_key=${API_KEY}`),
-          axios.get(`https://api.themoviedb.org/3/trending/tv/week?api_key=${API_KEY}`)
+          axios.get('/api/tmdb-proxy?endpoint=/trending/movie/week'),
+          axios.get('/api/tmdb-proxy?endpoint=/trending/tv/week')
         ]);
 
         const movies = moviesResponse.data.results.slice(0, 3).map((movie: TMDBMovie) => ({
@@ -307,10 +306,8 @@ export default function HeroMovies() {
       setLoading(false);
     };
     
-    if (API_KEY) {
-      fetchHeroItems();
-    }
-  }, [API_KEY]);
+    fetchHeroItems();
+  }, []);
 
   // Start auto-play when component mounts and items are loaded
   useEffect(() => {
@@ -392,7 +389,7 @@ export default function HeroMovies() {
       
       // Fetch trailer from TMDB API
       const response = await axios.get(
-        `https://api.themoviedb.org/3/${item.type}/${item.id}/videos?api_key=${API_KEY}`
+        `/api/tmdb-proxy?endpoint=/${item.type}/${item.id}/videos`
       );
       
       const trailers = response.data.results.filter((video: { type: string; site: string }) => 

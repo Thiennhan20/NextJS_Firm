@@ -39,7 +39,6 @@ interface ProcessedMovie {
 type ContentItem = ProcessedMovie;
 
 export default function ComingSoonMovies() {
-  const API_KEY = process.env.NEXT_PUBLIC_TMDB_API_KEY;
   const router = useRouter();
   const [featuredContent, setFeaturedContent] = useState<ContentItem[]>([]);
   const [page, setPage] = useState(1);
@@ -146,7 +145,7 @@ export default function ComingSoonMovies() {
       const endDateStr = endDate.toISOString().split('T')[0]; // Format: YYYY-MM-DD
 
 
-      const apiUrl = `https://api.themoviedb.org/3/discover/movie?api_key=${API_KEY}&release_date.gte=${startDate}&release_date.lte=${endDateStr}&with_release_type=3|6&region=VN&sort_by=release_date.asc`;
+      const apiUrl = `/api/tmdb-proxy?endpoint=/discover/movie&release_date.gte=${startDate}&release_date.lte=${endDateStr}&with_release_type=3|6&region=VN&sort_by=release_date.asc`;
       
 
       const response = await axios.get(apiUrl, {
@@ -205,7 +204,7 @@ export default function ComingSoonMovies() {
   useEffect(() => {
     fetchMovies(1, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [API_KEY]);
+  }, []);
 
   // Check for daily updates
   useEffect(() => {
@@ -223,7 +222,7 @@ export default function ComingSoonMovies() {
     const interval = setInterval(checkForDailyUpdate, 60000); // Check every minute
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [API_KEY, lastFetchDate]);
+  }, [lastFetchDate]);
 
   // Optimized scroll handling with throttling and data limit
   useEffect(() => {

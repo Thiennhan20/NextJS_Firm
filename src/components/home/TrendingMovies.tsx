@@ -93,7 +93,6 @@ const getCountryName = (languageCode?: string): string => {
 };
 
 export default function TrendingMovies() {
-  const API_KEY = process.env.NEXT_PUBLIC_TMDB_API_KEY;
   const router = useRouter();
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
@@ -102,8 +101,8 @@ export default function TrendingMovies() {
   // Optimized API call with caching
   const fetchTrendingData = useCallback(async () => {
     const [moviesResponse, tvShowsResponse] = await Promise.all([
-      axios.get(`https://api.themoviedb.org/3/trending/movie/week?api_key=${API_KEY}`),
-      axios.get(`https://api.themoviedb.org/3/trending/tv/week?api_key=${API_KEY}`)
+      axios.get('/api/tmdb-proxy?endpoint=/trending/movie/week'),
+      axios.get('/api/tmdb-proxy?endpoint=/trending/tv/week')
     ]);
 
     const movies = moviesResponse.data.results.slice(0, 10).map((movie: TMDBMovie) => ({
@@ -129,7 +128,7 @@ export default function TrendingMovies() {
     }));
 
     return [...movies, ...tvShows];
-  }, [API_KEY]);
+  }, []);
 
   const { data: trending = [], loading, error } = useApiCache(
     'trending-movies-tv',

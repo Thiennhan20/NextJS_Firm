@@ -16,7 +16,6 @@ interface MovieNews {
 }
 
 export default function NewsPage() {
-  const API_KEY = process.env.NEXT_PUBLIC_TMDB_API_KEY;
   const [news, setNews] = useState<MovieNews[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -27,7 +26,7 @@ export default function NewsPage() {
       setLoading(true);
       try {
         const response = await axios.get(
-          `https://api.themoviedb.org/3/movie/now_playing?api_key=${API_KEY}&language=en-US&page=${page}`
+          `/api/tmdb-proxy?endpoint=/movie/now_playing&language=en-US&page=${page}`
         );
         const movies: MovieNews[] = response.data.results.map((movie: Record<string, unknown>) => ({
           id: movie.id as number,
@@ -45,7 +44,7 @@ export default function NewsPage() {
       setLoading(false);
     };
     fetchNews();
-  }, [API_KEY, page]);
+  }, [page]);
 
   return (
     <RequireAdmin>

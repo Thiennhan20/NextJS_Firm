@@ -12,7 +12,6 @@ import FilterIcon from '@/components/FilterIcon'
 import CardWithHover from '@/components/common/CardWithHover'
 import { useRouter as useNavRouter } from 'next/navigation'
 
-const API_KEY = process.env.NEXT_PUBLIC_TMDB_API_KEY
 const DEBOUNCE_DELAY = 600
 
 interface Movie {
@@ -280,13 +279,19 @@ function SearchPageContent() {
         let moviesTotalResults = 0
         let tvShowsTotalResults = 0
         
+        const API_BASE = '/api/tmdb-proxy';
+        
         const searchPromises: Promise<unknown>[] = []
         
         if (ct === 'all' || ct === 'movie') {
-          let movieUrl = `https://api.themoviedb.org/3/search/movie?api_key=${API_KEY}&query=${encodeURIComponent(searchQuery)}&page=${pageNum}`
+          const movieParams = new URLSearchParams({
+            query: searchQuery,
+            page: pageNum.toString()
+          });
           if (year !== 'All') {
-            movieUrl += `&year=${year}`
+            movieParams.append('year', year);
           }
+          let movieUrl = `${API_BASE}?endpoint=/search/movie&${movieParams.toString()}`;
           if (genre !== 'All') {
             const genreId = genreObjects.find(g => g.name === genre)?.id
             if (genreId) {
@@ -329,10 +334,14 @@ function SearchPageContent() {
         }
         
         if (ct === 'all' || ct === 'tv') {
-          let tvUrl = `https://api.themoviedb.org/3/search/tv?api_key=${API_KEY}&query=${encodeURIComponent(searchQuery)}&page=${pageNum}`
+          const tvParams = new URLSearchParams({
+            query: searchQuery,
+            page: pageNum.toString()
+          });
           if (year !== 'All') {
-            tvUrl += `&first_air_date_year=${year}`
+            tvParams.append('first_air_date_year', year);
           }
+          let tvUrl = `${API_BASE}?endpoint=/search/tv&${tvParams.toString()}`;
           if (genre !== 'All') {
             const genreId = genreObjects.find(g => g.name === genre)?.id
             if (genreId) {

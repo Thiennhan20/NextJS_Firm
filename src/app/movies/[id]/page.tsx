@@ -42,14 +42,13 @@ interface Movie {
 
 
 export default function MovieDetail() {
-  const API_KEY = process.env.NEXT_PUBLIC_TMDB_API_KEY;
   const { id } = useParams();
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const searchParams = useSearchParams();
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const router = useRouter();
   const [movie, setMovie] = useState<Movie | null>(null);
-  
+
 
   const [loading, setLoading] = useState<boolean>(true);
   const [activeScene, setActiveScene] = useState<number | null>(null)
@@ -89,6 +88,7 @@ export default function MovieDetail() {
           id: movie.id,
           title: movie.title,
           poster_path: movie.poster,
+          type: 'movie',
         });
         addToWatchlist({
           id: movie.id,
@@ -115,17 +115,17 @@ export default function MovieDetail() {
       setLoading(true);
       try {
         const response = await axios.get(
-          `https://api.themoviedb.org/3/movie/${id}?api_key=${API_KEY}`
+          `/api/tmdb-proxy?endpoint=/movie/${id}`
         );
         const data = response.data;
         let scenes: string[] = [];
         try {
           const imgRes = await axios.get(
-            `https://api.themoviedb.org/3/movie/${id}/images?api_key=${API_KEY}`
+            `/api/tmdb-proxy?endpoint=/movie/${id}/images`
           );
           const backdrops: { file_path: string }[] = imgRes.data.backdrops || [];
           scenes = backdrops.slice(0, 3).map((img) => `https://image.tmdb.org/t/p/w780${img.file_path}`);
-        } catch {}
+        } catch { }
         if (scenes.length < 3) {
           if (data.backdrop_path) scenes.push(`https://image.tmdb.org/t/p/w780${data.backdrop_path}`);
           if (data.poster_path) scenes.push(`https://image.tmdb.org/t/p/w500${data.poster_path}`);
@@ -134,21 +134,21 @@ export default function MovieDetail() {
         let trailer = '';
         try {
           const videoRes = await axios.get(
-            `https://api.themoviedb.org/3/movie/${id}/videos?api_key=${API_KEY}`
+            `/api/tmdb-proxy?endpoint=/movie/${id}/videos`
           );
           const videos: { type: string; site: string; key: string }[] = videoRes.data.results || [];
           const ytTrailer = videos.find((v) => v.type === 'Trailer' && v.site === 'YouTube');
           if (ytTrailer) {
             trailer = `https://www.youtube.com/embed/${ytTrailer.key}`;
           }
-        } catch {}
-        
+        } catch { }
+
         // Fetch credits for director and cast
         const creditsResponse = await axios.get(
-          `https://api.themoviedb.org/3/movie/${id}/credits?api_key=${API_KEY}`
+          `/api/tmdb-proxy?endpoint=/movie/${id}/credits`
         );
         const credits = creditsResponse.data;
-        
+
         const movieData = {
           id: data.id,
           title: data.title,
@@ -174,7 +174,7 @@ export default function MovieDetail() {
       setLoading(false);
     };
     fetchMovie();
-  }, [id, API_KEY]);
+  }, [id]);
 
   // Helper to format date as dd/mm/yyyy (Vietnam locale)
   const formatDate = (dateStr?: string) => {
@@ -190,7 +190,7 @@ export default function MovieDetail() {
   if (loading || !movie) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-gray-900 to-black">
-        <motion.div 
+        <motion.div
           animate={{ rotate: 360 }}
           transition={{ repeat: Infinity, duration: 1.5, ease: 'linear' }}
           className="w-16 h-16 border-4 border-red-500 border-t-transparent rounded-full"
@@ -200,7 +200,7 @@ export default function MovieDetail() {
   }
 
   const { title, backdrop, poster, duration, year, genre, director, cast, description, scenes, trailer, releaseDate } = movie;
-  const heroHeightClass = poster 
+  const heroHeightClass = poster
     ? 'h-[40vh] md:h-[50vh] lg:h-[60vh]'
     : 'h-[28vh] sm:h-[24vh] md:h-[28vh] lg:h-[32vh]';
 
@@ -217,7 +217,7 @@ export default function MovieDetail() {
           />
           <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/30 to-black" />
         </div>
-        
+
         <motion.div
           style={{ y, opacity }}
           className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 lg:grid lg:grid-cols-2 lg:gap-8 lg:items-center"
@@ -226,7 +226,7 @@ export default function MovieDetail() {
             {poster ? (
               <Canvas className="w-full h-full">
                 <PerspectiveCamera makeDefault position={[0, 0, 5]} />
-                <OrbitControls 
+                <OrbitControls
                   enableZoom={false}
                   minAzimuthAngle={-0.35}
                   maxAzimuthAngle={0.35}
@@ -244,10 +244,10 @@ export default function MovieDetail() {
               </div>
             )}
           </div>
-          
+
           <div className="text-white space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
-              <motion.h1 
+              <motion.h1
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold leading-tight"
@@ -256,9 +256,9 @@ export default function MovieDetail() {
               </motion.h1>
 
             </div>
-            
+
             <div className="flex flex-wrap gap-4">
-              
+
               <div className="flex items-center space-x-2">
                 <ClockIcon className="h-6 w-6 text-gray-400" />
                 <span className="text-gray-400">{duration}</span>
@@ -323,7 +323,7 @@ export default function MovieDetail() {
                 </p>
                 <div className="absolute inset-y-0 right-0 flex items-center pl-6">
                   <div className="pointer-events-none absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-black/70 to-transparent"></div>
-                  
+
                   <button
                     onClick={() => setIsDescExpanded(true)}
                     className="relative z-10 text-xs px-2 py-1 rounded-md bg-white/15 hover:bg-white/25 text-white border border-white/20 backdrop-blur-sm"
@@ -359,11 +359,10 @@ export default function MovieDetail() {
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={handleToggleWatchlist}
-                className={`flex-1 sm:flex-none px-4 sm:px-6 py-2 sm:py-3 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2 text-sm sm:text-base ${
-                  isBookmarked
+                className={`flex-1 sm:flex-none px-4 sm:px-6 py-2 sm:py-3 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2 text-sm sm:text-base ${isBookmarked
                     ? 'bg-amber-700 text-white hover:bg-amber-800'
                     : 'bg-gray-700 text-white hover:bg-gray-600'
-                }`}
+                  }`}
               >
                 <BookmarkIcon className="h-4 w-4 sm:h-5 sm:w-5" />
                 <span className="hidden xs:inline">{isBookmarked ? 'Added' : 'Save'}</span>
@@ -661,17 +660,17 @@ export default function MovieDetail() {
       */}
 
       {/* Comments Section */}
-      <Comments 
-        movieId={movie.id} 
-        type="movie" 
-        title={movie.title} 
+      <Comments
+        movieId={movie.id}
+        type="movie"
+        title={movie.title}
       />
 
       {/* Related Movies */}
-      <RelatedContent 
-        id={movie.id} 
-        type="movie" 
-        title={movie.title} 
+      <RelatedContent
+        id={movie.id}
+        type="movie"
+        title={movie.title}
       />
 
       {/* Scenes Modal */}
@@ -703,7 +702,7 @@ export default function MovieDetail() {
                   </svg>
                 </button>
               </div>
-              
+
               {/* Main Image */}
               <div className="relative aspect-video rounded-lg overflow-hidden bg-gray-900">
                 <Image
@@ -713,7 +712,7 @@ export default function MovieDetail() {
                   className="object-contain"
                 />
               </div>
-              
+
               {/* Navigation */}
               <div className="flex items-center justify-center gap-4 mt-4">
                 <button
@@ -724,22 +723,21 @@ export default function MovieDetail() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                   </svg>
                 </button>
-                
+
                 {/* Thumbnails */}
                 <div className="flex gap-2">
                   {scenes.map((scene, index) => (
                     <button
                       key={index}
                       onClick={() => setActiveScene(index)}
-                      className={`relative w-16 h-10 rounded overflow-hidden transition-all ${
-                        activeScene === index ? 'ring-2 ring-red-500 scale-110' : 'opacity-60 hover:opacity-100'
-                      }`}
+                      className={`relative w-16 h-10 rounded overflow-hidden transition-all ${activeScene === index ? 'ring-2 ring-red-500 scale-110' : 'opacity-60 hover:opacity-100'
+                        }`}
                     >
                       <Image src={scene} alt={`Thumb ${index + 1}`} fill className="object-cover" />
                     </button>
                   ))}
                 </div>
-                
+
                 <button
                   onClick={() => setActiveScene(prev => prev !== null && prev < scenes.length - 1 ? prev + 1 : 0)}
                   className="p-2 bg-gray-800 hover:bg-gray-700 text-white rounded-full transition-colors"
@@ -766,17 +764,17 @@ function MoviePoster3D({ posterUrl }: { posterUrl: string }) {
     const loader = new THREE.TextureLoader()
     let loadedTexture: THREE.Texture | null = null
     let cancelled = false
-    
+
     setIsLoading(true)
-    
+
     loader.load(
-      posterUrl, 
+      posterUrl,
       (tex) => {
         if (!cancelled) {
           // Set texture properties
           tex.flipY = true // Để ảnh hiển thị đúng hướng
           tex.generateMipmaps = true
-          
+
           loadedTexture = tex
           setTexture(tex)
           setIsLoading(false)
@@ -791,7 +789,7 @@ function MoviePoster3D({ posterUrl }: { posterUrl: string }) {
         }
       }
     )
-    
+
     return () => {
       cancelled = true
       if (loadedTexture) {
@@ -838,7 +836,7 @@ function MoviePoster3D({ posterUrl }: { posterUrl: string }) {
         <meshBasicMaterial color="#374151" />
         <Html center>
           <div className="flex flex-col items-center justify-center text-white">
-            <motion.div 
+            <motion.div
               animate={{ rotate: 360 }}
               transition={{ repeat: Infinity, duration: 1.5, ease: 'linear' }}
               className="w-8 h-8 border-4 border-red-500 border-t-transparent rounded-full"
@@ -858,7 +856,7 @@ function MoviePoster3D({ posterUrl }: { posterUrl: string }) {
         <Html center>
           <div className="flex flex-col items-center justify-center text-white">
             <span className="text-xs text-gray-300">No Image</span>
-            </div>
+          </div>
         </Html>
       </mesh>
     )
@@ -867,9 +865,9 @@ function MoviePoster3D({ posterUrl }: { posterUrl: string }) {
   return (
     <mesh ref={meshRef} castShadow>
       <planeGeometry args={[2, 3]} />
-      <meshBasicMaterial 
+      <meshBasicMaterial
         key={texture.uuid} // Force re-render when texture changes
-        map={texture} 
+        map={texture}
         toneMapped={false}
         transparent={false}
         opacity={1}

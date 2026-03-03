@@ -1,30 +1,37 @@
 /**
- * TMDB API fetch helper with caching
+ * TMDB API fetch helper with caching - Using Next.js proxy to backend server
  * Reduces API calls and improves performance
  */
-
-const TMDB_API_KEY = process.env.NEXT_PUBLIC_TMDB_API_KEY
-const TMDB_BASE_URL = 'https://api.themoviedb.org/3'
 
 interface FetchOptions {
   revalidate?: number // Cache duration in seconds
   cache?: RequestCache
 }
 
+const API_BASE = '/api/tmdb-proxy';
+
 /**
- * Fetch data from TMDB API with caching
+ * Fetch data from TMDB API via backend server with caching
  * @param endpoint - API endpoint (e.g., '/movie/popular')
+ * @param params - Query parameters
  * @param options - Fetch options with cache configuration
  */
 export async function fetchTMDB<T>(
   endpoint: string,
+  params: Record<string, string | number> = {},
   options: FetchOptions = {}
 ): Promise<T> {
   const { revalidate = 300, cache = 'force-cache' } = options
 
-  const url = `${TMDB_BASE_URL}${endpoint}${
-    endpoint.includes('?') ? '&' : '?'
-  }api_key=${TMDB_API_KEY}`
+  // Build query parameters
+  const searchParams = new URLSearchParams({
+    endpoint,
+    ...Object.fromEntries(
+      Object.entries(params).map(([key, value]) => [key, String(value)])
+    )
+  });
+
+  const url = `${API_BASE}?${searchParams.toString()}`;
 
   try {
     const response = await fetch(url, {

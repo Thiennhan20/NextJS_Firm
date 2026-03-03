@@ -40,7 +40,6 @@ declare global {
   }
 }
 
-const API_KEY = process.env.NEXT_PUBLIC_TMDB_API_KEY;
 const DEBOUNCE_DELAY = 600;
 const MAX_CACHE_SIZE = 50;
 const MIN_QUERY_LENGTH = 2;
@@ -249,7 +248,7 @@ export default function AutocompleteSearch({
   ): Promise<Season[]> => {
     try {
       const response = await axios.get(
-        `https://api.themoviedb.org/3/tv/${tvShowId}?api_key=${API_KEY}`,
+        `/api/tmdb-proxy?endpoint=/tv/${tvShowId}`,
         { cancelToken: cancelToken.token }
       );
       const seasons = response.data.seasons || [];
@@ -279,7 +278,7 @@ export default function AutocompleteSearch({
   ): Promise<Season[]> => {
     try {
       const tvResponse = await axios.get(
-        `https://api.themoviedb.org/3/search/tv?api_key=${API_KEY}&query=${encodeURIComponent(showName)}`,
+        `/api/tmdb-proxy?endpoint=/search/tv&query=${encodeURIComponent(showName)}`,
         { cancelToken: cancelToken.token }
       );
       const tvShows = tvResponse.data.results || [];
@@ -350,7 +349,7 @@ export default function AutocompleteSearch({
         const [specificSeasons, tvResponse] = await Promise.all([
           searchForSpecificSeason(showName, seasonNumber, cancelTokenRef.current),
           axios.get(
-            `https://api.themoviedb.org/3/search/tv?api_key=${API_KEY}&query=${encodeURIComponent(showName)}`,
+            `/api/tmdb-proxy?endpoint=/search/tv&query=${encodeURIComponent(showName)}`,
             { cancelToken: cancelTokenRef.current.token }
           )
         ]);
@@ -366,11 +365,11 @@ export default function AutocompleteSearch({
         // Regular search for movies and TV shows
         const [moviesRes, tvShowsRes] = await Promise.all([
           axios.get(
-            `https://api.themoviedb.org/3/search/movie?api_key=${API_KEY}&query=${encodeURIComponent(showName)}`,
+            `/api/tmdb-proxy?endpoint=/search/movie&query=${encodeURIComponent(showName)}`,
             { cancelToken: cancelTokenRef.current.token }
           ),
           axios.get(
-            `https://api.themoviedb.org/3/search/tv?api_key=${API_KEY}&query=${encodeURIComponent(showName)}`,
+            `/api/tmdb-proxy?endpoint=/search/tv&query=${encodeURIComponent(showName)}`,
             { cancelToken: cancelTokenRef.current.token }
           )
         ]);

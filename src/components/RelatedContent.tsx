@@ -26,7 +26,6 @@ interface RelatedContentProps {
 }
 
 export default function RelatedContent({ id, type, title }: RelatedContentProps) {
-  const API_KEY = process.env.NEXT_PUBLIC_TMDB_API_KEY;
   const router = useRouter();
   const [relatedItems, setRelatedItems] = useState<RelatedItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -40,14 +39,14 @@ export default function RelatedContent({ id, type, title }: RelatedContentProps)
       try {
         // Fetch recommendations first
         const recResponse = await axios.get(
-          `https://api.themoviedb.org/3/${type}/${id}/recommendations?api_key=${API_KEY}`
+          `/api/tmdb-proxy?endpoint=/${type}/${id}/recommendations`
         );
         let items: RelatedItem[] = recResponse.data.results || [];
 
         // If not enough recommendations, fetch similar
         if (items.length < 10) {
           const simResponse = await axios.get(
-            `https://api.themoviedb.org/3/${type}/${id}/similar?api_key=${API_KEY}`
+            `/api/tmdb-proxy?endpoint=/${type}/${id}/similar`
           );
           const similarItems: RelatedItem[] = simResponse.data.results || [];
           
@@ -72,10 +71,10 @@ export default function RelatedContent({ id, type, title }: RelatedContentProps)
       setLoading(false);
     };
 
-    if (id && API_KEY) {
+    if (id) {
       fetchRelated();
     }
-  }, [id, type, API_KEY]);
+  }, [id, type]);
 
   const checkScrollButtons = () => {
     if (scrollContainerRef.current) {

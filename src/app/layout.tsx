@@ -14,7 +14,7 @@ import WatchlistSyncer from "@/components/WatchlistSyncer";
 import FloatingChatbox from "@/components/FloatingChatbox";
 import ProgressCleanup from '@/components/ProgressCleanup';
 
-const inter = Inter({ 
+const inter = Inter({
   subsets: ["latin"],
   display: 'swap', // Prevent FOIT (Flash of Invisible Text)
   preload: true,
@@ -49,14 +49,12 @@ export default function RootLayout({
         {/* Preconnect to TMDB for faster image loading */}
         <link rel="preconnect" href="https://image.tmdb.org" />
         <link rel="dns-prefetch" href="https://image.tmdb.org" />
-        <link rel="preconnect" href="https://api.themoviedb.org" />
-        <link rel="dns-prefetch" href="https://api.themoviedb.org" />
       </head>
       <body className={`${inter.className} bg-black text-white min-h-screen flex flex-col`}>
         <HeaderProvider>
           {/* Splash Screen */}
           <SplashWrapper />
-          
+
           <AuthChecker />
           <ProgressCleanup />
           <Navigation />

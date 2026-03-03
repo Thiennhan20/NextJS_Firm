@@ -5,6 +5,7 @@ import { motion } from 'framer-motion'
 import { useParams, useSearchParams, useRouter } from 'next/navigation'
 import EnhancedMoviePlayer from '@/components/common/EnhancedMoviePlayer'
 import useAuthStore from '@/store/useAuthStore'
+import WatchNowTVShowsServer3 from './WatchNowTVShowsServer3'
 
 // Định nghĩa kiểu TVShow
 interface TVShow {
@@ -43,11 +44,11 @@ interface WatchNowTVShowsProps {
   episodes: Episode[];
 }
 
-export default function WatchNowTVShows({ 
-  tvShow, 
-  selectedSeason, 
-  selectedEpisode, 
-  episodes: _episodes 
+export default function WatchNowTVShows({
+  tvShow,
+  selectedSeason,
+  selectedEpisode,
+  episodes: _episodes
 }: WatchNowTVShowsProps) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const userId = useAuthStore((s) => (s.user as any)?.id || (s.user as any)?._id)
@@ -56,10 +57,10 @@ export default function WatchNowTVShows({
   const { id } = useParams();
   const searchParams = useSearchParams();
   const router = useRouter();
-  
-  const [selectedServer, setSelectedServer] = useState<'server1' | 'server2'>('server1');
+
+  const [selectedServer, setSelectedServer] = useState<'server1' | 'server2' | 'server3'>('server1');
   const hasInitialized = useRef(false);
-  
+
   // Read audio parameter from URL
   const audioFromUrl = searchParams.get('audio');
 
@@ -76,7 +77,12 @@ export default function WatchNowTVShows({
   const [tvShowLinksLoading, setTVShowLinksLoading] = useState(false);
   const [apiSearchCompleted, setApiSearchCompleted] = useState(false);
   const [dataReady, setDataReady] = useState(false);
-  
+
+  // Server 3 states
+  const [server3Links, setServer3Links] = useState({ vietsub: '', dubbed: '', m3u8: '' });
+  const [server3Loading, setServer3Loading] = useState(false);
+  const [server3SearchCompleted, setServer3SearchCompleted] = useState(false);
+
   // ✅ Di chuyển tvShowLinks lên đây để useEffect có thể dùng
   const [tvShowLinks, setTVShowLinks] = useState({
     embed: '',
@@ -88,17 +94,17 @@ export default function WatchNowTVShows({
   });
 
   // Cập nhật URL khi thay đổi server
-  const updateServerInUrl = (server: 'server1' | 'server2') => {
+  const updateServerInUrl = (server: 'server1' | 'server2' | 'server3') => {
     const params = new URLSearchParams(searchParams.toString());
     const currentServer = searchParams.get('server');
-    
+
     // Chỉ cập nhật nếu server thực sự thay đổi
     if (currentServer !== server) {
       params.set('server', server);
       const newUrl = `${window.location.pathname}${params.toString() ? '?' + params.toString() : ''}`;
-      
-      // Nếu đang từ server2 về server1, sử dụng replace để không tạo history entry mới
-      if (currentServer === 'server2' && server === 'server1') {
+
+      // Nếu đang từ server khác về server1, sử dụng replace để không tạo history entry mới
+      if (currentServer !== 'server1' && server === 'server1') {
         router.replace(newUrl, { scroll: false });
       } else {
         router.push(newUrl, { scroll: false });
@@ -107,7 +113,7 @@ export default function WatchNowTVShows({
   };
 
   // Cập nhật server và URL
-  const handleServerChange = (server: 'server1' | 'server2') => {
+  const handleServerChange = (server: 'server1' | 'server2' | 'server3') => {
     if (selectedServer !== server) {
       setSelectedServer(server);
       updateServerInUrl(server);
@@ -117,7 +123,7 @@ export default function WatchNowTVShows({
   // Đọc server từ URL khi component mount hoặc URL thay đổi
   useEffect(() => {
     const serverFromUrl = searchParams.get('server');
-    if (serverFromUrl === 'server1' || serverFromUrl === 'server2') {
+    if (serverFromUrl === 'server1' || serverFromUrl === 'server2' || serverFromUrl === 'server3') {
       setSelectedServer(serverFromUrl);
       hasInitialized.current = true;
     } else {
@@ -129,46 +135,48 @@ export default function WatchNowTVShows({
 
   // Sync selectedAudio when audioFromUrl changes
   useEffect(() => {
-    if (audioFromUrl === 'vietsub' && tvShowLinks.vietsub && selectedAudio !== 'vietsub') {
+    const currentLinks = selectedServer === 'server3' ? server3Links : tvShowLinks;
+    if (audioFromUrl === 'vietsub' && currentLinks.vietsub && selectedAudio !== 'vietsub') {
       setSelectedAudio('vietsub');
-    } else if (audioFromUrl === 'dubbed' && tvShowLinks.dubbed && selectedAudio !== 'dubbed') {
+    } else if (audioFromUrl === 'dubbed' && currentLinks.dubbed && selectedAudio !== 'dubbed') {
       setSelectedAudio('dubbed');
     }
-  }, [audioFromUrl, tvShowLinks.vietsub, tvShowLinks.dubbed, selectedAudio]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [audioFromUrl, tvShowLinks.vietsub, tvShowLinks.dubbed, server3Links.vietsub, server3Links.dubbed, selectedAudio, selectedServer]);
 
   // Function để cập nhật audio links cho episode mới mà không cần tìm kiếm lại
   const updateAudioLinksForEpisode = useCallback((episodeNumber: number) => {
     if (!episodesData) return;
-    
+
     let vietsubLink = '';
     let dubbedLink = '';
-    
+
     for (const episode of episodesData) {
       // Tìm episode có số thứ tự tương ứng
       const targetEpisode = episode.server_data?.find((ep: { name?: string; link_m3u8?: string; link_embed?: string }) => {
         const epName = ep.name?.toLowerCase() || '';
-        
+
         // Kiểm tra các pattern: "Tập 02", "Episode 2", "2", etc.
-        return epName.includes(`tập ${episodeNumber}`) || 
-               epName.includes(`episode ${episodeNumber}`) ||
-               epName.includes(`tập 0${episodeNumber}`) ||
-               epName.includes(`episode 0${episodeNumber}`) ||
-               epName.includes(`tập ${episodeNumber.toString().padStart(2, '0')}`) ||
-               epName.includes(`episode ${episodeNumber.toString().padStart(2, '0')}`)
+        return epName.includes(`tập ${episodeNumber}`) ||
+          epName.includes(`episode ${episodeNumber}`) ||
+          epName.includes(`tập 0${episodeNumber}`) ||
+          epName.includes(`episode 0${episodeNumber}`) ||
+          epName.includes(`tập ${episodeNumber.toString().padStart(2, '0')}`) ||
+          epName.includes(`episode ${episodeNumber.toString().padStart(2, '0')}`)
       });
-      
+
       if (targetEpisode) {
         // Phân loại theo server_name
         if (episode.server_name?.toLowerCase().includes('vietsub')) {
           vietsubLink = targetEpisode.link_m3u8 || targetEpisode.link_embed?.split('?url=')[1] || '';
         } else if (episode.server_name?.toLowerCase().includes('thuyết minh') ||
-                   episode.server_name?.toLowerCase().includes('lồng tiếng') || 
-                   episode.server_name?.toLowerCase().includes('dubbed')) {
+          episode.server_name?.toLowerCase().includes('lồng tiếng') ||
+          episode.server_name?.toLowerCase().includes('dubbed')) {
           dubbedLink = targetEpisode.link_m3u8 || targetEpisode.link_embed?.split('?url=')[1] || '';
         }
       }
     }
-    
+
     // Cập nhật tvShowLinks với episode mới
     setTVShowLinks(links => ({
       ...links,
@@ -189,8 +197,8 @@ export default function WatchNowTVShows({
     if (tvShow?.name && tvShow?.year) {
       fetch(`/api/subtitles?query=${encodeURIComponent(tvShow.name)}&year=${tvShow.year.toString()}`)
         .then(res => res.json())
-        .then(() => {})
-        .catch(() => {});
+        .then(() => { })
+        .catch(() => { });
     }
   }, [tvShow?.name, tvShow?.year]);
 
@@ -213,58 +221,60 @@ export default function WatchNowTVShows({
 
   // Tự động chọn audio khi có sẵn, ưu tiên từ URL
   useEffect(() => {
+    const currentLinks = selectedServer === 'server3' ? server3Links : tvShowLinks;
     if (!selectedAudio) {
       // Nếu URL có tham số audio, ưu tiên sử dụng audio từ URL
-      if (audioFromUrl === 'dubbed' && tvShowLinks.dubbed) {
+      if (audioFromUrl === 'dubbed' && currentLinks.dubbed) {
         setSelectedAudio('dubbed');
         return;
       }
-      if (audioFromUrl === 'vietsub' && tvShowLinks.vietsub) {
+      if (audioFromUrl === 'vietsub' && currentLinks.vietsub) {
         setSelectedAudio('vietsub');
         return;
       }
-      
+
       // Nếu không có audio từ URL hoặc audio từ URL không khả dụng, chọn mặc định
-      if (tvShowLinks.vietsub && tvShowLinks.dubbed) {
+      if (currentLinks.vietsub && currentLinks.dubbed) {
         setSelectedAudio('vietsub'); // Default to vietsub
         return;
       }
-      
+
       // Nếu chỉ có một loại audio, tự động chọn
-      if (tvShowLinks.vietsub && !tvShowLinks.dubbed) {
+      if (currentLinks.vietsub && !currentLinks.dubbed) {
         setSelectedAudio('vietsub');
         return;
       }
-      if (tvShowLinks.dubbed && !tvShowLinks.vietsub) {
+      if (currentLinks.dubbed && !currentLinks.vietsub) {
         setSelectedAudio('dubbed');
         return;
       }
     }
-  }, [tvShowLinks.vietsub, tvShowLinks.dubbed, selectedAudio, audioFromUrl]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tvShowLinks.vietsub, tvShowLinks.dubbed, server3Links.vietsub, server3Links.dubbed, selectedAudio, audioFromUrl, selectedServer]);
 
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
     async function fetchPhimApiEmbed() {
       // Nếu đã có audio links cho season hiện tại thì không cần tìm kiếm lại
-      if (tvShowLinks.currentSeason === selectedSeason && !tvShowLinks.seasonChanged && 
-          (tvShowLinks.vietsub || tvShowLinks.dubbed)) {
+      if (tvShowLinks.currentSeason === selectedSeason && !tvShowLinks.seasonChanged &&
+        (tvShowLinks.vietsub || tvShowLinks.dubbed)) {
         setDataReady(true);
         return;
       }
-      
+
       // Nếu season thay đổi, reset tvShowLinks để tìm kiếm lại
       if (tvShowLinks.seasonChanged) {
-        setTVShowLinks(links => ({ 
-          ...links, 
-          m3u8: '', 
-          vietsub: '', 
-          dubbed: '', 
-          seasonChanged: false 
+        setTVShowLinks(links => ({
+          ...links,
+          m3u8: '',
+          vietsub: '',
+          dubbed: '',
+          seasonChanged: false
         }));
         setDataReady(false);
         return;
       }
-      
+
       setTVShowLinksLoading(true);
       setApiSearchCompleted(false);
       setDataReady(false);
@@ -277,62 +287,62 @@ export default function WatchNowTVShows({
           return;
         }
         let slug = null;
-        
+
         // OPTIMIZED: Sequential search with early exit on high-confidence match
-        
+
         if (tvShow?.name) {
           const originNameWithSeason = `${tvShow.name} (Season ${selectedSeason})`;
           const normalizedName = tvShow.name.toLowerCase().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ').trim();
-          
+
           // Unified scoring function
-          const scoreMatch = (item: { 
-            tmdb?: { id?: string | number }; 
-            origin_name?: string; 
-            name?: string; 
+          const scoreMatch = (item: {
+            tmdb?: { id?: string | number };
+            origin_name?: string;
+            name?: string;
             slug?: string;
           }): number => {
             let score = 0;
-            
+
             if (item.tmdb?.id && String(item.tmdb.id) === String(id)) score += 100;
             if (item.origin_name && item.origin_name.toLowerCase() === originNameWithSeason.toLowerCase()) score += 90;
-            
+
             if (item.origin_name) {
               const originLower = item.origin_name.toLowerCase();
               if (originLower.includes(`season ${selectedSeason}`) || originLower.includes(`(season ${selectedSeason})`)) score += 70;
             }
-            
+
             if (item.name) {
               const nameLower = item.name.toLowerCase();
               const seasonPatterns = [`phần ${selectedSeason}`, `part ${selectedSeason}`, `season ${selectedSeason}`, `mùa ${selectedSeason}`];
-              
+
               for (const pattern of seasonPatterns) {
                 if (nameLower.includes(pattern)) {
                   score += 60;
                   break;
                 }
               }
-              
+
               if (nameLower.includes(normalizedName)) score += 30;
               if (nameLower === tvShow.name.toLowerCase()) score += 40;
             }
-            
+
             if (item.origin_name && item.origin_name.toLowerCase().includes(tvShow.name.toLowerCase())) score += 25;
             if (item.slug && item.slug.toLowerCase().includes(normalizedName.replace(/\s+/g, '-'))) score += 15;
-            
+
             return score;
           };
-          
+
           // Helper function to search and score
           const searchAndScore = async (keyword: string, strategyName: string) => {
             try {
               const url = `https://phimapi.com/v1/api/tim-kiem?keyword=${encodeURIComponent(keyword)}`;
               const res = await fetch(url);
               const data = await res.json();
-              
+
               if (data?.status === 'success' && Array.isArray(data?.data?.items)) {
                 let bestMatch = null;
                 let bestScore = 0;
-                
+
                 for (const item of data.data.items) {
                   const score = scoreMatch(item);
                   if (score > bestScore) {
@@ -340,22 +350,22 @@ export default function WatchNowTVShows({
                     bestMatch = item;
                   }
                 }
-                
+
                 if (bestMatch?.slug && bestScore > 0) {
-                  return { 
-                    slug: bestMatch.slug, 
-                    name: bestMatch.name || '', 
+                  return {
+                    slug: bestMatch.slug,
+                    name: bestMatch.name || '',
                     score: bestScore,
                     strategy: strategyName
                   };
                 }
               }
-            } catch { 
+            } catch {
               // Search error
             }
             return null;
           };
-          
+
           try {
             // Priority-ordered keywords (most likely to least likely)
             const searchPriorities = [
@@ -364,18 +374,18 @@ export default function WatchNowTVShows({
               { keyword: `${normalizedName} phần ${selectedSeason}`, name: 'Vietnamese', minScore: 60 },
               { keyword: tvShow.name, name: 'Show name', minScore: 40 }
             ];
-            
+
             let bestResult = null;
             let bestScore = 0;
-            
+
             // Try each keyword sequentially, but stop early if we get a high-confidence match
             for (const { keyword, name, minScore } of searchPriorities) {
               const result = await searchAndScore(keyword, name);
-              
+
               if (result && result.score > bestScore) {
                 bestScore = result.score;
                 bestResult = result;
-                
+
                 // Early exit if we have a high-confidence match
                 if (result.score >= minScore) {
                   slug = result.slug;
@@ -383,7 +393,7 @@ export default function WatchNowTVShows({
                 }
               }
             }
-            
+
             // If no early exit, use best result found
             if (!slug && bestResult) {
               slug = bestResult.slug;
@@ -392,32 +402,32 @@ export default function WatchNowTVShows({
             // Search error
           }
         }
-        
+
         if (!slug) {
           return;
         }
-        
+
         const detailRes = await fetch(`https://phimapi.com/phim/${slug}`);
         const detailData = await detailRes.json();
-        
+
         // Kiểm tra xem phim này có episodes của season đang được chọn không
         let hasSeasonEpisodes = false;
         let finalDetailData = detailData;
-        
+
         if (detailData.episodes && Array.isArray(detailData.episodes)) {
           // Tìm episode có số thứ tự tương ứng với episode đang được chọn
-          const targetEpisode = detailData.episodes.find((ep: { episode_number: number; name?: string }) => 
-            ep.episode_number === selectedEpisode || 
+          const targetEpisode = detailData.episodes.find((ep: { episode_number: number; name?: string }) =>
+            ep.episode_number === selectedEpisode ||
             ep.name?.toLowerCase().includes(`tập ${selectedEpisode}`) ||
             ep.name?.toLowerCase().includes(`episode ${selectedEpisode}`)
           );
-          
+
           hasSeasonEpisodes = !!targetEpisode;
         }
-        
+
         // Nếu không có episodes của season này, tìm kiếm lại với từ khóa khác
         if (!hasSeasonEpisodes) {
-          
+
           // Thử tìm kiếm với từ khóa có thêm season
           const seasonKeywords = [
             `${tvShow?.name?.toLowerCase().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ').trim()} phần ${selectedSeason}`,
@@ -426,28 +436,28 @@ export default function WatchNowTVShows({
             `${tvShow?.name?.toLowerCase().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ').trim()} tập ${selectedEpisode}`,
             `${tvShow?.name?.toLowerCase().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ').trim()} episode ${selectedEpisode}`
           ];
-          
+
           for (const seasonKeyword of seasonKeywords) {
             const altUrl = `https://phimapi.com/v1/api/tim-kiem?keyword=${encodeURIComponent(seasonKeyword)}`;
-            
+
             try {
               const altRes = await fetch(altUrl);
               const altData = await altRes.json();
-              
+
               if (altData.status === 'success' && altData.data?.items?.length > 0) {
                 const altItem = altData.data.items[0];
-                
+
                 // Kiểm tra lại với phim mới
                 const altDetailRes = await fetch(`https://phimapi.com/phim/${altItem.slug}`);
                 const altDetailData = await altDetailRes.json();
-                
+
                 if (altDetailData.episodes && Array.isArray(altDetailData.episodes)) {
-                  const altTargetEpisode = altDetailData.episodes.find((ep: { episode_number: number; name?: string }) => 
-                    ep.episode_number === selectedEpisode || 
+                  const altTargetEpisode = altDetailData.episodes.find((ep: { episode_number: number; name?: string }) =>
+                    ep.episode_number === selectedEpisode ||
                     ep.name?.toLowerCase().includes(`tập ${selectedEpisode}`) ||
                     ep.name?.toLowerCase().includes(`episode ${selectedEpisode}`)
                   );
-                  
+
                   if (altTargetEpisode) {
                     slug = altItem.slug;
                     finalDetailData = altDetailData;
@@ -460,42 +470,42 @@ export default function WatchNowTVShows({
             }
           }
         }
-        
+
         // Tìm episode chính xác dựa trên selectedEpisode
         let vietsubLink = '';
         let dubbedLink = '';
         let defaultEmbed = '';
-        
+
         if (finalDetailData.episodes && Array.isArray(finalDetailData.episodes)) {
-          
+
           for (const episode of finalDetailData.episodes) {
             // Tìm episode có số thứ tự tương ứng
-             const targetEpisode = episode.server_data?.find((ep: { name?: string; link_m3u8?: string; link_embed?: string }) => {
-               const epName = ep.name?.toLowerCase() || '';
-               const epNumber = selectedEpisode;
-               
-               // Kiểm tra các pattern: "Tập 02", "Episode 2", "2", etc.
-               return epName.includes(`tập ${epNumber}`) || 
-                      epName.includes(`episode ${epNumber}`) ||
-                      epName.includes(`tập 0${epNumber}`) ||
-                      epName.includes(`episode 0${epNumber}`) ||
-                      epName.includes(`tập ${epNumber.toString().padStart(2, '0')}`) ||
-                      epName.includes(`episode ${epNumber.toString().padStart(2, '0')}`)
-             });
-            
+            const targetEpisode = episode.server_data?.find((ep: { name?: string; link_m3u8?: string; link_embed?: string }) => {
+              const epName = ep.name?.toLowerCase() || '';
+              const epNumber = selectedEpisode;
+
+              // Kiểm tra các pattern: "Tập 02", "Episode 2", "2", etc.
+              return epName.includes(`tập ${epNumber}`) ||
+                epName.includes(`episode ${epNumber}`) ||
+                epName.includes(`tập 0${epNumber}`) ||
+                epName.includes(`episode 0${epNumber}`) ||
+                epName.includes(`tập ${epNumber.toString().padStart(2, '0')}`) ||
+                epName.includes(`episode ${epNumber.toString().padStart(2, '0')}`)
+            });
+
             if (targetEpisode) {
-              
+
               // Phân loại theo server_name
               if (episode.server_name?.toLowerCase().includes('vietsub')) {
                 vietsubLink = targetEpisode.link_m3u8 || targetEpisode.link_embed?.split('?url=')[1] || '';
               } else if (episode.server_name?.toLowerCase().includes('thuyết minh') ||
-                         episode.server_name?.toLowerCase().includes('lồng tiếng') || 
-                         episode.server_name?.toLowerCase().includes('dubbed')) {
+                episode.server_name?.toLowerCase().includes('lồng tiếng') ||
+                episode.server_name?.toLowerCase().includes('dubbed')) {
                 dubbedLink = targetEpisode.link_m3u8 || targetEpisode.link_embed?.split('?url=')[1] || '';
               }
             }
           }
-          
+
           // Fallback: lấy episode đầu tiên nếu không tìm thấy episode cụ thể
           if (!vietsubLink && !dubbedLink) {
             const firstEpisode = finalDetailData.episodes[0]?.server_data?.[0];
@@ -504,29 +514,29 @@ export default function WatchNowTVShows({
             }
           }
         }
-        
+
         // Fallback: sử dụng link_embed gốc nếu có
         if (!vietsubLink && !dubbedLink && !defaultEmbed && finalDetailData.link_embed) {
-          defaultEmbed = finalDetailData.link_embed.includes('?url=') 
-            ? finalDetailData.link_embed.split('?url=')[1] 
+          defaultEmbed = finalDetailData.link_embed.includes('?url=')
+            ? finalDetailData.link_embed.split('?url=')[1]
             : finalDetailData.link_embed;
         }
 
         // Lưu episodes data để tái sử dụng khi đổi episode
         setEpisodesData(finalDetailData.episodes);
-        
+
         // Cập nhật tvShowLinks với tất cả audio options
         const updatedLinks = {
           ...tvShowLinks,
           m3u8: defaultEmbed,
           vietsub: vietsubLink,
           dubbed: dubbedLink,
-          seasonChanged: false, 
-          currentSeason: selectedSeason 
+          seasonChanged: false,
+          currentSeason: selectedSeason
         };
-        
+
         setTVShowLinks(updatedLinks);
-        
+
       } catch {
         // Error handling
       } finally {
@@ -537,19 +547,31 @@ export default function WatchNowTVShows({
       }
     }
     fetchPhimApiEmbed();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, tvShow?.name, selectedSeason, selectedEpisode]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 text-white">
       <h2 className="text-3xl font-bold mb-6">Watch Now</h2>
+
+      {/* Server 3 Component - Load tự động sau Server 1 */}
+      <WatchNowTVShowsServer3
+        tvShow={tvShow}
+        selectedSeason={selectedSeason}
+        selectedEpisode={selectedEpisode}
+        server1Ready={apiSearchCompleted}
+        onLinksChange={setServer3Links}
+        onLoadingChange={setServer3Loading}
+        onSearchComplete={setServer3SearchCompleted}
+      />
+
       <div className="mb-4 flex flex-wrap items-start gap-3">
         <div className="flex flex-col gap-2">
           <button
             className={`whitespace-nowrap px-4 py-2 rounded-md text-sm font-semibold transition-colors ${selectedServer === 'server1' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-200 hover:bg-gray-600'}`}
             onClick={() => handleServerChange('server1')}
           >
-            Server 1 
+            Server 1
           </button>
           {selectedServer === 'server1' && (
             (tvShowLinks.vietsub || tvShowLinks.dubbed) && (
@@ -590,12 +612,55 @@ export default function WatchNowTVShows({
             className={`whitespace-nowrap px-4 py-2 rounded-md text-sm font-semibold transition-colors ${selectedServer === 'server2' ? 'bg-green-600 text-white' : 'bg-gray-700 text-gray-200 hover:bg-gray-600'}`}
             onClick={() => handleServerChange('server2')}
           >
-            Server 2 
+            Server 2
           </button>
           {selectedServer === 'server2' && (
             <span className="text-xs text-yellow-300 bg-yellow-900/40 px-2 py-1 rounded w-max">
               This server may contain ads.
             </span>
+          )}
+        </div>
+        <div className="flex flex-col gap-2">
+          <button
+            className={`whitespace-nowrap px-4 py-2 rounded-md text-sm font-semibold transition-colors ${selectedServer === 'server3' ? 'bg-amber-700 text-white' : 'bg-gray-700 text-gray-200 hover:bg-gray-600'}`}
+            onClick={() => handleServerChange('server3')}
+          >
+            Server 3
+          </button>
+          {selectedServer === 'server3' && (
+            <>
+              {(server3Links.vietsub || server3Links.dubbed) && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-300">Audio:</span>
+                  {server3Links.vietsub && (
+                    <button
+                      className={`px-3 py-1 rounded text-xs font-semibold transition-colors ${selectedAudio === 'vietsub' ? 'bg-gradient-to-r from-fuchsia-600 to-pink-600 text-white' : 'bg-gray-700 text-gray-200 hover:bg-gray-600'}`}
+                      onClick={() => {
+                        setSelectedAudio('vietsub');
+                        const params = new URLSearchParams(searchParams.toString());
+                        params.set('audio', 'vietsub');
+                        router.push(`${window.location.pathname}?${params.toString()}`, { scroll: false });
+                      }}
+                    >
+                      Vietsub
+                    </button>
+                  )}
+                  {server3Links.dubbed && (
+                    <button
+                      className={`px-3 py-1 rounded text-xs font-semibold transition-colors ${selectedAudio === 'dubbed' ? 'bg-gradient-to-r from-fuchsia-600 to-pink-600 text-white' : 'bg-gray-700 text-gray-200 hover:bg-gray-600'}`}
+                      onClick={() => {
+                        setSelectedAudio('dubbed');
+                        const params = new URLSearchParams(searchParams.toString());
+                        params.set('audio', 'dubbed');
+                        router.push(`${window.location.pathname}?${params.toString()}`, { scroll: false });
+                      }}
+                    >
+                      Dubbed
+                    </button>
+                  )}
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
@@ -607,13 +672,14 @@ export default function WatchNowTVShows({
             <h3 className="text-white text-xs sm:text-sm md:text-base font-semibold truncate" title={`${tvShow.name} - S${selectedSeason} E${selectedEpisode}`}>
               {tvShow.name} - Season {selectedSeason} Episode {selectedEpisode}
             </h3>
-            {selectedServer === 'server1' && (tvShowLinks.vietsub || tvShowLinks.dubbed) && (
-              <span className="px-2 py-0.5 text-[10px] sm:text-xs font-semibold rounded bg-gradient-to-r from-fuchsia-600 to-pink-600 text-white whitespace-nowrap">
-                {selectedAudio === 'vietsub' ? 'Vietsub' : 
-                 selectedAudio === 'dubbed' ? 'Vietnamese Dubbed' :
-                 tvShowLinks.vietsub ? 'Vietsub' : 'Vietnamese Dubbed'}
-              </span>
-            )}
+            {((selectedServer === 'server1' && (tvShowLinks.vietsub || tvShowLinks.dubbed)) ||
+              (selectedServer === 'server3' && (server3Links.vietsub || server3Links.dubbed))) && (
+                <span className="px-2 py-0.5 text-[10px] sm:text-xs font-semibold rounded bg-gradient-to-r from-fuchsia-600 to-pink-600 text-white whitespace-nowrap">
+                  {selectedAudio === 'vietsub' ? 'Vietsub' :
+                    selectedAudio === 'dubbed' ? 'Vietnamese Dubbed' :
+                      (selectedServer === 'server1' ? tvShowLinks.vietsub : server3Links.vietsub) ? 'Vietsub' : 'Vietnamese Dubbed'}
+                </span>
+              )}
           </div>
         </div>
       )}
@@ -635,7 +701,7 @@ export default function WatchNowTVShows({
               return (
                 <div className="flex items-center justify-center h-full text-white">
                   <div className="flex flex-col items-center gap-4">
-                    <motion.div 
+                    <motion.div
                       animate={{ rotate: 360 }}
                       transition={{ repeat: Infinity, duration: 1.5, ease: 'linear' }}
                       className="w-12 h-12 border-4 border-red-500 border-t-transparent rounded-full"
@@ -710,10 +776,72 @@ export default function WatchNowTVShows({
             title={`${tvShow.name} - Season ${selectedSeason} Episode ${selectedEpisode} - Server 2`}
             referrerPolicy="origin"
           />
+        ) : selectedServer === 'server3' ? (
+          (() => {
+            if (!server3SearchCompleted || server3Loading) {
+              return (
+                <div className="flex items-center justify-center h-full text-white">
+                  <div className="flex flex-col items-center gap-4">
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{ repeat: Infinity, duration: 1.5, ease: 'linear' }}
+                      className="w-12 h-12 border-4 border-red-500 border-t-transparent rounded-full"
+                    />
+                    <p className="text-sm text-gray-400">Please wait a moment</p>
+                  </div>
+                </div>
+              );
+            }
+
+            const hasVideoSource = server3Links.vietsub || server3Links.dubbed || server3Links.m3u8;
+            if (server3SearchCompleted && !server3Loading && !hasVideoSource) {
+              return (
+                <div className="flex items-center justify-center h-full text-white">
+                  <div className="flex flex-col items-center gap-4">
+                    <svg className="w-12 h-12 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <p className="text-lg font-semibold">No video source available</p>
+                    <p className="text-sm text-gray-400">Please try another server</p>
+                  </div>
+                </div>
+              );
+            }
+
+            // Server 3 sử dụng iframe vì nguonc.com không cho phép embed trực tiếp
+            let embedSrc = '';
+            if (selectedAudio === 'vietsub' && server3Links.vietsub) {
+              embedSrc = server3Links.vietsub;
+            } else if (selectedAudio === 'dubbed' && server3Links.dubbed) {
+              embedSrc = server3Links.dubbed;
+            } else if (server3Links.vietsub) {
+              embedSrc = server3Links.vietsub;
+            } else if (server3Links.dubbed) {
+              embedSrc = server3Links.dubbed;
+            } else {
+              embedSrc = server3Links.m3u8;
+            }
+
+            return embedSrc ? (
+              <iframe
+                key={`${selectedSeason}-${selectedEpisode}-${embedSrc}`}
+                src={embedSrc}
+                className="w-full h-full"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                title={`${tvShow.name} - Season ${selectedSeason} Episode ${selectedEpisode} - Server 3`}
+                referrerPolicy="origin"
+              />
+            ) : (
+              <div className="flex items-center justify-center h-full text-white text-lg font-semibold">
+                No video source available
+              </div>
+            );
+          })()
         ) : (
           <div className="flex items-center justify-center h-full text-white">
             <div className="flex flex-col items-center gap-4">
-              <motion.div 
+              <motion.div
                 animate={{ rotate: 360 }}
                 transition={{ repeat: Infinity, duration: 1.5, ease: 'linear' }}
                 className="w-12 h-12 border-4 border-red-500 border-t-transparent rounded-full"
