@@ -39,6 +39,7 @@
     "react-modal": "^3.16.3",
     "react-player": "^3.3.1",
     "socket.io-client": "^4.8.1",
+    "swr": "^2.4.1",
     "telegraf": "^4.16.3",
     "three": "^0.177.0",
     "zustand": "^4.5.2"
