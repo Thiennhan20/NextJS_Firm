@@ -43,29 +43,30 @@ const WatchlistItem = memo(function WatchlistItem({
         title={movie.title}
         posterPath={movie.poster_path}
         onWatchClick={onWatchClick}
-        hoverDelay={500}
       >
-        <div className="relative group bg-gray-800 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 border border-yellow-700/50 overflow-hidden cursor-pointer">
-          <div className="aspect-[2/3] relative rounded-t-lg overflow-hidden">
-            <Image
-              src={movie.poster_path}
-              alt={movie.title}
-              fill
-              className="object-cover transition-transform duration-300 group-hover:scale-110"
-              loading="lazy"
-              quality={75}
-              sizes="(max-width: 640px) 33vw, (max-width: 768px) 25vw, (max-width: 1024px) 20vw, (max-width: 1280px) 16vw, (max-width: 1536px) 14vw, 12vw"
-            />
-            {movie.type === 'tv' && (
-              <div className="absolute top-2 right-2 bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">
-                TV
-              </div>
-            )}
+        <Link href={itemType === 'tv' ? `/tvshows/${movie.id}` : `/movies/${movie.id}`} className="block">
+          <div className="relative group bg-gray-800 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 border border-yellow-700/50 overflow-hidden cursor-pointer">
+            <div className="aspect-[2/3] relative rounded-t-lg overflow-hidden">
+              <Image
+                src={movie.poster_path}
+                alt={movie.title}
+                fill
+                className="object-cover transition-transform duration-300 group-hover:scale-110"
+                loading="lazy"
+                quality={75}
+                sizes="(max-width: 640px) 33vw, (max-width: 768px) 25vw, (max-width: 1024px) 20vw, (max-width: 1280px) 16vw, (max-width: 1536px) 14vw, 12vw"
+              />
+              {movie.type === 'tv' && (
+                <div className="absolute top-2 right-2 bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">
+                  TV
+                </div>
+              )}
+            </div>
+            <div className="p-2">
+              <h3 className="text-yellow-300 font-medium truncate text-xs text-center">{movie.title}</h3>
+            </div>
           </div>
-          <div className="p-2">
-            <h3 className="text-yellow-300 font-medium truncate text-xs text-center">{movie.title}</h3>
-          </div>
-        </div>
+        </Link>
       </CardWithHover>
     </MotionDiv>
   );

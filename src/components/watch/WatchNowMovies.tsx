@@ -2,10 +2,12 @@
 
 import { useEffect, useState, useRef, useMemo } from 'react'
 import { motion } from 'framer-motion'
-import { useParams, useSearchParams, useRouter } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 import EnhancedMoviePlayer from '@/components/common/EnhancedMoviePlayer'
 import useAuthStore from '@/store/useAuthStore'
 import { setupAudioNodes, cleanupAudioNodes, AudioNodes } from '@/lib/audioUtils'
+import WatchNowMoviesServer1 from './WatchNowMoviesServer1'
+import WatchNowMoviesServer2 from './WatchNowMoviesServer2'
 import WatchNowMoviesServer3 from './WatchNowMoviesServer3'
 
 // Định nghĩa kiểu Movie
@@ -26,28 +28,6 @@ interface Movie {
   scenes: string[];
 }
 
-interface PhimApiEpisode {
-  server_name?: string;
-  server_data?: Array<{
-    name?: string;
-    slug?: string;
-    link_embed?: string;
-  }>;
-}
-
-interface PhimApiMovie {
-  name?: string;
-  title?: string;
-  slug?: string;
-  origin_name?: string;
-  year?: string | number;
-  tmdb?: {
-    id?: string | number;
-  };
-  link_embed?: string;
-  episodes?: PhimApiEpisode[];
-}
-
 interface WatchNowMoviesProps {
   movie: Movie;
 }
@@ -55,7 +35,6 @@ interface WatchNowMoviesProps {
 export default function WatchNowMovies({ movie }: WatchNowMoviesProps) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const userId = useAuthStore((s) => (s.user as any)?.id || (s.user as any)?._id)
-  const { id } = useParams();
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -131,27 +110,10 @@ export default function WatchNowMovies({ movie }: WatchNowMoviesProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [audioFromUrl, movieLinks.vietsub, movieLinks.dubbed, server3Links.vietsub, server3Links.dubbed, selectedAudio, selectedServer]);
 
-  // State cho server 2
+  // Server 2 states
   const [server2Link, setServer2Link] = useState('');
 
-  // Check server 2 availability
-  useEffect(() => {
-    if (typeof id === 'string' && id) {
-      const server2Url = `https://vidsrc.me/embed/movie?tmdb=${id}&ds_lang=vi&sub_url=https%3A%2F%2Fvidsrc.me%2Fsample.srt&autoplay=1`;
-      setServer2Link(server2Url);
-    }
-  }, [id, movie?.title, movie?.year]);
 
-  useEffect(() => {
-    if (movie?.title && movie?.year) {
-      setMovieLinksLoading(true);
-      fetch(`/api/subtitles?query=${encodeURIComponent(movie.title)}&year=${movie.year.toString()}`)
-        .then(res => res.json())
-        .then(() => { })
-        .catch(() => { })
-        .finally(() => setMovieLinksLoading(false));
-    }
-  }, [movie?.title, movie?.year]);
 
   // Tự động chọn audio khi có sẵn, ưu tiên từ URL
   useEffect(() => {
@@ -224,368 +186,25 @@ export default function WatchNowMovies({ movie }: WatchNowMoviesProps) {
     };
   }, [selectedServer]);
 
-  // Replace the existing fetchPhimApiEmbed function in your useEffect with this improved version
-  useEffect(() => {
-    let timeoutId: NodeJS.Timeout;
 
-    async function fetchPhimApiEmbed() {
-      if (movieLinks.m3u8) {
-        return;
-      }
-
-      setMovieLinksLoading(true);
-      setApiSearchCompleted(false);
-      timeoutId = setTimeout(() => {
-        // Timeout handler
-      }, 60000);
-
-      try {
-        if (typeof id !== 'string') {
-          return;
-        }
-
-        let slug = null;
-
-        // UNIFIED STRATEGY: Try TMDB direct API with verification, then search with all keywords in parallel
-
-        // Step 1: Try TMDB ID direct API with title/year verification (HIGHEST PRIORITY)
-        try {
-          const tmdbDirectUrl = `https://phimapi.com/tmdb/movie/${id}`;
-          const tmdbDirectRes = await fetch(tmdbDirectUrl);
-          const tmdbDirectData = await tmdbDirectRes.json();
-
-          if (tmdbDirectData?.status === true && tmdbDirectData?.movie) {
-            const apiMovie = tmdbDirectData.movie;
-            const apiName = apiMovie.name || '';
-            const apiOriginName = apiMovie.origin_name || '';
-            const apiTitle = apiMovie.title || '';
-            const apiYear = apiMovie.year;
-            const apiSlug = apiMovie.slug;
-
-            // Verify title match - check against name, origin_name, or title
-            const normalizedTarget = normalizeTitle(movie?.title || '');
-            const nameMatch = normalizeTitle(apiName) === normalizedTarget;
-            const originNameMatch = normalizeTitle(apiOriginName) === normalizedTarget;
-            const titleMatch = normalizeTitle(apiTitle) === normalizedTarget;
-
-            // Accept if ANY of the title fields match
-            const anyTitleMatch = nameMatch || originNameMatch || titleMatch;
-            const yearMatch = apiYear && parseInt(String(apiYear)) === (movie?.year as number);
-
-            if (apiSlug && anyTitleMatch && yearMatch) {
-              slug = apiSlug;
-            } else if (apiSlug && anyTitleMatch) {
-              // Accept if title matches even if year is slightly off
-              const yearDiff = Math.abs(parseInt(String(apiYear || '0')) - (movie?.year as number || 0));
-
-              if (yearDiff <= 1) {
-                slug = apiSlug;
-              }
-            }
-          }
-        } catch {
-          // TMDB direct API failed
-        }
-
-        // Step 2: If TMDB verification fails, search with ALL keywords in parallel
-        if (!slug && movie?.title) {
-
-          // Collect ALL keywords from all strategies
-          const normalizedTitle = normalizeTitle(movie.title);
-          const keywords = extractKeywords(movie.title);
-          const titleVariations = [
-            movie.title,
-            movie.title.replace(/[^\w\s]/g, ''),
-            movie.title.toLowerCase(),
-            movie.title.split(' ').slice(0, 3).join(' ')
-          ];
-
-          // Combine all unique keywords
-          const allKeywords = [
-            movie.title,           // Original
-            normalizedTitle,       // Normalized
-            ...keywords,           // Keywords
-            ...titleVariations     // Variations
-          ].filter((v, i, a) => a.indexOf(v) === i); // Remove duplicates
-
-          // Search all keywords in parallel using Promise.race
-          const searchPromises = allKeywords.map(async (keyword) => {
-            const searchResults = await searchPhimApi(keyword, movie.year as number);
-            if (searchResults.length > 0) {
-              const match = findBestMatch(searchResults, movie.title, movie.year as number, id);
-              if (match) {
-                return { keyword, match };
-              }
-            }
-            return null;
-          });
-
-          // Race all searches - first one to find a match wins
-          const result = await Promise.race(
-            searchPromises.map(async (promise, index) => {
-              const res = await promise;
-              return res ? { ...res, index } : null;
-            })
-          );
-
-          if (result) {
-            slug = result.match.slug;
-          } else {
-            // Wait for all to complete if race didn't find anything
-            const allResults = await Promise.all(searchPromises);
-            const firstMatch = allResults.find(r => r !== null);
-            if (firstMatch) {
-              slug = firstMatch.match.slug;
-            }
-          }
-        }
-
-        if (!slug) {
-          return;
-        }
-
-        // Get movie details and extract embed link
-        const detailRes = await fetch(`https://phimapi.com/phim/${slug}`);
-        const detailData = await detailRes.json();
-
-        let vietsubLink = '';
-        let dubbedLink = '';
-        let defaultEmbed = '';
-
-        // Extract links from episodes
-        if (detailData.episodes && detailData.episodes.length > 0) {
-          detailData.episodes.forEach((episode: PhimApiEpisode) => {
-            const serverName = episode.server_name?.toLowerCase() || '';
-
-            if (episode.server_data && episode.server_data.length > 0) {
-              // Check server_name first to determine audio type
-              const isVietsub = serverName.includes('vietsub');
-              const isDubbed = serverName.includes('thuyết minh') || serverName.includes('lồng tiếng') || serverName.includes('dubbed');
-
-              // If server_name matches, take the first available link from server_data
-              if ((isVietsub || isDubbed) && episode.server_data[0]?.link_embed) {
-                const linkEmbed = episode.server_data[0].link_embed;
-
-                if (isVietsub && !vietsubLink) {
-                  vietsubLink = linkEmbed;
-                } else if (isDubbed && !dubbedLink) {
-                  dubbedLink = linkEmbed;
-                }
-              }
-            }
-          });
-        }
-
-        // Try to get embed from direct link as fallback
-        if (detailData.link_embed) {
-          defaultEmbed = detailData.link_embed;
-        }
-        // Try to get embed from first episode as fallback
-        else if (detailData.episodes && detailData.episodes[0]?.server_data) {
-          const firstEpisode = detailData.episodes[0];
-          let foundFallback = false;
-
-          for (const serverData of firstEpisode.server_data) {
-            const dataName = serverData.name?.toLowerCase() || '';
-            const dataSlug = serverData.slug?.toLowerCase() || '';
-
-            if (serverData.link_embed && (
-              dataName.includes('full') || dataName.includes('vietsub') ||
-              dataSlug.includes('full') || dataSlug.includes('vietsub')
-            )) {
-              defaultEmbed = serverData.link_embed;
-              foundFallback = true;
-              break;
-            }
-          }
-
-          if (!foundFallback && firstEpisode.server_data[0]?.link_embed) {
-            defaultEmbed = firstEpisode.server_data[0].link_embed;
-          }
-        }
-
-        // Clean up URLs if they contain ?url= parameter
-        const cleanUrl = (url: string) => {
-          if (url && url.includes('?url=')) {
-            return url.split('?url=')[1];
-          }
-          return url;
-        };
-
-        vietsubLink = cleanUrl(vietsubLink);
-        dubbedLink = cleanUrl(dubbedLink);
-        defaultEmbed = cleanUrl(defaultEmbed);
-
-        // Set the appropriate link based on availability
-        if (vietsubLink || dubbedLink) {
-          const finalLink = vietsubLink || dubbedLink || defaultEmbed;
-          setMovieLinks(links => ({
-            ...links,
-            vietsub: vietsubLink,
-            dubbed: dubbedLink,
-            m3u8: finalLink
-          }));
-          setMovieLinksLoading(false);
-          setApiSearchCompleted(true);
-        } else if (defaultEmbed) {
-          setMovieLinks(links => ({ ...links, m3u8: defaultEmbed }));
-          setMovieLinksLoading(false);
-          setApiSearchCompleted(true);
-        }
-
-      } catch {
-        // Error handling
-      } finally {
-        clearTimeout(timeoutId);
-        setMovieLinksLoading(false);
-        setApiSearchCompleted(true);
-      }
-    }
-
-    // Helper function to search PhimAPI
-    async function searchPhimApi(keyword: string, year?: number): Promise<PhimApiMovie[]> {
-      try {
-        let url = `https://phimapi.com/v1/api/tim-kiem?keyword=${encodeURIComponent(keyword)}`;
-        if (year) url += `&year=${year}`;
-
-        const res = await fetch(url);
-        const data = await res.json();
-
-        if (data.status === 'success' && data.data && Array.isArray(data.data.items)) {
-          return data.data.items;
-        }
-
-        return [];
-      } catch {
-        return [];
-      }
-    }
-
-    // Helper function to find best matching movie
-    function findBestMatch(items: PhimApiMovie[], targetTitle: string, targetYear: number, tmdbId: string): PhimApiMovie | null {
-      if (!items || items.length === 0) {
-        return null;
-      }
-
-      // Priority 1: Exact TMDB ID match
-      const tmdbMatch = items.find(item =>
-        item.tmdb && item.tmdb.id && item.tmdb.id.toString() === tmdbId.toString()
-      );
-      if (tmdbMatch) {
-        return tmdbMatch;
-      }
-
-      // Priority 2: Exact title and year match
-      const exactMatch = items.find(item => {
-        const titleMatch = normalizeTitle(item.name || item.title || '') === normalizeTitle(targetTitle);
-        const yearMatch = item.year && parseInt(String(item.year)) === targetYear;
-        return titleMatch && yearMatch;
-      });
-      if (exactMatch) {
-        return exactMatch;
-      }
-
-      // Priority 3: Origin name match (similar to slug matching)
-      const originNameMatch = items.find(item => {
-        if (!item.origin_name) return false;
-        const originNameNormalized = normalizeTitle(item.origin_name);
-        const targetNormalized = normalizeTitle(targetTitle);
-        const similarity = calculateSimilarity(originNameNormalized, targetNormalized);
-        const yearDiff = Math.abs(parseInt(String(item.year || '0')) - targetYear);
-        return similarity > 0.7 && yearDiff <= 2;
-      });
-      if (originNameMatch) {
-        return originNameMatch;
-      }
-
-      // Priority 4: Title match with year tolerance
-      const titleMatchWithYearTolerance = items.find(item => {
-        const titleMatch = normalizeTitle(item.name || item.title || '') === normalizeTitle(targetTitle);
-        const yearDiff = Math.abs(parseInt(String(item.year || '0')) - targetYear);
-        return titleMatch && yearDiff <= 1;
-      });
-      if (titleMatchWithYearTolerance) {
-        return titleMatchWithYearTolerance;
-      }
-
-      // Priority 5: Fuzzy title match
-      const fuzzyMatch = items.find(item => {
-        const itemTitle = normalizeTitle(item.name || item.title || '');
-        const targetNormalized = normalizeTitle(targetTitle);
-        const similarity = calculateSimilarity(itemTitle, targetNormalized);
-        const yearDiff = Math.abs(parseInt(String(item.year || '0')) - targetYear);
-        return similarity > 0.8 && yearDiff <= 2;
-      });
-      if (fuzzyMatch) {
-        return fuzzyMatch;
-      }
-
-      return null;
-    }
-
-    // Helper function to normalize title for comparison
-    function normalizeTitle(title: string): string {
-      return title
-        .toLowerCase()
-        .replace(/[^\w\s]/g, '') // Remove special characters
-        .replace(/\s+/g, ' ')    // Replace multiple spaces with single space
-        .trim();
-    }
-
-    // Helper function to extract keywords from title
-    function extractKeywords(title: string): string[] {
-      const normalized = normalizeTitle(title);
-      const words = normalized.split(' ').filter(word => word.length > 2);
-
-      // Return combinations: full title, major words, individual significant words
-      const keywords = [
-        title, // Original title
-        normalized, // Normalized title
-        ...words.filter(word => word.length > 3) // Significant individual words
-      ];
-
-      return [...new Set(keywords)]; // Remove duplicates
-    }
-
-    // Helper function to calculate string similarity
-    function calculateSimilarity(str1: string, str2: string): number {
-      const longer = str1.length > str2.length ? str1 : str2;
-      const shorter = str1.length > str2.length ? str2 : str1;
-
-      if (longer.length === 0) return 1.0;
-
-      const distance = levenshteinDistance(longer, shorter);
-      return (longer.length - distance) / longer.length;
-    }
-
-    // Helper function to calculate Levenshtein distance
-    function levenshteinDistance(str1: string, str2: string): number {
-      const matrix = Array(str2.length + 1).fill(null).map(() => Array(str1.length + 1).fill(null));
-
-      for (let i = 0; i <= str1.length; i++) matrix[0][i] = i;
-      for (let j = 0; j <= str2.length; j++) matrix[j][0] = j;
-
-      for (let j = 1; j <= str2.length; j++) {
-        for (let i = 1; i <= str1.length; i++) {
-          const indicator = str1[i - 1] === str2[j - 1] ? 0 : 1;
-          matrix[j][i] = Math.min(
-            matrix[j][i - 1] + 1,     // deletion
-            matrix[j - 1][i] + 1,     // insertion
-            matrix[j - 1][i - 1] + indicator // substitution
-          );
-        }
-      }
-
-      return matrix[str2.length][str1.length];
-    }
-
-    fetchPhimApiEmbed();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, movie?.title, movie?.year]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 text-white">
       <h2 className="text-3xl font-bold mb-6">Watch Now</h2>
+
+      {/* Server 1 Component */}
+      <WatchNowMoviesServer1
+        movie={movie}
+        onLinksChange={(links) => setMovieLinks(links)}
+        onLoadingChange={setMovieLinksLoading}
+        onSearchComplete={setApiSearchCompleted}
+      />
+
+      {/* Server 2 Component */}
+      <WatchNowMoviesServer2
+        movie={movie}
+        onLinkChange={setServer2Link}
+      />
 
       {/* Server 3 Component - Load tự động sau Server 1 */}
       <WatchNowMoviesServer3
@@ -596,102 +215,101 @@ export default function WatchNowMovies({ movie }: WatchNowMoviesProps) {
         onSearchComplete={setServer3SearchCompleted}
       />
 
-      <div className="mb-4 flex flex-wrap items-start gap-3">
-        <div className="flex flex-col gap-2">
+      <div className="mb-4">
+        {/* Server Buttons Row */}
+        <div className="flex flex-wrap items-center gap-3 mb-3">
           <button
             className={`whitespace-nowrap px-4 py-2 rounded-md text-sm font-semibold transition-colors ${selectedServer === 'server1' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-200 hover:bg-gray-600'}`}
             onClick={() => handleServerChange('server1')}
           >
             Server 1
           </button>
-          {selectedServer === 'server1' && (
-            (movieLinks.vietsub || movieLinks.dubbed) && (
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-300">Audio:</span>
-                {movieLinks.vietsub && (
-                  <button
-                    className={`px-3 py-1 rounded text-xs font-semibold transition-colors ${selectedAudio === 'vietsub' ? 'bg-gradient-to-r from-fuchsia-600 to-pink-600 text-white' : 'bg-gray-700 text-gray-200 hover:bg-gray-600'}`}
-                    onClick={() => {
-                      setSelectedAudio('vietsub');
-                      const params = new URLSearchParams(searchParams.toString());
-                      params.set('audio', 'vietsub');
-                      router.push(`${window.location.pathname}?${params.toString()}`, { scroll: false });
-                    }}
-                  >
-                    Vietsub
-                  </button>
-                )}
-                {movieLinks.dubbed && (
-                  <button
-                    className={`px-3 py-1 rounded text-xs font-semibold transition-colors ${selectedAudio === 'dubbed' ? 'bg-gradient-to-r from-fuchsia-600 to-pink-600 text-white' : 'bg-gray-700 text-gray-200 hover:bg-gray-600'}`}
-                    onClick={() => {
-                      setSelectedAudio('dubbed');
-                      const params = new URLSearchParams(searchParams.toString());
-                      params.set('audio', 'dubbed');
-                      router.push(`${window.location.pathname}?${params.toString()}`, { scroll: false });
-                    }}
-                  >
-                    Dubbed
-                  </button>
-                )}
-              </div>
-            )
-          )}
-        </div>
-        <div className="flex flex-col gap-2">
+
           <button
             className={`whitespace-nowrap px-4 py-2 rounded-md text-sm font-semibold transition-colors ${selectedServer === 'server2' ? 'bg-green-600 text-white' : 'bg-gray-700 text-gray-200 hover:bg-gray-600'}`}
             onClick={() => handleServerChange('server2')}
           >
             Server 2
           </button>
-          {selectedServer === 'server2' && (
-            <span className="text-xs text-yellow-300 bg-yellow-900/40 px-2 py-1 rounded w-max">
-              This server may contain ads.
-            </span>
-          )}
-        </div>
-        <div className="flex flex-col gap-2">
+
           <button
             className={`whitespace-nowrap px-4 py-2 rounded-md text-sm font-semibold transition-colors ${selectedServer === 'server3' ? 'bg-amber-700 text-white' : 'bg-gray-700 text-gray-200 hover:bg-gray-600'}`}
             onClick={() => handleServerChange('server3')}
           >
             Server 3
           </button>
-          {selectedServer === 'server3' && (
-            <>
-              {(server3Links.vietsub || server3Links.dubbed) && (
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-300">Audio:</span>
-                  {server3Links.vietsub && (
-                    <button
-                      className={`px-3 py-1 rounded text-xs font-semibold transition-colors ${selectedAudio === 'vietsub' ? 'bg-gradient-to-r from-fuchsia-600 to-pink-600 text-white' : 'bg-gray-700 text-gray-200 hover:bg-gray-600'}`}
-                      onClick={() => {
-                        setSelectedAudio('vietsub');
-                        const params = new URLSearchParams(searchParams.toString());
-                        params.set('audio', 'vietsub');
-                        router.push(`${window.location.pathname}?${params.toString()}`, { scroll: false });
-                      }}
-                    >
-                      Vietsub
-                    </button>
-                  )}
-                  {server3Links.dubbed && (
-                    <button
-                      className={`px-3 py-1 rounded text-xs font-semibold transition-colors ${selectedAudio === 'dubbed' ? 'bg-gradient-to-r from-fuchsia-600 to-pink-600 text-white' : 'bg-gray-700 text-gray-200 hover:bg-gray-600'}`}
-                      onClick={() => {
-                        setSelectedAudio('dubbed');
-                        const params = new URLSearchParams(searchParams.toString());
-                        params.set('audio', 'dubbed');
-                        router.push(`${window.location.pathname}?${params.toString()}`, { scroll: false });
-                      }}
-                    >
-                      Dubbed
-                    </button>
-                  )}
-                </div>
+        </div>
+
+        {/* Active Server Options Area */}
+        <div className="flex flex-wrap items-center min-h-[32px]">
+          {selectedServer === 'server1' && (movieLinks.vietsub || movieLinks.dubbed) && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-300">Audio:</span>
+              {movieLinks.vietsub && (
+                <button
+                  className={`px-3 py-1 rounded text-xs font-semibold transition-colors ${selectedAudio === 'vietsub' ? 'bg-gradient-to-r from-fuchsia-600 to-pink-600 text-white' : 'bg-gray-700 text-gray-200 hover:bg-gray-600'}`}
+                  onClick={() => {
+                    setSelectedAudio('vietsub');
+                    const params = new URLSearchParams(searchParams.toString());
+                    params.set('audio', 'vietsub');
+                    router.push(`${window.location.pathname}?${params.toString()}`, { scroll: false });
+                  }}
+                >
+                  Vietsub
+                </button>
               )}
-            </>
+              {movieLinks.dubbed && (
+                <button
+                  className={`px-3 py-1 rounded text-xs font-semibold transition-colors ${selectedAudio === 'dubbed' ? 'bg-gradient-to-r from-fuchsia-600 to-pink-600 text-white' : 'bg-gray-700 text-gray-200 hover:bg-gray-600'}`}
+                  onClick={() => {
+                    setSelectedAudio('dubbed');
+                    const params = new URLSearchParams(searchParams.toString());
+                    params.set('audio', 'dubbed');
+                    router.push(`${window.location.pathname}?${params.toString()}`, { scroll: false });
+                  }}
+                >
+                  Dubbed
+                </button>
+              )}
+            </div>
+          )}
+
+          {selectedServer === 'server2' && (
+            <span className="text-xs text-yellow-300 bg-yellow-900/40 px-2 py-1 rounded">
+              This server may contain ads.
+            </span>
+          )}
+
+          {selectedServer === 'server3' && (server3Links.vietsub || server3Links.dubbed) && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-300">Audio:</span>
+              {server3Links.vietsub && (
+                <button
+                  className={`px-3 py-1 rounded text-xs font-semibold transition-colors ${selectedAudio === 'vietsub' ? 'bg-gradient-to-r from-fuchsia-600 to-pink-600 text-white' : 'bg-gray-700 text-gray-200 hover:bg-gray-600'}`}
+                  onClick={() => {
+                    setSelectedAudio('vietsub');
+                    const params = new URLSearchParams(searchParams.toString());
+                    params.set('audio', 'vietsub');
+                    router.push(`${window.location.pathname}?${params.toString()}`, { scroll: false });
+                  }}
+                >
+                  Vietsub
+                </button>
+              )}
+              {server3Links.dubbed && (
+                <button
+                  className={`px-3 py-1 rounded text-xs font-semibold transition-colors ${selectedAudio === 'dubbed' ? 'bg-gradient-to-r from-fuchsia-600 to-pink-600 text-white' : 'bg-gray-700 text-gray-200 hover:bg-gray-600'}`}
+                  onClick={() => {
+                    setSelectedAudio('dubbed');
+                    const params = new URLSearchParams(searchParams.toString());
+                    params.set('audio', 'dubbed');
+                    router.push(`${window.location.pathname}?${params.toString()}`, { scroll: false });
+                  }}
+                >
+                  Dubbed
+                </button>
+              )}
+            </div>
           )}
         </div>
       </div>

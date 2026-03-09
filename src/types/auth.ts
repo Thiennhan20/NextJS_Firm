@@ -28,6 +28,7 @@ export interface AuthState {
   token: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  error: string | null;
+  loginError: string | null;
+  registerError: string | null;
   checkAuth: () => Promise<void>;
 } 

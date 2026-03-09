@@ -73,6 +73,7 @@ export default function LoginPage() {
   const [mounted, setMounted] = useState(false);
   const router = useRouter();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+   const clearError = useAuthStore((state) => state.clearError);
 
   // Memoize googleClientId to prevent re-computation
   const googleClientId = useMemo(() =>
@@ -80,9 +81,21 @@ export default function LoginPage() {
     []
   );
 
-  // Memoize button handlers to prevent re-renders
-  const handleLoginClick = useMemo(() => () => setIsLogin(true), []);
-  const handleRegisterClick = useMemo(() => () => setIsLogin(false), []);
+  // Memoize button handlers to prevent re-renders and clear errors on tab switch
+  const handleLoginClick = useMemo(
+    () => () => {
+      clearError();
+      setIsLogin(true);
+    },
+    [clearError]
+  );
+  const handleRegisterClick = useMemo(
+    () => () => {
+      clearError();
+      setIsLogin(false);
+    },
+    [clearError]
+  );
 
   // Mount effect
   useEffect(() => {

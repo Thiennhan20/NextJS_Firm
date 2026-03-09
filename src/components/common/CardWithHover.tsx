@@ -22,6 +22,29 @@ const detailsCache = new Map<string, CacheEntry>()
 const CACHE_TTL = 30 * 60 * 1000 // 30 phút
 const MAX_CACHE_SIZE = 30 // Giảm từ 50 xuống 30 để tiết kiệm memory
 
+// Prefetch function - fetch ngay khi hover vào, tận dụng hoverDelay
+function prefetchDetails(type: 'movie' | 'tv', id: number) {
+  const cacheKey = `${type}-${id}`
+  const cached = detailsCache.get(cacheKey)
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) return // already cached
+
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 5000)
+
+  axios
+    .get(`/api/tmdb-proxy?endpoint=/${type}/${id}`, { signal: controller.signal })
+    .then((response) => {
+      const data = response.data
+      detailsCache.set(cacheKey, { data, timestamp: Date.now() })
+      if (detailsCache.size > MAX_CACHE_SIZE) {
+        const firstKey = detailsCache.keys().next().value
+        if (firstKey) detailsCache.delete(firstKey)
+      }
+    })
+    .catch(() => {/* silent fail on prefetch */})
+    .finally(() => clearTimeout(timeoutId))
+}
+
 interface CardWithHoverProps {
   id: number
   type: 'movie' | 'tv'
@@ -71,6 +94,17 @@ const HoverCard = memo(function HoverCard({
   const { isAuthenticated, token } = useAuthStore()
   const [details, setDetails] = useState<MovieDetails | null>(null)
   const [loading, setLoading] = useState(false)
+  const [isPointerActive, setIsPointerActive] = useState(false)
+
+  // Enable pointer events after 200ms to allow click-through initially
+  useEffect(() => {
+    if (!isVisible) {
+      setIsPointerActive(false)
+      return
+    }
+    const timer = setTimeout(() => setIsPointerActive(true), 200)
+    return () => clearTimeout(timer)
+  }, [isVisible])
 
   useEffect(() => {
     if (!isVisible) return
@@ -226,7 +260,8 @@ const HoverCard = memo(function HoverCard({
             position: 'fixed',
             top,
             left,
-            zIndex: 2000
+            zIndex: 2000,
+            pointerEvents: isPointerActive ? 'auto' : 'none'
           }}
           className="w-[320px] sm:w-[380px] bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.8)] overflow-hidden border border-gray-700/50"
         >
@@ -355,17 +390,29 @@ export default function CardWithHover({
   onWatchClick,
   onLikeClick,
   isLiked = false,
-  hoverDelay = 600
+  hoverDelay = 350
 }: CardWithHoverProps) {
   const [showCard, setShowCard] = useState(false)
   const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null)
   const [isScrolling, setIsScrolling] = useState(false)
+  // true = thiết bị có chuột thật (hover: hover), false = touch device
+  const [isHoverDevice, setIsHoverDevice] = useState(false)
   const wrapperRef = useRef<HTMLDivElement>(null)
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
-  // Detect scrolling state với throttle
+  // Detect hover capability sau khi mount (tránh SSR mismatch)
   useEffect(() => {
+    const mq = window.matchMedia('(hover: hover) and (pointer: fine)')
+    setIsHoverDevice(mq.matches)
+    const handler = (e: MediaQueryListEvent) => setIsHoverDevice(e.matches)
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  }, [])
+
+  // Detect scrolling state với throttle - chỉ cần trên hover device
+  useEffect(() => {
+    if (!isHoverDevice) return
     let ticking = false
     
     const handleScroll = () => {
@@ -400,7 +447,7 @@ export default function CardWithHover({
         clearTimeout(scrollTimeoutRef.current)
       }
     }
-  }, [])
+  }, [isHoverDevice])
 
   // Keep anchor rect updated với throttle
   useEffect(() => {
@@ -437,29 +484,40 @@ export default function CardWithHover({
     }
   }, [])
 
-  // Memoize handlers to prevent re-creation
+  // Hover handlers - chỉ hoạt động trên desktop (hover device)
   const handleMouseEnter = useCallback(() => {
-    if (isScrolling) return
+    if (!isHoverDevice || isScrolling) return
 
     if (hoverTimeoutRef.current) {
       clearTimeout(hoverTimeoutRef.current)
     }
 
-    hoverTimeoutRef.current = setTimeout(() => {
-      if (!isScrolling && wrapperRef.current) {
+    // Prefetch ngay khi hover vào, tận dụng hoverDelay để fetch trước
+    prefetchDetails(type, id)
+
+    if (hoverDelay > 0) {
+      hoverTimeoutRef.current = setTimeout(() => {
+        if (!isScrolling && wrapperRef.current) {
+          setAnchorRect(wrapperRef.current.getBoundingClientRect())
+          setShowCard(true)
+        }
+      }, hoverDelay)
+    } else {
+      if (wrapperRef.current) {
         setAnchorRect(wrapperRef.current.getBoundingClientRect())
         setShowCard(true)
       }
-    }, hoverDelay)
-  }, [isScrolling, hoverDelay])
+    }
+  }, [isHoverDevice, isScrolling, hoverDelay, type, id])
 
   const handleMouseLeave = useCallback(() => {
+    if (!isHoverDevice) return
     if (hoverTimeoutRef.current) {
       clearTimeout(hoverTimeoutRef.current)
       hoverTimeoutRef.current = null
     }
     setShowCard(false)
-  }, [])
+  }, [isHoverDevice])
 
   return (
     <div

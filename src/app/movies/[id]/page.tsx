@@ -114,40 +114,42 @@ export default function MovieDetail() {
     const fetchMovie = async () => {
       setLoading(true);
       try {
-        const response = await axios.get(
-          `/api/tmdb-proxy?endpoint=/movie/${id}`
-        );
-        const data = response.data;
+        // Fetch all TMDB data in parallel for faster loading
+        const [detailResult, imgResult, videoResult, creditsResult] = await Promise.allSettled([
+          axios.get(`/api/tmdb-proxy?endpoint=/movie/${id}`),
+          axios.get(`/api/tmdb-proxy?endpoint=/movie/${id}/images`),
+          axios.get(`/api/tmdb-proxy?endpoint=/movie/${id}/videos`),
+          axios.get(`/api/tmdb-proxy?endpoint=/movie/${id}/credits`),
+        ]);
+
+        // Detail is required - if it fails, throw
+        if (detailResult.status === 'rejected') throw detailResult.reason;
+        const data = detailResult.value.data;
+
+        // Images - optional, graceful fallback
         let scenes: string[] = [];
-        try {
-          const imgRes = await axios.get(
-            `/api/tmdb-proxy?endpoint=/movie/${id}/images`
-          );
-          const backdrops: { file_path: string }[] = imgRes.data.backdrops || [];
+        if (imgResult.status === 'fulfilled') {
+          const backdrops: { file_path: string }[] = imgResult.value.data.backdrops || [];
           scenes = backdrops.slice(0, 3).map((img) => `https://image.tmdb.org/t/p/w780${img.file_path}`);
-        } catch { }
+        }
         if (scenes.length < 3) {
           if (data.backdrop_path) scenes.push(`https://image.tmdb.org/t/p/w780${data.backdrop_path}`);
           if (data.poster_path) scenes.push(`https://image.tmdb.org/t/p/w500${data.poster_path}`);
         }
         scenes = scenes.slice(0, 3);
+
+        // Videos - optional, graceful fallback
         let trailer = '';
-        try {
-          const videoRes = await axios.get(
-            `/api/tmdb-proxy?endpoint=/movie/${id}/videos`
-          );
-          const videos: { type: string; site: string; key: string }[] = videoRes.data.results || [];
+        if (videoResult.status === 'fulfilled') {
+          const videos: { type: string; site: string; key: string }[] = videoResult.value.data.results || [];
           const ytTrailer = videos.find((v) => v.type === 'Trailer' && v.site === 'YouTube');
           if (ytTrailer) {
             trailer = `https://www.youtube.com/embed/${ytTrailer.key}`;
           }
-        } catch { }
+        }
 
-        // Fetch credits for director and cast
-        const creditsResponse = await axios.get(
-          `/api/tmdb-proxy?endpoint=/movie/${id}/credits`
-        );
-        const credits = creditsResponse.data;
+        // Credits - graceful fallback
+        const credits = creditsResult.status === 'fulfilled' ? creditsResult.value.data : { crew: [], cast: [] };
 
         const movieData = {
           id: data.id,
@@ -360,8 +362,8 @@ export default function MovieDetail() {
                 whileTap={{ scale: 0.95 }}
                 onClick={handleToggleWatchlist}
                 className={`flex-1 sm:flex-none px-4 sm:px-6 py-2 sm:py-3 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2 text-sm sm:text-base ${isBookmarked
-                    ? 'bg-amber-700 text-white hover:bg-amber-800'
-                    : 'bg-gray-700 text-white hover:bg-gray-600'
+                  ? 'bg-amber-700 text-white hover:bg-amber-800'
+                  : 'bg-gray-700 text-white hover:bg-gray-600'
                   }`}
               >
                 <BookmarkIcon className="h-4 w-4 sm:h-5 sm:w-5" />

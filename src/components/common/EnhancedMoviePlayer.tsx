@@ -42,145 +42,139 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
 
     const hlsRef = useRef<Hls | null>(null);
     const rafRef = useRef<number | null>(null);
-    const syncRef = useRef({
-      currentTime: 0,
-      duration: 0,
-      isDirty: false
-    });
-    const safetyIntervalRef = useRef<NodeJS.Timeout | null>(null);
     const [isPlaying, setIsPlaying] = useState<boolean>(false);
     const [duration, setDuration] = useState<number>(0);
     const [currentTime, setCurrentTime] = useState<number>(0);
     const [isEnded, setIsEnded] = useState<boolean>(false);
-    const [speed, setSpeed] = useState<AvailableSpeed>(1);
-    const [qualities, setQualities] = useState<Array<{ index: number; label: string }>>([]);
-    const [currentQuality, setCurrentQuality] = useState<number>(-1); // -1: auto
-    const [showSettings, setShowSettings] = useState<boolean>(false);
-    const [activeTab, setActiveTab] = useState<'speed' | 'quality'>('speed');
-    const [isLoading, setIsLoading] = useState<boolean>(false);
-    const [isBuffering, setIsBuffering] = useState<boolean>(false);
-    const [isSeeking, setIsSeeking] = useState<boolean>(false);
-    const [showControls, setShowControls] = useState<boolean>(true);
-    const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
-    const hideControlsTimer = useRef<NodeJS.Timeout | null>(null);
+         const [speed, setSpeed] = useState<AvailableSpeed>(1);
+     const [qualities, setQualities] = useState<Array<{ index: number; label: string }>>([]);
+     const [currentQuality, setCurrentQuality] = useState<number>(-1); // -1: auto
+     const [showSettings, setShowSettings] = useState<boolean>(false);
+     const [activeTab, setActiveTab] = useState<'speed' | 'quality'>('speed');
+     const [isLoading, setIsLoading] = useState<boolean>(false);
+     const [isBuffering, setIsBuffering] = useState<boolean>(false);
+     const [isSeeking, setIsSeeking] = useState<boolean>(false);
+     const [showControls, setShowControls] = useState<boolean>(true);
+     const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
+     const hideControlsTimer = useRef<NodeJS.Timeout | null>(null);
 
-    // Update isLoading based on buffering or seeking
-    useEffect(() => {
-      setIsLoading(isBuffering || isSeeking);
-    }, [isBuffering, isSeeking]);
+     // Update isLoading based on buffering or seeking
+     useEffect(() => {
+       setIsLoading(isBuffering || isSeeking);
+     }, [isBuffering, isSeeking]);
 
-    // Auto-hide controls after 5 seconds when playing
-    useEffect(() => {
-      if (isPlaying && showControls) {
-        // Clear existing timer
-        if (hideControlsTimer.current) {
-          clearTimeout(hideControlsTimer.current);
-        }
+     // Auto-hide controls after 5 seconds when playing
+     useEffect(() => {
+       if (isPlaying && showControls) {
+         // Clear existing timer
+         if (hideControlsTimer.current) {
+           clearTimeout(hideControlsTimer.current);
+         }
+         
+         // Set new timer to hide controls after 3 seconds (1.5s in fullscreen)
+         const hideDelay = isFullscreen ? 1500 : 3000;
+         hideControlsTimer.current = setTimeout(() => {
+           setShowControls(false);
+         }, hideDelay);
+       } else if (!isPlaying) {
+         // Show controls when paused
+         setShowControls(true);
+         if (hideControlsTimer.current) {
+           clearTimeout(hideControlsTimer.current);
+         }
+       }
 
-        // Set new timer to hide controls after 3 seconds (1.5s in fullscreen)
-        const hideDelay = isFullscreen ? 1500 : 3000;
-        hideControlsTimer.current = setTimeout(() => {
-          setShowControls(false);
-        }, hideDelay);
-      } else if (!isPlaying) {
-        // Show controls when paused
-        setShowControls(true);
-        if (hideControlsTimer.current) {
-          clearTimeout(hideControlsTimer.current);
-        }
-      }
+       return () => {
+         if (hideControlsTimer.current) {
+           clearTimeout(hideControlsTimer.current);
+         }
+       };
+     }, [isPlaying, showControls, isFullscreen]);
 
-      return () => {
-        if (hideControlsTimer.current) {
-          clearTimeout(hideControlsTimer.current);
-        }
-      };
-    }, [isPlaying, showControls, isFullscreen]);
+     // Show controls on user interaction
+     const handleUserInteraction = useCallback(() => {
+       setShowControls(true);
+       
+       // Reset timer if video is playing
+       if (isPlaying) {
+         if (hideControlsTimer.current) {
+           clearTimeout(hideControlsTimer.current);
+         }
+         const hideDelay = isFullscreen ? 1500 : 3000;
+         hideControlsTimer.current = setTimeout(() => {
+           setShowControls(false);
+         }, hideDelay);
+       }
+     }, [isPlaying, isFullscreen]);
 
-    // Show controls on user interaction
-    const handleUserInteraction = useCallback(() => {
-      setShowControls(true);
+     // Hide controls when mouse leaves player (only on devices with mouse)
+     const handleMouseLeave = useCallback(() => {
+       if (isPlaying) {
+         // Clear existing timer
+         if (hideControlsTimer.current) {
+           clearTimeout(hideControlsTimer.current);
+         }
+         // Hide controls immediately
+         setShowControls(false);
+       }
+     }, [isPlaying]);
 
-      // Reset timer if video is playing
-      if (isPlaying) {
-        if (hideControlsTimer.current) {
-          clearTimeout(hideControlsTimer.current);
-        }
-        const hideDelay = isFullscreen ? 1500 : 3000;
-        hideControlsTimer.current = setTimeout(() => {
-          setShowControls(false);
-        }, hideDelay);
-      }
-    }, [isPlaying, isFullscreen]);
+     // Listen for fullscreen changes
+     useEffect(() => {
+       const handleFullscreenChange = () => {
+         const isCurrentlyFullscreen = !!(document.fullscreenElement || 
+           (document as Document & { webkitFullscreenElement?: Element }).webkitFullscreenElement || 
+           (document as Document & { mozFullScreenElement?: Element }).mozFullScreenElement || 
+           (document as Document & { msFullscreenElement?: Element }).msFullscreenElement);
+         setIsFullscreen(isCurrentlyFullscreen);
+       };
 
-    // Hide controls when mouse leaves player (only on devices with mouse)
-    const handleMouseLeave = useCallback(() => {
-      if (isPlaying) {
-        // Clear existing timer
-        if (hideControlsTimer.current) {
-          clearTimeout(hideControlsTimer.current);
-        }
-        // Hide controls immediately
-        setShowControls(false);
-      }
-    }, [isPlaying]);
+       // Safari-specific fullscreen change events
+       const handleSafariFullscreenChange = () => {
+         const video = (ref && typeof ref === "object" && ref !== null
+           ? (ref as React.MutableRefObject<HTMLVideoElement | null>).current
+           : innerRef.current) as HTMLVideoElement | null;
+         
+         if (video) {
+           const isCurrentlyFullscreen = !!(document.fullscreenElement || 
+             (document as Document & { webkitFullscreenElement?: Element }).webkitFullscreenElement || 
+             (document as Document & { mozFullScreenElement?: Element }).mozFullScreenElement || 
+             (document as Document & { msFullscreenElement?: Element }).msFullscreenElement);
+           setIsFullscreen(isCurrentlyFullscreen);
+         }
+       };
 
-    // Listen for fullscreen changes
-    useEffect(() => {
-      const handleFullscreenChange = () => {
-        const isCurrentlyFullscreen = !!(document.fullscreenElement ||
-          (document as Document & { webkitFullscreenElement?: Element }).webkitFullscreenElement ||
-          (document as Document & { mozFullScreenElement?: Element }).mozFullScreenElement ||
-          (document as Document & { msFullscreenElement?: Element }).msFullscreenElement);
-        setIsFullscreen(isCurrentlyFullscreen);
-      };
+       document.addEventListener('fullscreenchange', handleFullscreenChange);
+       document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+       document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+       document.addEventListener('MSFullscreenChange', handleFullscreenChange);
 
-      // Safari-specific fullscreen change events
-      const handleSafariFullscreenChange = () => {
-        const video = (ref && typeof ref === "object" && ref !== null
-          ? (ref as React.MutableRefObject<HTMLVideoElement | null>).current
-          : innerRef.current) as HTMLVideoElement | null;
+       // Safari-specific events
+       document.addEventListener('webkitbeginfullscreen', handleSafariFullscreenChange);
+       document.addEventListener('webkitendfullscreen', handleSafariFullscreenChange);
 
-        if (video) {
-          const isCurrentlyFullscreen = !!(document.fullscreenElement ||
-            (document as Document & { webkitFullscreenElement?: Element }).webkitFullscreenElement ||
-            (document as Document & { mozFullScreenElement?: Element }).mozFullScreenElement ||
-            (document as Document & { msFullscreenElement?: Element }).msFullscreenElement);
-          setIsFullscreen(isCurrentlyFullscreen);
-        }
-      };
-
-      document.addEventListener('fullscreenchange', handleFullscreenChange);
-      document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
-      document.addEventListener('mozfullscreenchange', handleFullscreenChange);
-      document.addEventListener('MSFullscreenChange', handleFullscreenChange);
-
-      // Safari-specific events
-      document.addEventListener('webkitbeginfullscreen', handleSafariFullscreenChange);
-      document.addEventListener('webkitendfullscreen', handleSafariFullscreenChange);
-
-      return () => {
-        document.removeEventListener('fullscreenchange', handleFullscreenChange);
-        document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
-        document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
-        document.removeEventListener('MSFullscreenChange', handleFullscreenChange);
-        document.removeEventListener('webkitbeginfullscreen', handleSafariFullscreenChange);
-        document.removeEventListener('webkitendfullscreen', handleSafariFullscreenChange);
-      };
-    }, [ref]);
+       return () => {
+         document.removeEventListener('fullscreenchange', handleFullscreenChange);
+         document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+         document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
+         document.removeEventListener('MSFullscreenChange', handleFullscreenChange);
+         document.removeEventListener('webkitbeginfullscreen', handleSafariFullscreenChange);
+         document.removeEventListener('webkitendfullscreen', handleSafariFullscreenChange);
+       };
+     }, [ref]);
 
     // Safari-specific fixes
     useEffect(() => {
       const video = (ref && typeof ref === "object" && ref !== null
         ? (ref as React.MutableRefObject<HTMLVideoElement | null>).current
         : innerRef.current) as HTMLVideoElement | null;
-
+      
       if (!video) return;
 
       // Safari-specific fixes
-      const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent) ||
-        /iPad|iPhone|iPod/.test(navigator.userAgent);
-
+      const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent) || 
+                      /iPad|iPhone|iPod/.test(navigator.userAgent);
+      
       if (isSafari) {
         // Prevent Safari from showing native controls
         video.setAttribute('webkit-playsinline', 'true');
@@ -188,37 +182,37 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
         video.setAttribute('x5-playsinline', 'true');
         video.setAttribute('x5-video-player-type', 'h5');
         video.setAttribute('x5-video-player-fullscreen', 'true');
-
+        
         // Enable fullscreen support for Safari
         video.setAttribute('webkit-allow-fullscreen', 'true');
         video.setAttribute('allowfullscreen', 'true');
-
+        
         // Disable default video controls on Safari
         video.controls = false;
-
+        
         // Prevent Safari from showing native fullscreen controls
         const preventDefault = (e: Event) => {
           e.preventDefault();
           e.stopPropagation();
         };
-
+        
         video.addEventListener('webkitbeginfullscreen', preventDefault);
         video.addEventListener('webkitendfullscreen', preventDefault);
-
+        
         // Additional Safari fixes
         video.style.appearance = 'none';
         video.style.webkitAppearance = 'none';
         video.style.userSelect = 'none';
         video.style.webkitUserSelect = 'none';
-        (video.style as CSSStyleDeclaration & {
-          webkitTouchCallout?: string;
-          webkitTapHighlightColor?: string;
+        (video.style as CSSStyleDeclaration & { 
+          webkitTouchCallout?: string; 
+          webkitTapHighlightColor?: string; 
         }).webkitTouchCallout = 'none';
-        (video.style as CSSStyleDeclaration & {
-          webkitTouchCallout?: string;
-          webkitTapHighlightColor?: string;
+        (video.style as CSSStyleDeclaration & { 
+          webkitTouchCallout?: string; 
+          webkitTapHighlightColor?: string; 
         }).webkitTapHighlightColor = 'transparent';
-
+        
         return () => {
           video.removeEventListener('webkitbeginfullscreen', preventDefault);
           video.removeEventListener('webkitendfullscreen', preventDefault);
@@ -231,19 +225,19 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
       const video = (ref && typeof ref === "object" && ref !== null
         ? (ref as React.MutableRefObject<HTMLVideoElement | null>).current
         : innerRef.current) as HTMLVideoElement | null;
-
+      
       if (!video) return;
 
       // Set fullscreen attributes
       video.setAttribute('webkit-allow-fullscreen', 'true');
       video.setAttribute('allowfullscreen', 'true');
-
+      
       // Additional fullscreen support attributes
       const videoElement = video as HTMLVideoElement & {
         webkitEnterFullscreen?: () => void;
         webkitSetPresentationMode?: (mode: string) => void;
       };
-
+      
       // Ensure video element has fullscreen capabilities
       if (videoElement.webkitEnterFullscreen || videoElement.webkitSetPresentationMode) {
         video.setAttribute('webkit-allow-fullscreen', 'true');
@@ -274,48 +268,44 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
             // sort by height descending (2160p -> 144p)
             .sort((a, b) => b.height - a.height)
             // remove height property for UI
-            .map(({ index, label }) => ({ index, label }));
+            .map(({index, label}) => ({index, label}));
           setQualities([{ index: -1, label: "Auto" }, ...q]);
           setCurrentQuality(-1);
           if (autoPlay) {
-            video.play().catch(() => { });
+            video.play().catch(() => {});
           }
         });
         hlsRef.current = hls;
       } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
         video.src = src;
         if (autoPlay) {
-          video.play().catch(() => { });
+          video.play().catch(() => {});
         }
       }
       const onLoadedMetadata = () => setDuration(video.duration || 0);
-      const onTimeUpdate = () => {
-        const currentTime = video.currentTime || 0;
-        setCurrentTime(currentTime);
-        setIsBuffering(false); // Video is updating, not buffering
-        // Update ref for save function (không gọi API ở đây)
-        syncRef.current.currentTime = video.currentTime || 0;
-        syncRef.current.duration = video.duration || 0;
-        syncRef.current.isDirty = true;
-      };
-
-      const onWaiting = () => setIsBuffering(true); // Video is waiting for data (buffering)
-      const onCanPlay = () => setIsBuffering(false); // Video can play (buffer ready)
-      const onSeeking = () => setIsSeeking(true); // User is seeking
-      const onSeeked = () => setIsSeeking(false); // Seeking completed
-      const onPlay = () => {
-        setIsPlaying(true);
-        setIsEnded(false);
-      };
-      const onPause = () => {
-        setIsPlaying(false);
-        setIsBuffering(false); // Reset buffering when paused
-        setIsSeeking(false); // Reset seeking when paused
-      };
-      const onEnded = () => {
-        setIsPlaying(false);
-        setIsEnded(true);
-      };
+             const onTimeUpdate = () => {
+         const currentTime = video.currentTime || 0;
+         setCurrentTime(currentTime);
+         setIsBuffering(false); // Video is updating, not buffering
+       };
+       
+       const onWaiting = () => setIsBuffering(true); // Video is waiting for data (buffering)
+       const onCanPlay = () => setIsBuffering(false); // Video can play (buffer ready)
+       const onSeeking = () => setIsSeeking(true); // User is seeking
+       const onSeeked = () => setIsSeeking(false); // Seeking completed
+       const onPlay = () => {
+         setIsPlaying(true);
+         setIsEnded(false);
+       };
+       const onPause = () => {
+         setIsPlaying(false);
+         setIsBuffering(false); // Reset buffering when paused
+         setIsSeeking(false); // Reset seeking when paused
+       };
+       const onEnded = () => {
+         setIsPlaying(false);
+         setIsEnded(true);
+       };
       const onVolume = () => {
         // setVolume(video.volume); // Removed
         // setIsMuted(video.muted); // Removed
@@ -400,7 +390,7 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
             const resp = await api.get('/recently-watched', { params });
             const savedTime = resp.data?.item?.currentTime || 0;
             applyTime(savedTime);
-          } catch { }
+          } catch {}
           return;
         }
 
@@ -431,7 +421,7 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
       load();
     }, [movieId, server, audio, src, ref, season, episode, isTVShow, userId]);
 
-    // Save progress logic with optimized strategy
+    // Save progress on timeupdate, pause, beforeunload (server if logged in, else localStorage)
     useEffect(() => {
       if (!movieId || !server || !audio) return;
 
@@ -439,64 +429,33 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
         ? (ref as React.MutableRefObject<HTMLVideoElement | null>).current
         : innerRef.current) as HTMLVideoElement | null;
       if (!video) return;
-
-      // Function to perform the actual save
-      const syncProgress = async (immediate: boolean, useBeacon: boolean) => {
-        const { currentTime, duration, isDirty } = syncRef.current;
-
-        // Skip if no changes or invalid data
-        if (!immediate && !isDirty) return;
-        if (currentTime <= 0 || duration <= 0) return;
-
-        // Mark as saved
-        syncRef.current.isDirty = false;
-
-        const payload = {
-          contentId: String(movieId),
-          isTVShow: !!isTVShow,
-          season: isTVShow ? season : null,
-          episode: isTVShow ? episode : null,
-          server,
-          audio,
-          currentTime,
-          duration,
-          title: title || '',
-          poster: poster || ''
-        };
-
-        // Logged in: send to server
-        if (userId) {
-          const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-          const endpoint = `${apiUrl}/api/recently-watched`;
-
-          try {
-            if (useBeacon) {
-              // Use fetch with keepalive for critical saves (tab close, visibility change, unmount)
-              await fetch(endpoint, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
-                },
-                body: JSON.stringify(payload),
-                keepalive: true // Critical: ensures request completes even if page closes
-              });
-            } else {
-              // Normal save using axios
-              await api.post('/recently-watched', payload);
-            }
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          } catch (_error) {
-            // Silently fail
+      
+      const save = () => {
+        if (video.currentTime > 0 && video.duration > 0) {
+          // Logged in: send to server
+          if (userId) {
+            api.post('/recently-watched', {
+              contentId: String(movieId),
+              isTVShow: !!isTVShow,
+              season: isTVShow ? season : null,
+              episode: isTVShow ? episode : null,
+              server,
+              audio,
+              currentTime: video.currentTime,
+              duration: video.duration,
+              title: title || '',
+              poster: poster || ''
+            }).catch(() => {});
+            return;
           }
-        } else {
+
           // Guest: localStorage
           const key = isTVShow && season && episode
             ? `tvshow-progress-${movieId}-${season}-${episode}-${server}-${audio}`
             : `movie-progress-${movieId}-${server}-${audio}`;
           const progressData = {
-            currentTime,
-            duration,
+            currentTime: video.currentTime,
+            duration: video.duration,
             title: title || '',
             poster: poster || '',
             lastWatched: new Date().toISOString(),
@@ -507,58 +466,13 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
         }
       };
 
-      // 1. TimeUpdate: Chỉ cập nhật ref (đã xử lý ở trên trong onTimeUpdate)
-
-      // 2. Pause & Seeked: Lưu ngay lập tức
-      const handleCommitAction = () => {
-        syncRef.current.currentTime = video.currentTime;
-        syncRef.current.duration = video.duration || 0;
-        syncProgress(true, false); // Immediate save, normal request
-      };
-
-      // 3. Visibility Change: Xử lý khi tắt/ẩn tab trình duyệt
-      const handleVisibilityChange = () => {
-        if (document.visibilityState === 'hidden') {
-          syncRef.current.currentTime = video.currentTime;
-          syncRef.current.duration = video.duration || 0;
-          syncProgress(true, true); // Immediate save with keepalive
-        }
-      };
-
-      // 4. Safety Interval: Lưu định kỳ 30s
-      safetyIntervalRef.current = setInterval(() => {
-        if (!video.paused) {
-          syncProgress(false, false); // Only save if dirty, normal request
-        }
-      }, 30000); // 30 seconds
-
-      // Attach event listeners
-      video.addEventListener('pause', handleCommitAction);
-      video.addEventListener('seeked', handleCommitAction);
-      document.addEventListener('visibilitychange', handleVisibilityChange);
-
-      // Cleanup function - QUAN TRỌNG: Xử lý khi chuyển trang (unmount)
-      const currentSyncRef = syncRef.current;
+      video.addEventListener('timeupdate', save);
+      video.addEventListener('pause', save);
+      window.addEventListener('beforeunload', save);
       return () => {
-        // Remove event listeners
-        video.removeEventListener('pause', handleCommitAction);
-        video.removeEventListener('seeked', handleCommitAction);
-        document.removeEventListener('visibilitychange', handleVisibilityChange);
-
-        // Clear interval
-        if (safetyIntervalRef.current) {
-          clearInterval(safetyIntervalRef.current);
-        }
-
-        // ĐÂY LÀ CHỖ QUAN TRỌNG NHẤT KHI CHUYỂN TRANG:
-        // Cập nhật lại thời gian lần cuối từ video (nếu video object vẫn còn)
-        if (video) {
-          currentSyncRef.currentTime = video.currentTime;
-          currentSyncRef.duration = video.duration || 0;
-        }
-
-        // Gọi lưu bắt buộc với keepalive để đảm bảo request không bị hủy
-        syncProgress(true, true);
+        video.removeEventListener('timeupdate', save);
+        video.removeEventListener('pause', save);
+        window.removeEventListener('beforeunload', save);
       };
     }, [movieId, server, audio, src, ref, title, poster, season, episode, isTVShow, userId]);
 
@@ -566,7 +480,7 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
     const togglePlay = useCallback(() => {
       const v = (ref && typeof ref === "object" && ref !== null ? ref.current : innerRef.current) as HTMLVideoElement | null;
       if (!v) return;
-      if (v.paused) v.play().catch(() => { });
+      if (v.paused) v.play().catch(() => {});
       else v.pause();
     }, [ref]);
 
@@ -575,7 +489,7 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
       if (!v) return;
       v.currentTime = 0;
       setIsEnded(false);
-      v.play().catch(() => { });
+      v.play().catch(() => {});
     }, [ref]);
 
     const onSeek = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -596,7 +510,7 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
     const requestPiP = useCallback(() => {
       const v = (ref && typeof ref === "object" && ref !== null ? ref.current : innerRef.current) as HTMLVideoElement | null;
       if (!v) return;
-      const videoElement = v as HTMLVideoElement & {
+      const videoElement = v as HTMLVideoElement & { 
         disablePictureInPicture?: boolean;
         requestPictureInPicture?: () => Promise<void>;
         webkitSetPresentationMode?: (mode: string) => void;
@@ -613,13 +527,13 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
       if (!container) return;
 
       // Check if we're on Safari/iOS
-      const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent) ||
-        /iPad|iPhone|iPod/.test(navigator.userAgent);
+      const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent) || 
+                      /iPad|iPhone|iPod/.test(navigator.userAgent);
 
       // Check current fullscreen state
-      const isCurrentlyFullscreen = !!(document.fullscreenElement ||
-        (document as Document & { webkitFullscreenElement?: Element }).webkitFullscreenElement ||
-        (document as Document & { mozFullScreenElement?: Element }).mozFullScreenElement ||
+      const isCurrentlyFullscreen = !!(document.fullscreenElement || 
+        (document as Document & { webkitFullscreenElement?: Element }).webkitFullscreenElement || 
+        (document as Document & { mozFullScreenElement?: Element }).mozFullScreenElement || 
         (document as Document & { msFullscreenElement?: Element }).msFullscreenElement);
 
       if (isCurrentlyFullscreen) {
@@ -635,7 +549,7 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
         }
       } else {
         // Enter fullscreen
-        const element = container as HTMLElement & {
+        const element = container as HTMLElement & { 
           webkitRequestFullscreen?: () => void;
           mozRequestFullScreen?: () => void;
           msRequestFullscreen?: () => void;
@@ -654,13 +568,13 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
           const video = (ref && typeof ref === "object" && ref !== null
             ? (ref as React.MutableRefObject<HTMLVideoElement | null>).current
             : innerRef.current) as HTMLVideoElement | null;
-
+          
           if (video) {
             const videoElement = video as HTMLVideoElement & {
               webkitEnterFullscreen?: () => void;
               webkitSetPresentationMode?: (mode: string) => void;
             };
-
+            
             if (videoElement.webkitEnterFullscreen) {
               videoElement.webkitEnterFullscreen();
             } else if (videoElement.webkitSetPresentationMode) {
@@ -671,63 +585,63 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
       }
     }, [ref]);
 
-    const changeQuality = useCallback((level: number) => {
-      const hls = hlsRef.current;
-      if (!hls) return;
-      hls.currentLevel = level; // -1 auto
-      setCurrentQuality(level);
-    }, []);
+         const changeQuality = useCallback((level: number) => {
+       const hls = hlsRef.current;
+       if (!hls) return;
+       hls.currentLevel = level; // -1 auto
+       setCurrentQuality(level);
+     }, []);
 
-    const toggleSettings = useCallback(() => {
-      setShowSettings(prev => !prev);
-    }, []);
+     const toggleSettings = useCallback(() => {
+       setShowSettings(prev => !prev);
+     }, []);
 
-    const switchToSpeed = useCallback(() => {
-      setActiveTab('speed');
-    }, []);
+     const switchToSpeed = useCallback(() => {
+       setActiveTab('speed');
+     }, []);
 
-    const switchToQuality = useCallback(() => {
-      setActiveTab('quality');
-    }, []);
+     const switchToQuality = useCallback(() => {
+       setActiveTab('quality');
+     }, []);
 
     const innerContainerRef = useRef<HTMLDivElement>(null);
 
-    // Keyboard shortcuts
-    useEffect(() => {
-      const handler = (e: KeyboardEvent) => {
-        if (!innerContainerRef.current) return;
-        const target = e.target as HTMLElement;
-        const isTyping = target?.tagName === "INPUT" || target?.tagName === "TEXTAREA" || target?.isContentEditable;
-        if (isTyping) return;
-        switch (e.key.toLowerCase()) {
-          case " ":
-          case "k":
-            e.preventDefault();
-            togglePlay();
-            break;
-          case "arrowright":
-            {
-              const v = (ref && typeof ref === "object" && ref !== null ? ref.current : innerRef.current) as HTMLVideoElement | null;
-              if (v) v.currentTime = Math.min(v.currentTime + 10, v.duration || v.currentTime + 10);
-            }
-            break;
-          case "arrowleft":
-            {
-              const v = (ref && typeof ref === "object" && ref !== null ? ref.current : innerRef.current) as HTMLVideoElement | null;
-              if (v) v.currentTime = Math.max(v.currentTime - 10, 0);
-            }
-            break;
-          case "f":
-            toggleFullscreen();
-            break;
-          case "escape":
-            setShowSettings(false);
-            break;
-        }
-      };
-      window.addEventListener("keydown", handler);
-      return () => window.removeEventListener("keydown", handler);
-    }, [togglePlay, toggleFullscreen, ref]);
+                   // Keyboard shortcuts
+      useEffect(() => {
+        const handler = (e: KeyboardEvent) => {
+          if (!innerContainerRef.current) return;
+          const target = e.target as HTMLElement;
+          const isTyping = target?.tagName === "INPUT" || target?.tagName === "TEXTAREA" || target?.isContentEditable;
+          if (isTyping) return;
+          switch (e.key.toLowerCase()) {
+            case " ":
+            case "k":
+              e.preventDefault();
+              togglePlay();
+              break;
+            case "arrowright":
+              {
+                const v = (ref && typeof ref === "object" && ref !== null ? ref.current : innerRef.current) as HTMLVideoElement | null;
+                if (v) v.currentTime = Math.min(v.currentTime + 10, v.duration || v.currentTime + 10);
+              }
+              break;
+            case "arrowleft":
+              {
+                const v = (ref && typeof ref === "object" && ref !== null ? ref.current : innerRef.current) as HTMLVideoElement | null;
+                if (v) v.currentTime = Math.max(v.currentTime - 10, 0);
+              }
+              break;
+            case "f":
+              toggleFullscreen();
+              break;
+            case "escape":
+              setShowSettings(false);
+              break;
+          }
+        };
+        window.addEventListener("keydown", handler);
+        return () => window.removeEventListener("keydown", handler);
+      }, [togglePlay, toggleFullscreen, ref]);
 
     // Thêm các ref cho speed và quality
     const speedRefs = useRef<(HTMLButtonElement | null)[]>([]);
@@ -752,10 +666,11 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
     }, [showSettings, activeTab, speed, currentQuality, qualities]);
 
     return (
-      <div
-        ref={innerContainerRef}
-        className={`relative w-full h-full bg-black transition-all duration-300 ${showControls ? 'cursor-default' : 'cursor-none'
-          }`}
+      <div 
+        ref={innerContainerRef} 
+        className={`relative w-full h-full bg-black transition-all duration-300 ${
+          showControls ? 'cursor-default' : 'cursor-none'
+        }`}
         onMouseMove={handleUserInteraction}
         onMouseEnter={handleUserInteraction}
         onMouseLeave={handleMouseLeave}
@@ -795,150 +710,155 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
           }}
         />
 
-        {/* Start Streaming Button - Top Right Corner */}
-        {src && (
-          <div className={`absolute top-3 right-3 sm:top-4 sm:right-4 transition-all duration-500 ease-in-out ${showControls ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0'
-            }`}>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                // TODO: Navigate to streaming lobby with video info
-                console.log('Start Streaming clicked', { movieId, season, episode, isTVShow, title });
-              }}
-              className="flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2.5 rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white text-xs sm:text-sm font-semibold transition-all duration-200 shadow-lg hover:shadow-purple-500/50 hover:scale-105"
-              aria-label="Start Streaming Room"
-              title="Start Streaming Room"
-            >
-              <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-              </svg>
-              <span className="hidden sm:inline">Stream</span>
-            </button>
-          </div>
-        )}
+         {/* Start Streaming Button - Top Right Corner */}
+         {src && (
+           <div className={`absolute top-3 right-3 sm:top-4 sm:right-4 transition-all duration-500 ease-in-out ${
+             showControls ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0'
+           }`}>
+             <button
+               onClick={(e) => {
+                 e.stopPropagation();
+                 // TODO: Navigate to streaming lobby with video info
+                 console.log('Start Streaming clicked', { movieId, season, episode, isTVShow, title });
+               }}
+               className="flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2.5 rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white text-xs sm:text-sm font-semibold transition-all duration-200 shadow-lg hover:shadow-purple-500/50 hover:scale-105"
+               aria-label="Start Streaming Room"
+               title="Start Streaming Room"
+             >
+               <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+               </svg>
+               <span className="hidden sm:inline">Stream</span>
+             </button>
+           </div>
+         )}
 
-        {/* Loading Indicator */}
-        {isLoading && (
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div className="pointer-events-auto flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-black/50 text-white">
-              <div className="animate-spin rounded-full h-8 w-8 sm:h-10 sm:h-10 border-b-2 border-white"></div>
-            </div>
-          </div>
-        )}
+         {/* Loading Indicator */}
+         {isLoading && (
+           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+             <div className="pointer-events-auto flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-black/50 text-white">
+               <div className="animate-spin rounded-full h-8 w-8 sm:h-10 sm:h-10 border-b-2 border-white"></div>
+             </div>
+           </div>
+         )}
 
-        {/* Center Play/Pause Button */}
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          {!isPlaying ? (
-            <div className="pointer-events-auto flex items-center gap-4">
-              {!isEnded && (
-                <>
-                  {/* Tua lùi 10s */}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      const v = (ref && typeof ref === "object" && ref !== null ? ref.current : innerRef.current) as HTMLVideoElement | null;
-                      if (v) v.currentTime = Math.max(v.currentTime - 10, 0);
-                    }}
-                    className="flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-white/15 hover:bg-white/25 text-white transition"
-                    aria-label="Rewind 10 seconds"
-                    title="Rewind 10 seconds"
-                  >
-                    <svg className="w-6 h-6 sm:w-7 sm:h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0019 16V8a1 1 0 00-1.6-.8l-5.334 4zM4.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0011 16V8a1 1 0 00-1.6-.8l-5.334 4z" />
-                    </svg>
-                  </button>
-                </>
-              )}
-
-              {/* Play/Replay button */}
-              <button
-                onClick={isEnded ? handleReplay : togglePlay}
-                className="flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-white/15 hover:bg-white/25 text-white transition"
-                aria-label={isEnded ? "Replay" : "Play"}
-                title={isEnded ? "Replay" : "Play"}
-              >
-                {isEnded ? (
-                  <svg className="w-8 h-8 sm:w-10 sm:h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
-                ) : (
-                  <PlayIcon className="w-8 h-8 sm:w-10 sm:h-10" />
-                )}
-              </button>
-
-              {!isEnded && (
-                <>
-                  {/* Tua tới 10s */}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      const v = (ref && typeof ref === "object" && ref !== null ? ref.current : innerRef.current) as HTMLVideoElement | null;
-                      if (v) v.currentTime = Math.min(v.currentTime + 10, v.duration || v.currentTime + 10);
-                    }}
-                    className="flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-white/15 hover:bg-white/25 text-white transition"
-                    aria-label="Forward 10 seconds"
-                    title="Forward 10 seconds"
-                  >
-                    <svg className="w-6 h-6 sm:w-7 sm:h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.934 12.8a1 1 0 000-1.6L6.6 7.2a1 1 0 00-1.6.8v8a1 1 0 001.6.8l5.334-4zM19.934 12.8a1 1 0 000-1.6L14.6 7.2a1 1 0 00-1.6.8v8a1 1 0 001.6.8l5.334-4z" />
-                    </svg>
-                  </button>
-                </>
-              )}
-            </div>
-          ) : (
-            <div className="pointer-events-auto flex items-center gap-4">
-              {/* Tua lùi 10s */}
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  const v = (ref && typeof ref === "object" && ref !== null ? ref.current : innerRef.current) as HTMLVideoElement | null;
-                  if (v) v.currentTime = Math.max(v.currentTime - 10, 0);
-                }}
-                className={`flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-transparent hover:bg-white/10 text-white transition ${showControls ? 'opacity-100' : 'opacity-0 hover:opacity-100'
-                  }`}
-                aria-label="Rewind 10 seconds"
-                title="Rewind 10 seconds"
-              >
-                <svg className="w-6 h-6 sm:w-7 sm:h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0019 16V8a1 1 0 00-1.6-.8l-5.334 4zM4.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0011 16V8a1 1 0 00-1.6-.8l-5.334 4z" />
-                </svg>
-              </button>
-
-              {/* Pause button */}
-              <button
-                onClick={togglePlay}
-                className={`flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-transparent hover:bg-white/10 text-white transition ${showControls ? 'opacity-100' : 'opacity-0 hover:opacity-100'
-                  }`}
-                aria-label="Pause"
-                title="Pause"
-              >
-                <PauseIcon className="w-8 h-8 sm:w-10 sm:h-10" />
-              </button>
-
-              {/* Tua tới 10s */}
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  const v = (ref && typeof ref === "object" && ref !== null ? ref.current : innerRef.current) as HTMLVideoElement | null;
-                  if (v) v.currentTime = Math.min(v.currentTime + 10, v.duration || v.currentTime + 10);
-                }}
-                className={`flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-transparent hover:bg-white/10 text-white transition ${showControls ? 'opacity-100' : 'opacity-0 hover:opacity-100'
-                  }`}
-                aria-label="Forward 10 seconds"
-                title="Forward 10 seconds"
-              >
-                <svg className="w-6 h-6 sm:w-7 sm:h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.934 12.8a1 1 0 000-1.6L6.6 7.2a1 1 0 00-1.6.8v8a1 1 0 001.6.8l5.334-4zM19.934 12.8a1 1 0 000-1.6L14.6 7.2a1 1 0 00-1.6.8v8a1 1 0 001.6.8l5.334-4z" />
-                </svg>
-              </button>
-            </div>
-          )}
-        </div>
+         {/* Center Play/Pause Button */}
+         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+           {!isPlaying ? (
+             <div className="pointer-events-auto flex items-center gap-4">
+               {!isEnded && (
+                 <>
+                   {/* Tua lùi 10s */}
+                   <button
+                     onClick={(e) => {
+                       e.stopPropagation();
+                       const v = (ref && typeof ref === "object" && ref !== null ? ref.current : innerRef.current) as HTMLVideoElement | null;
+                       if (v) v.currentTime = Math.max(v.currentTime - 10, 0);
+                     }}
+                     className="flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-white/15 hover:bg-white/25 text-white transition"
+                     aria-label="Rewind 10 seconds"
+                     title="Rewind 10 seconds"
+                   >
+                     <svg className="w-6 h-6 sm:w-7 sm:h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0019 16V8a1 1 0 00-1.6-.8l-5.334 4zM4.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0011 16V8a1 1 0 00-1.6-.8l-5.334 4z" />
+                     </svg>
+                   </button>
+                 </>
+               )}
+               
+               {/* Play/Replay button */}
+               <button
+                 onClick={isEnded ? handleReplay : togglePlay}
+                 className="flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-white/15 hover:bg-white/25 text-white transition"
+                 aria-label={isEnded ? "Replay" : "Play"}
+                 title={isEnded ? "Replay" : "Play"}
+               >
+                 {isEnded ? (
+                   <svg className="w-8 h-8 sm:w-10 sm:h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                   </svg>
+                 ) : (
+                   <PlayIcon className="w-8 h-8 sm:w-10 sm:h-10" />
+                 )}
+               </button>
+               
+               {!isEnded && (
+                 <>
+                   {/* Tua tới 10s */}
+                   <button
+                     onClick={(e) => {
+                       e.stopPropagation();
+                       const v = (ref && typeof ref === "object" && ref !== null ? ref.current : innerRef.current) as HTMLVideoElement | null;
+                       if (v) v.currentTime = Math.min(v.currentTime + 10, v.duration || v.currentTime + 10);
+                     }}
+                     className="flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-white/15 hover:bg-white/25 text-white transition"
+                     aria-label="Forward 10 seconds"
+                     title="Forward 10 seconds"
+                   >
+                     <svg className="w-6 h-6 sm:w-7 sm:h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.934 12.8a1 1 0 000-1.6L6.6 7.2a1 1 0 00-1.6.8v8a1 1 0 001.6.8l5.334-4zM19.934 12.8a1 1 0 000-1.6L14.6 7.2a1 1 0 00-1.6.8v8a1 1 0 001.6.8l5.334-4z" />
+                     </svg>
+                   </button>
+                 </>
+               )}
+             </div>
+           ) : (
+             <div className="pointer-events-auto flex items-center gap-4">
+               {/* Tua lùi 10s */}
+               <button
+                 onClick={(e) => {
+                   e.stopPropagation();
+                   const v = (ref && typeof ref === "object" && ref !== null ? ref.current : innerRef.current) as HTMLVideoElement | null;
+                   if (v) v.currentTime = Math.max(v.currentTime - 10, 0);
+                 }}
+                 className={`flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-transparent hover:bg-white/10 text-white transition ${
+                   showControls ? 'opacity-100' : 'opacity-0 hover:opacity-100'
+                 }`}
+                 aria-label="Rewind 10 seconds"
+                 title="Rewind 10 seconds"
+               >
+                 <svg className="w-6 h-6 sm:w-7 sm:h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0019 16V8a1 1 0 00-1.6-.8l-5.334 4zM4.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0011 16V8a1 1 0 00-1.6-.8l-5.334 4z" />
+                 </svg>
+               </button>
+               
+               {/* Pause button */}
+               <button
+                 onClick={togglePlay}
+                 className={`flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-transparent hover:bg-white/10 text-white transition ${
+                   showControls ? 'opacity-100' : 'opacity-0 hover:opacity-100'
+                 }`}
+                 aria-label="Pause"
+                 title="Pause"
+               >
+                 <PauseIcon className="w-8 h-8 sm:w-10 sm:h-10" />
+               </button>
+               
+               {/* Tua tới 10s */}
+               <button
+                 onClick={(e) => {
+                   e.stopPropagation();
+                   const v = (ref && typeof ref === "object" && ref !== null ? ref.current : innerRef.current) as HTMLVideoElement | null;
+                   if (v) v.currentTime = Math.min(v.currentTime + 10, v.duration || v.currentTime + 10);
+                 }}
+                 className={`flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-transparent hover:bg-white/10 text-white transition ${
+                   showControls ? 'opacity-100' : 'opacity-0 hover:opacity-100'
+                 }`}
+                 aria-label="Forward 10 seconds"
+                 title="Forward 10 seconds"
+               >
+                 <svg className="w-6 h-6 sm:w-7 sm:h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.934 12.8a1 1 0 000-1.6L6.6 7.2a1 1 0 00-1.6.8v8a1 1 0 001.6.8l5.334-4zM19.934 12.8a1 1 0 000-1.6L14.6 7.2a1 1 0 00-1.6.8v8a1 1 0 001.6.8l5.334-4z" />
+                 </svg>
+               </button>
+             </div>
+           )}
+         </div>
 
         {/* Controls bar */}
-        <div className={`absolute inset-x-0 bottom-0 p-2 sm:p-3 flex flex-col gap-1.5 sm:gap-2 transition-all duration-500 ease-in-out transform ${showControls ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0'
-          }`}>
+        <div className={`absolute inset-x-0 bottom-0 p-2 sm:p-3 flex flex-col gap-1.5 sm:gap-2 transition-all duration-500 ease-in-out transform ${
+          showControls ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0'
+        }`}>
           {/* Progress */}
           <input
             type="range"
@@ -950,99 +870,103 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
             className="w-full accent-red-500 sm:accent-red-600 cursor-pointer"
           />
 
-          <div className="flex items-center justify-between gap-1.5 sm:gap-2">
-            <div className="flex items-center gap-1.5 sm:gap-2">
-              <button
-                onClick={togglePlay}
-                className="p-1.5 sm:p-2 rounded bg-white/10 hover:bg-white/20 text-white"
-                aria-label={isPlaying ? "Pause" : "Play"}
-              >
-                {isPlaying ? <PauseIcon className="w-4 h-4 sm:w-5 sm:h-5" /> : <PlayIcon className="w-4 h-4 sm:w-5 sm:h-5" />}
-              </button>
+                     <div className="flex items-center justify-between gap-1.5 sm:gap-2">
+             <div className="flex items-center gap-1.5 sm:gap-2">
+               <button
+                 onClick={togglePlay}
+                 className="p-1.5 sm:p-2 rounded bg-white/10 hover:bg-white/20 text-white"
+                 aria-label={isPlaying ? "Pause" : "Play"}
+               >
+                 {isPlaying ? <PauseIcon className="w-4 h-4 sm:w-5 sm:h-5" /> : <PlayIcon className="w-4 h-4 sm:w-5 sm:h-5" />}
+               </button>
+               
+               <span className="text-[10px] sm:text-xs text-gray-200 tabular-nums">
+                 {formatTime(currentTime)} / {formatTime(duration)}
+               </span>
+             </div>
 
-              <span className="text-[10px] sm:text-xs text-gray-200 tabular-nums">
-                {formatTime(currentTime)} / {formatTime(duration)}
-              </span>
-            </div>
+             <div className="flex items-center gap-1.5 sm:gap-2">
 
-            <div className="flex items-center gap-1.5 sm:gap-2">
+                             {/* Settings Button */}
+               <div className="relative">
+                 <button
+                   onClick={toggleSettings}
+                   className="p-1.5 sm:p-2 rounded bg-white/10 hover:bg-white/20 text-white"
+                   aria-label="Settings"
+                   title="Settings"
+                 >
+                   <Cog6ToothIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+                 </button>
 
-              {/* Settings Button */}
-              <div className="relative">
-                <button
-                  onClick={toggleSettings}
-                  className="p-1.5 sm:p-2 rounded bg-white/10 hover:bg-white/20 text-white"
-                  aria-label="Settings"
-                  title="Settings"
-                >
-                  <Cog6ToothIcon className="w-4 h-4 sm:w-5 sm:h-5" />
-                </button>
+                 {/* Settings Dropdown */}
+                 {showSettings && (
+                   <div className="absolute bottom-full right-0 mb-2 bg-black/90 rounded-lg p-2 min-w-[120px] max-h-[200px] border border-white/20">
+                     {/* Tab Buttons */}
+                     <div className="flex mb-2 border-b border-white/20">
+                       <button
+                         onClick={switchToSpeed}
+                         className={`flex-1 px-2 py-1 text-[10px] sm:text-xs rounded-t transition-colors ${
+                           activeTab === 'speed' ? 'text-blue-400 bg-blue-400/20' : 'text-gray-300 hover:text-white'
+                         }`}
+                       >
+                         Speed
+                       </button>
+                       {qualities.length > 0 && (
+                         <button
+                           onClick={switchToQuality}
+                           className={`flex-1 px-2 py-1 text-[10px] sm:text-xs rounded-t transition-colors ${
+                             activeTab === 'quality' ? 'text-blue-400 bg-blue-400/20' : 'text-gray-300 hover:text-white'
+                           }`}
+                         >
+                           Quality
+                         </button>
+                       )}
+                     </div>
 
-                {/* Settings Dropdown */}
-                {showSettings && (
-                  <div className="absolute bottom-full right-0 mb-2 bg-black/90 rounded-lg p-2 min-w-[120px] max-h-[200px] border border-white/20">
-                    {/* Tab Buttons */}
-                    <div className="flex mb-2 border-b border-white/20">
-                      <button
-                        onClick={switchToSpeed}
-                        className={`flex-1 px-2 py-1 text-[10px] sm:text-xs rounded-t transition-colors ${activeTab === 'speed' ? 'text-blue-400 bg-blue-400/20' : 'text-gray-300 hover:text-white'
-                          }`}
-                      >
-                        Speed
-                      </button>
-                      {qualities.length > 0 && (
-                        <button
-                          onClick={switchToQuality}
-                          className={`flex-1 px-2 py-1 text-[10px] sm:text-xs rounded-t transition-colors ${activeTab === 'quality' ? 'text-blue-400 bg-blue-400/20' : 'text-gray-300 hover:text-white'
-                            }`}
-                        >
-                          Quality
-                        </button>
-                      )}
-                    </div>
+                     {/* Speed Options */}
+                     {activeTab === 'speed' && (
+                       <div className="space-y-1 max-h-[56px] overflow-y-auto scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                         {[0.5, 0.75, 1, 1.25, 1.5, 1.75, 2].map((s, idx) => (
+                           <button
+                             key={s}
+                             ref={el => { speedRefs.current[idx] = el; }}
+                             onClick={() => {
+                               changeSpeed(s as AvailableSpeed);
+                               setShowSettings(false);
+                             }}
+                             className={`w-full text-left px-2 py-1 text-[10px] sm:text-xs rounded hover:bg-white/10 transition-colors ${
+                               speed === s ? 'text-blue-400 bg-blue-400/20' : 'text-white'
+                             }`}
+                           >
+                             {s === 1 ? 'Normal' : `${s}x`}
+                           </button>
+                         ))}
+                       </div>
+                     )}
 
-                    {/* Speed Options */}
-                    {activeTab === 'speed' && (
-                      <div className="space-y-1 max-h-[56px] overflow-y-auto scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-                        {[0.5, 0.75, 1, 1.25, 1.5, 1.75, 2].map((s, idx) => (
-                          <button
-                            key={s}
-                            ref={el => { speedRefs.current[idx] = el; }}
-                            onClick={() => {
-                              changeSpeed(s as AvailableSpeed);
-                              setShowSettings(false);
-                            }}
-                            className={`w-full text-left px-2 py-1 text-[10px] sm:text-xs rounded hover:bg-white/10 transition-colors ${speed === s ? 'text-blue-400 bg-blue-400/20' : 'text-white'
-                              }`}
-                          >
-                            {s === 1 ? 'Normal' : `${s}x`}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Quality Options */}
-                    {activeTab === 'quality' && qualities.length > 0 && (
-                      <div className="space-y-1 max-h-[56px] overflow-y-auto scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-                        {qualities.map((q, idx) => (
-                          <button
-                            key={q.label}
-                            ref={el => { qualityRefs.current[idx] = el; }}
-                            onClick={() => {
-                              changeQuality(q.index);
-                              setShowSettings(false);
-                            }}
-                            className={`w-full text-left px-2 py-1 text-[10px] sm:text-xs rounded hover:bg-white/10 transition-colors ${currentQuality === q.index ? 'text-blue-400 bg-blue-400/20' : 'text-white'
-                              }`}
-                          >
-                            {q.label}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
+                     {/* Quality Options */}
+                     {activeTab === 'quality' && qualities.length > 0 && (
+                       <div className="space-y-1 max-h-[56px] overflow-y-auto scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                         {qualities.map((q, idx) => (
+                           <button
+                             key={q.label}
+                             ref={el => { qualityRefs.current[idx] = el; }}
+                             onClick={() => {
+                               changeQuality(q.index);
+                               setShowSettings(false);
+                             }}
+                             className={`w-full text-left px-2 py-1 text-[10px] sm:text-xs rounded hover:bg-white/10 transition-colors ${
+                               currentQuality === q.index ? 'text-blue-400 bg-blue-400/20' : 'text-white'
+                             }`}
+                           >
+                             {q.label}
+                           </button>
+                         ))}
+                       </div>
+                     )}
+                   </div>
+                 )}
+               </div>
 
               {/* PiP */}
               <button

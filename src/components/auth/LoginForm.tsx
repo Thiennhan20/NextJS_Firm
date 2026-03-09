@@ -1,11 +1,12 @@
 import { useState, useRef, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { toast } from 'react-hot-toast';
 import useAuthStore from '@/store/useAuthStore';
 import { LoginCredentials } from '@/types/auth';
 import { motion } from 'framer-motion';
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
-import { FaFacebook } from 'react-icons/fa';
+
 import { GoogleLogin, CredentialResponse } from '@react-oauth/google';
 import axios from 'axios';
 import { useWatchlistStore } from '@/store/store';
@@ -20,128 +21,6 @@ const LoadingSpinner = () => (
   </div>
 );
 
-const FacebookLoginButton = () => {
-  const router = useRouter();
-  const { fetchWatchlistFromServer } = useWatchlistStore();
-  const [loading, setLoading] = useState(false);
-
-  // Memoize Facebook App ID
-  const facebookAppId = useMemo(() =>
-    process.env.NEXT_PUBLIC_FACEBOOK_APP_ID as string | undefined,
-    []
-  );
-
-  const loadFacebookSDK = useCallback(() => {
-    return new Promise((resolve) => {
-      if (window.FB) {
-        resolve(window.FB);
-        return;
-      }
-
-      const script = document.createElement('script');
-      script.src = 'https://connect.facebook.net/en_US/sdk.js';
-      script.async = true;
-      script.defer = true;
-      script.onload = () => {
-        window.FB.init({
-          appId: facebookAppId || '',
-          cookie: true,
-          xfbml: true,
-          version: 'v18.0'
-        });
-        resolve(window.FB);
-      };
-      document.head.appendChild(script);
-    });
-  }, [facebookAppId]);
-
-  const handleFacebookLogin = useCallback(async () => {
-    try {
-      // Check if running on HTTPS or localhost
-      if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-        toast.error('Facebook login requires HTTPS. Please use HTTPS or localhost.');
-        return;
-      }
-
-      // Load Facebook SDK if not already loaded
-      if (!window.FB) {
-        await loadFacebookSDK();
-      }
-
-      window.FB.login((response: unknown) => {
-        if ((response as { authResponse?: unknown }).authResponse) {
-          setLoading(true);
-          // Send Facebook access token to server directly
-          // Server will handle getting user info from Facebook
-          const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? 'http://localhost:3001/api' : '')}/auth/facebook-login`;
-          const requestData = {
-            accessToken: (response as { authResponse: { accessToken: string; userID: string } }).authResponse.accessToken,
-            userID: (response as { authResponse: { accessToken: string; userID: string } }).authResponse.userID
-          };
-
-          axios.post(apiUrl, requestData).then(async (serverResponse) => {
-            const { token, user } = serverResponse.data;
-
-            localStorage.setItem('token', token);
-            useAuthStore.setState({ user, token, isAuthenticated: true });
-
-            if (token) await fetchWatchlistFromServer(token);
-            toast.success('Facebook login successful');
-            setLoading(false);
-            router.push('/');
-          }).catch((err) => {
-            console.error('Facebook login error:', err);
-            console.error('Error response:', err.response?.data);
-            console.error('Error status:', err.response?.status);
-            const errorMessage = err.response?.data?.message || err.message;
-            toast.error(`Facebook login failed: ${errorMessage}`);
-            setLoading(false);
-          });
-        } else {
-          toast.error('Facebook login failed');
-        }
-      }, { scope: 'public_profile,email' });
-    } catch (err) {
-      console.error('Facebook login error:', err);
-      toast.error('Facebook login failed');
-    }
-  }, [router, fetchWatchlistFromServer, loadFacebookSDK]);
-
-  if (!facebookAppId) {
-    return (
-      <motion.button
-        type="button"
-        className="flex items-center justify-center w-full py-3 px-4 bg-gray-700 text-white font-semibold rounded-lg opacity-60 cursor-not-allowed"
-        disabled
-      >
-        Facebook (missing app id)
-      </motion.button>
-    );
-  }
-
-  return (
-    <motion.button
-      type="button"
-      onClick={handleFacebookLogin}
-      disabled={loading}
-      className="flex items-center justify-center w-full py-3 px-4 bg-blue-800 hover:bg-blue-900 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition duration-200 ease-in-out shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-black"
-      whileHover={{ scale: 1.005 }}
-      whileTap={{ scale: 0.995 }}
-    >
-      {loading ? (
-        <div className="flex items-center justify-center space-x-2">
-          <LoadingSpinner />
-          <span>Signing in...</span>
-        </div>
-      ) : (
-        <>
-          <FaFacebook className="w-5 h-5 mr-2" />
-          Facebook
-        </>
-      )}
-    </motion.button>
-  );
-};
 
 const GoogleLoginButton = () => {
   const router = useRouter();
@@ -216,7 +95,7 @@ const GoogleLoginButton = () => {
           if (googleButton) googleButton.click();
         }}
         disabled={loading}
-        className="flex items-center justify-center w-full py-3 px-4 bg-white text-black font-semibold rounded-lg transition duration-200 ease-in-out shadow-md focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 focus:ring-offset-black disabled:opacity-50 disabled:cursor-not-allowed"
+        className="flex items-center justify-center px-5 py-2 bg-white text-black font-semibold rounded-lg transition duration-200 ease-in-out shadow-md focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 focus:ring-offset-black disabled:opacity-50 disabled:cursor-not-allowed mx-auto min-w-[220px]"
         whileHover={{ scale: 1.005 }}
         whileTap={{ scale: 0.995 }}
       >
@@ -243,7 +122,7 @@ const GoogleLoginButton = () => {
 
 export default function LoginForm() {
   const router = useRouter();
-  const { login, isLoading, error, clearError, token } = useAuthStore();
+  const { login, isLoading, loginError, clearError, token } = useAuthStore();
   const { fetchWatchlistFromServer } = useWatchlistStore();
 
   // Memoize Google Client ID (unused but kept for consistency)
@@ -261,8 +140,8 @@ export default function LoginForm() {
   const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-    if (error) clearError();
-  }, [error, clearError]);
+    if (loginError) clearError();
+  }, [loginError, clearError]);
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
@@ -349,18 +228,18 @@ export default function LoginForm() {
             </button>
           </div>
           <div className="text-right text-sm">
-            <a href="#" className="font-medium text-yellow-300 hover:text-yellow-100 transition-colors duration-200">
+            <Link href="/forgot-password" className="font-medium text-yellow-300 hover:text-yellow-100 transition-colors duration-200">
               Forgot password?
-            </a>
+            </Link>
           </div>
         </div>
-        {error && (
-          <div className="text-red-500 text-sm">{error}</div>
+        {loginError && (
+          <div className="text-red-500 text-sm">{loginError}</div>
         )}
         <motion.button
           type="submit"
           disabled={isLoading}
-          className="w-full py-3 px-4 bg-yellow-600 hover:bg-yellow-700 text-black font-semibold rounded-lg transition duration-200 ease-in-out shadow-lg hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 focus:ring-offset-black disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex items-center justify-center px-6 py-2 bg-yellow-600 hover:bg-yellow-700 text-black font-semibold rounded-lg transition duration-200 ease-in-out shadow-lg hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 focus:ring-offset-black disabled:opacity-50 disabled:cursor-not-allowed mx-auto min-w-[220px]"
           whileHover={{ scale: 1.005 }}
           whileTap={{ scale: 0.995 }}
         >
@@ -381,11 +260,8 @@ export default function LoginForm() {
             <span className="bg-gradient-to-br from-red-900/80 to-black/80 px-4 text-yellow-200">Or continue with</span>
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-4">
-          <div className="flex items-center justify-center w-full">
-            <GoogleLoginButton />
-          </div>
-          <FacebookLoginButton />
+        <div className="flex items-center justify-center w-full">
+          <GoogleLoginButton />
         </div>
       </form>
     </motion.div>

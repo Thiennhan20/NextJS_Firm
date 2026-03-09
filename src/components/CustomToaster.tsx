@@ -17,10 +17,10 @@ export default function CustomToaster() {
         .map((t) => (
           <div
             key={t.id}
-            className="flex items-center bg-gray-800 text-white rounded-lg shadow-lg"
+            className="flex items-stretch bg-gray-800 text-white rounded-lg shadow-lg w-full max-w-[340px] sm:max-w-md pointer-events-auto my-1"
           >
             {/* Icon + Message */}
-            <div className="flex items-center gap-2 pl-3 pr-3 py-2">
+            <div className="flex items-center gap-3 p-3 flex-1 min-w-0">
               {t.type === 'success' && (
                 <svg className="w-5 h-5 text-green-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -36,9 +36,11 @@ export default function CustomToaster() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               )}
-              <p className="text-sm whitespace-nowrap">
-                {typeof t.message === 'function' ? t.message(t) : t.message}
-              </p>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm break-words leading-relaxed">
+                  {typeof t.message === 'function' ? t.message(t) : t.message}
+                </p>
+              </div>
             </div>
 
             {/* Close button - cố định */}
@@ -48,7 +50,7 @@ export default function CustomToaster() {
                 e.stopPropagation();
                 toast.dismiss(t.id);
               }}
-              className="flex-shrink-0 px-2 py-2 border-l border-gray-700 text-gray-400 hover:text-white hover:bg-gray-700 rounded-r-lg transition-colors"
+              className="flex items-center justify-center flex-shrink-0 px-3 border-l border-gray-700 text-gray-400 hover:text-white hover:bg-gray-700 rounded-r-lg transition-colors"
               aria-label="Đóng"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

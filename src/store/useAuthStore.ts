@@ -20,11 +20,12 @@ const useAuthStore = create<AuthStore>()(
       token: null,
       isAuthenticated: false,
       isLoading: false,
-      error: null,
+      loginError: null,
+      registerError: null,
 
       login: async (credentials) => {
         try {
-          set({ isLoading: true, error: null });
+          set({ isLoading: true, loginError: null });
           const response = await api.post('/auth/login', credentials);
           const { token, user } = response.data;
           localStorage.setItem('token', token);
@@ -38,12 +39,12 @@ const useAuthStore = create<AuthStore>()(
         } catch (error: unknown) {
           if (isAxiosError(error)) {
             set({
-              error: error.response?.data?.message || 'An error occurred during login',
+              loginError: error.response?.data?.message || 'An error occurred during login',
               isLoading: false,
             });
           } else {
             set({
-              error: 'An unexpected error occurred during login',
+              loginError: 'An unexpected error occurred during login',
               isLoading: false,
             });
           }
@@ -53,7 +54,7 @@ const useAuthStore = create<AuthStore>()(
 
       loginWithGoogle: async ({ email, sub, name, avatar, email_verified }) => {
         try {
-          set({ isLoading: true, error: null });
+          set({ isLoading: true, loginError: null });
           const response = await api.post('/auth/google-login', {
             email,
             sub,
@@ -73,12 +74,12 @@ const useAuthStore = create<AuthStore>()(
         } catch (error: unknown) {
           if (isAxiosError(error)) {
             set({
-              error: error.response?.data?.message || 'An error occurred during Google login',
+              loginError: error.response?.data?.message || 'An error occurred during Google login',
               isLoading: false,
             });
           } else {
             set({
-              error: 'An unexpected error occurred during Google login',
+              loginError: 'An unexpected error occurred during Google login',
               isLoading: false,
             });
           }
@@ -88,7 +89,7 @@ const useAuthStore = create<AuthStore>()(
 
       register: async (credentials) => {
         try {
-          set({ isLoading: true, error: null });
+          set({ isLoading: true, registerError: null });
           console.log('Auth store: Sending registration request to:', api.defaults.baseURL + '/auth/register');
           const response = await api.post('/auth/register', credentials);
           console.log('Auth store: Registration response:', response.data);
@@ -104,12 +105,12 @@ const useAuthStore = create<AuthStore>()(
               baseURL: api.defaults.baseURL
             });
             set({
-              error: error.response?.data?.message || 'An error occurred during registration',
+              registerError: error.response?.data?.message || 'An error occurred during registration',
               isLoading: false,
             });
           } else {
             set({
-              error: 'An unexpected error occurred during registration',
+              registerError: 'An unexpected error occurred during registration',
               isLoading: false,
             });
           }
@@ -140,11 +141,12 @@ const useAuthStore = create<AuthStore>()(
           user: null,
           token: null,
           isAuthenticated: false,
-          error: null,
+          loginError: null,
+          registerError: null,
         });
       },
 
-      clearError: () => set({ error: null }),
+      clearError: () => set({ loginError: null, registerError: null }),
 
       checkAuth: async () => {
         const token = localStorage.getItem('token');
@@ -170,7 +172,7 @@ const useAuthStore = create<AuthStore>()(
         }
         
         try {
-          set({ isLoading: true, error: null });
+          set({ isLoading: true });
           // Gửi Authorization header vì không có cookies
           const response = await api.get('/auth/profile', {
             headers: { Authorization: `Bearer ${token}` },

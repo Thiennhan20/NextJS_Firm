@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import Image from 'next/image';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/solid';
@@ -158,33 +159,35 @@ export default function RelatedContent({ id, type, title }: RelatedContentProps)
               posterPath={item.poster_path ? `https://image.tmdb.org/t/p/w300${item.poster_path}` : ''}
               onWatchClick={() => router.push(`${linkPrefix}/${item.id}`)}
             >
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05 }}
-                className="flex-shrink-0 w-[120px] sm:w-[140px] md:w-[160px] cursor-pointer"
-              >
-                <div className="relative aspect-[2/3] rounded-lg overflow-hidden bg-gray-800 shadow-lg">
-                  {item.poster_path ? (
-                    <Image
-                      src={`https://image.tmdb.org/t/p/w300${item.poster_path}`}
-                      alt={item.title || item.name || 'Poster'}
-                      fill
-                      className="object-cover"
-                      sizes="(max-width: 640px) 120px, (max-width: 768px) 140px, 160px"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-gray-700">
-                      <span className="text-3xl">{type === 'movie' ? '🎬' : '📺'}</span>
-                    </div>
-                  )}
-                </div>
-                
-                {/* Title */}
-                <h3 className="mt-2 text-sm text-white font-medium line-clamp-2">
-                  {item.title || item.name}
-                </h3>
-              </motion.div>
+              <Link href={`${linkPrefix}/${item.id}`} className="block">
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                  className="flex-shrink-0 w-[120px] sm:w-[140px] md:w-[160px] cursor-pointer"
+                >
+                  <div className="relative aspect-[2/3] rounded-lg overflow-hidden bg-gray-800 shadow-lg">
+                    {item.poster_path ? (
+                      <Image
+                        src={`https://image.tmdb.org/t/p/w300${item.poster_path}`}
+                        alt={item.title || item.name || 'Poster'}
+                        fill
+                        className="object-cover"
+                        sizes="(max-width: 640px) 120px, (max-width: 768px) 140px, 160px"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-gray-700">
+                        <span className="text-3xl">{type === 'movie' ? '🎬' : '📺'}</span>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Title */}
+                  <h3 className="mt-2 text-sm text-white font-medium line-clamp-2">
+                    {item.title || item.name}
+                  </h3>
+                </motion.div>
+              </Link>
             </CardWithHover>
           ))}
         </div>
