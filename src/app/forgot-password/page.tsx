@@ -30,18 +30,18 @@ export default function ForgotPasswordPage() {
     // Simple email format check before calling API
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(trimmedEmail)) {
-      toast.error('Invalid email address');
+      toast.error('Email không hợp lệ');
       return;
     }
 
     try {
       setIsSubmitting(true);
       await api.post('/auth/forgot-password', { email: trimmedEmail });
-      toast.success('If this email is registered, a password reset link has been sent');
+      toast.success('Nếu email tồn tại, hướng dẫn đặt lại mật khẩu đã được gửi');
       setCooldownSeconds(60);
     } catch {
-      // API hides email existence; only show generic message
-      toast.error('If this email is registered, a password reset link has been sent');
+      // API đã che giấu sự tồn tại của email; chỉ hiển thị message chung
+      toast.error('Nếu email tồn tại, hướng dẫn đặt lại mật khẩu đã được gửi');
     } finally {
       setIsSubmitting(false);
     }
@@ -56,10 +56,10 @@ export default function ForgotPasswordPage() {
           className="w-full mx-auto p-6 bg-gradient-to-br from-red-900/80 to-black/80 backdrop-blur-lg rounded-xl shadow-2xl border border-yellow-600"
         >
           <h1 className="text-xl font-semibold text-yellow-200 mb-4 text-center">
-            Forgot Password
+            Quên mật khẩu
           </h1>
           <p className="text-sm text-yellow-100/80 mb-6 text-center">
-            Enter your registered email. If an account exists, we will send a password reset link.
+            Nhập email đã đăng ký. Nếu tài khoản tồn tại, chúng tôi sẽ gửi liên kết đặt lại mật khẩu.
           </p>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
@@ -85,17 +85,17 @@ export default function ForgotPasswordPage() {
               whileTap={{ scale: isSubmitting || cooldownSeconds > 0 ? 1 : 0.995 }}
             >
               {isSubmitting
-                ? 'Sending...'
+                ? 'Đang gửi...'
                 : cooldownSeconds > 0
-                  ? `Resend in ${cooldownSeconds}s`
-                  : 'Send Reset Link'}
+                ? `Gửi lại sau ${cooldownSeconds}s`
+                : 'Gửi hướng dẫn'}
             </motion.button>
             <button
               type="button"
               onClick={() => router.push('/login')}
               className="block mx-auto mt-2 text-sm text-yellow-300 hover:text-yellow-100 transition-colors duration-200"
             >
-              Back to Login
+              Quay lại đăng nhập
             </button>
           </form>
         </motion.div>

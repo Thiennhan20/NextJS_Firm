@@ -13,6 +13,9 @@ interface AuthStore extends AuthState {
   loginWithGoogle: (payload: { email: string; sub: string; name?: string; avatar?: string; email_verified?: boolean }) => Promise<void>;
 }
 
+// Guard to prevent duplicate checkAuth calls
+let _checkAuthPromise: Promise<void> | null = null;
+
 const useAuthStore = create<AuthStore>()(
   persist(
     (set) => ({
@@ -149,74 +152,81 @@ const useAuthStore = create<AuthStore>()(
       clearError: () => set({ loginError: null, registerError: null }),
 
       checkAuth: async () => {
-        const token = localStorage.getItem('token');
-        if (!token) {
-          set({ user: null, token: null, isAuthenticated: false });
-          return;
-        }
-        
-        // Load cached user data immediately for instant display
-        const cachedUserData = localStorage.getItem('cached_user_data');
-        if (cachedUserData) {
+        // Deduplicate: if already checking, return existing promise
+        if (_checkAuthPromise) return _checkAuthPromise;
+
+        const doCheck = async () => {
+          const token = localStorage.getItem('token');
+          if (!token) {
+            set({ user: null, token: null, isAuthenticated: false });
+            return;
+          }
+          
+          // Load cached user data immediately for instant display
+          const cachedUserData = localStorage.getItem('cached_user_data');
+          if (cachedUserData) {
+            try {
+              const cachedUser = JSON.parse(cachedUserData) as User;
+              set({
+                user: cachedUser,
+                token,
+                isAuthenticated: true,
+                isLoading: true, // Still loading fresh data
+              });
+            } catch (error) {
+              console.warn('Failed to parse cached user data:', error);
+            }
+          }
+          
           try {
-            const cachedUser = JSON.parse(cachedUserData) as User;
+            // Gửi Authorization header vì không có cookies
+            const response = await api.get('/auth/profile', {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            const prof = response.data.user;
+            const normalizedUser: User = {
+              id: prof.id || prof._id,
+              name: prof.name,
+              email: prof.email,
+              avatar: prof.avatar && prof.avatar.trim() !== '' ? prof.avatar : undefined,
+              originalAvatar: prof.originalAvatar && prof.originalAvatar.trim() !== '' ? prof.originalAvatar : undefined,
+              authType: prof.authType,
+              createdAt: prof.createdAt,
+              updatedAt: prof.updatedAt,
+            };
+            
+            // Cache user data for next time
+            localStorage.setItem('cached_user_data', JSON.stringify(normalizedUser));
+            
             set({
-              user: cachedUser,
+              user: normalizedUser,
               token,
               isAuthenticated: true,
-              isLoading: true, // Still loading fresh data
+              isLoading: false,
             });
-          } catch (error) {
-            console.warn('Failed to parse cached user data:', error);
-          }
-        }
-        
-        try {
-          set({ isLoading: true });
-          // Gửi Authorization header vì không có cookies
-          const response = await api.get('/auth/profile', {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          const prof = response.data.user;
-          const normalizedUser: User = {
-            id: prof.id || prof._id,
-            name: prof.name,
-            email: prof.email,
-            avatar: prof.avatar && prof.avatar.trim() !== '' ? prof.avatar : undefined,
-            originalAvatar: prof.originalAvatar && prof.originalAvatar.trim() !== '' ? prof.originalAvatar : undefined,
-            authType: prof.authType,
-            createdAt: prof.createdAt,
-            updatedAt: prof.updatedAt,
-          };
-          
-          // Cache user data for next time
-          localStorage.setItem('cached_user_data', JSON.stringify(normalizedUser));
-          
-          set({
-            user: normalizedUser,
-            token,
-            isAuthenticated: true,
-            isLoading: false,
-          });
-        } catch {
-          localStorage.removeItem('token');
-          localStorage.removeItem('cached_user_data');
-          // Clear watchlist khi token không hợp lệ
-          try {
-            import('./store').then(({ useWatchlistStore }) => {
-              const { clearWatchlist } = useWatchlistStore.getState();
-              clearWatchlist();
+          } catch {
+            localStorage.removeItem('token');
+            localStorage.removeItem('cached_user_data');
+            // Clear watchlist khi token không hợp lệ
+            try {
+              import('./store').then(({ useWatchlistStore }) => {
+                const { clearWatchlist } = useWatchlistStore.getState();
+                clearWatchlist();
+              });
+            } catch (error) {
+              console.warn('Could not clear watchlist:', error);
+            }
+            set({
+              user: null,
+              token: null,
+              isAuthenticated: false,
+              isLoading: false,
             });
-          } catch (error) {
-            console.warn('Could not clear watchlist:', error);
           }
-          set({
-            user: null,
-            token: null,
-            isAuthenticated: false,
-            isLoading: false,
-          });
-        }
+        };
+
+        _checkAuthPromise = doCheck().finally(() => { _checkAuthPromise = null; });
+        return _checkAuthPromise;
       },
     }),
     {

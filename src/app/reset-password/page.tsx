@@ -5,9 +5,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import api from '@/lib/axios';
 import { toast } from 'react-hot-toast';
-import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 
-function ResetPasswordForm() {
+function ResetPasswordContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -16,8 +15,6 @@ function ResetPasswordForm() {
 
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [showNewPassword, setShowNewPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isValidating, setIsValidating] = useState(true);
   const [isTokenValid, setIsTokenValid] = useState(false);
@@ -27,7 +24,7 @@ function ResetPasswordForm() {
   useEffect(() => {
     const validate = async () => {
       if (!email || !token) {
-        setTokenError('Invalid or expired link');
+        setTokenError('Liên kết không hợp lệ hoặc đã hết hạn');
         setIsTokenValid(false);
         setIsValidating(false);
         return;
@@ -39,11 +36,10 @@ function ResetPasswordForm() {
         });
         setIsTokenValid(true);
         setTokenError(null);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      } catch (err: any) {
+      } catch (err: unknown) {
         const message =
-          err?.response?.data?.message ||
-          'Link has expired. Please try again';
+          (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+          'Liên kết đã hết hiệu lực. Vui lòng thử lại';
         setIsTokenValid(false);
         setTokenError(message);
       } finally {
@@ -67,22 +63,22 @@ function ResetPasswordForm() {
     e.preventDefault();
 
     if (!isTokenValid) {
-      toast.error(tokenError || 'Invalid or expired link');
+      toast.error(tokenError || 'Liên kết không hợp lệ hoặc đã hết hạn');
       return;
     }
 
     if (!email || !token) {
-      toast.error('Invalid or expired link');
+      toast.error('Liên kết không hợp lệ hoặc đã hết hạn');
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      toast.error('Passwords do not match');
+      toast.error('Xác nhận mật khẩu không khớp');
       return;
     }
 
     if (!validatePassword(newPassword)) {
-      toast.error('Password must be at least 8 characters, including uppercase, lowercase, number and special character');
+      toast.error('Mật khẩu phải có tối thiểu 8 ký tự, gồm chữ hoa, chữ thường, số và ký tự đặc biệt');
       return;
     }
 
@@ -94,13 +90,12 @@ function ResetPasswordForm() {
         newPassword,
         confirmPassword,
       });
-      toast.success('Password reset successfully. Please log in again');
+      toast.success('Đặt lại mật khẩu thành công. Vui lòng đăng nhập lại');
       setTimeout(() => router.push('/login'), 1200);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (err: any) {
+    } catch (err: unknown) {
       const message =
-        err?.response?.data?.message ||
-        'Unable to reset password. Please try again';
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+        'Không thể đặt lại mật khẩu. Vui lòng thử lại';
       toast.error(message);
     } finally {
       setIsSubmitting(false);
@@ -116,11 +111,11 @@ function ResetPasswordForm() {
           className="w-full mx-auto p-6 bg-gradient-to-br from-red-900/80 to-black/80 backdrop-blur-lg rounded-xl shadow-2xl border border-yellow-600"
         >
           {isValidating ? (
-            <p className="text-center text-yellow-100">Validating link...</p>
+            <p className="text-center text-yellow-100">Đang kiểm tra liên kết...</p>
           ) : !isTokenValid ? (
             <div className="space-y-4 text-center">
               <h1 className="text-xl font-semibold text-yellow-200 mb-2">
-                Invalid Link
+                Liên kết không hợp lệ
               </h1>
               <p className="text-sm text-yellow-100/80 mb-4">
                 {tokenError}
@@ -130,106 +125,76 @@ function ResetPasswordForm() {
                 onClick={() => router.push('/forgot-password')}
                 className="px-6 py-2 bg-yellow-600 hover:bg-yellow-700 text-black font-semibold rounded-lg transition duration-200 ease-in-out shadow-lg hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 focus:ring-offset-black mx-auto min-w-[220px]"
               >
-                Request New Link
+                Yêu cầu liên kết mới
               </button>
               <button
                 type="button"
                 onClick={() => router.push('/login')}
                 className="block mx-auto mt-2 text-sm text-yellow-300 hover:text-yellow-100 transition-colors duration-200"
               >
-                Back to Login
+                Quay lại đăng nhập
               </button>
             </div>
           ) : (
             <>
-              <h1 className="text-xl font-semibold text-yellow-200 mb-4 text-center">
-                Reset Password
-              </h1>
-              <p className="text-sm text-yellow-100/80 mb-6 text-center">
-                Enter a new password for {email ? <span className="font-semibold">{email}</span> : 'your account'}.
-              </p>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                  <label htmlFor="newPassword" className="block text-sm font-medium text-yellow-200 mb-1">
-                    New Password
-                  </label>
-                  <div className="relative">
-                    <input
-                      id="newPassword"
-                      type={showNewPassword ? 'text' : 'password'}
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      className="mt-1 block w-full px-4 py-3 bg-black/40 border border-yellow-700 rounded-lg text-white placeholder-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 transition-all duration-200 pr-10"
-                      placeholder="Enter new password"
-                      required
-                      disabled={isSubmitting}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowNewPassword(!showNewPassword)}
-                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-yellow-500 hover:text-yellow-300 focus:outline-none transition-colors duration-200"
-                      aria-label={showNewPassword ? 'Hide password' : 'Show password'}
-                      disabled={isSubmitting}
-                    >
-                      {showNewPassword ? (
-                        <EyeSlashIcon className="h-5 w-5" />
-                      ) : (
-                        <EyeIcon className="h-5 w-5" />
-                      )}
-                    </button>
-                  </div>
-                </div>
-                <div>
-                  <label htmlFor="confirmPassword" className="block text-sm font-medium text-yellow-200 mb-1">
-                    Confirm Password
-                  </label>
-                  <div className="relative">
-                    <input
-                      id="confirmPassword"
-                      type={showConfirmPassword ? 'text' : 'password'}
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      className="mt-1 block w-full px-4 py-3 bg-black/40 border border-yellow-700 rounded-lg text-white placeholder-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 transition-all duration-200 pr-10"
-                      placeholder="Re-enter new password"
-                      required
-                      disabled={isSubmitting}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-yellow-500 hover:text-yellow-300 focus:outline-none transition-colors duration-200"
-                      aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
-                      disabled={isSubmitting}
-                    >
-                      {showConfirmPassword ? (
-                        <EyeSlashIcon className="h-5 w-5" />
-                      ) : (
-                        <EyeIcon className="h-5 w-5" />
-                      )}
-                    </button>
-                  </div>
-                </div>
-                <p className="text-xs text-yellow-100/70">
-                  Password must be at least 8 characters, including uppercase, lowercase, number and special character.
-                </p>
-                <motion.button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="flex items-center justify-center px-6 py-2 bg-yellow-600 hover:bg-yellow-700 text-black font-semibold rounded-lg transition duration-200 ease-in-out shadow-lg hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 focus:ring-offset-black disabled:opacity-50 disabled:cursor-not-allowed mx-auto min-w-[220px]"
-                  whileHover={{ scale: isSubmitting ? 1 : 1.005 }}
-                  whileTap={{ scale: isSubmitting ? 1 : 0.995 }}
-                >
-                  {isSubmitting ? 'Updating...' : 'Update Password'}
-                </motion.button>
-                <button
-                  type="button"
-                  onClick={() => router.push('/login')}
-                  className="block mx-auto mt-2 text-sm text-yellow-300 hover:text-yellow-100 transition-colors duration-200"
-                >
-                  Back to Login
-                </button>
-              </form>
-            </>
+          <h1 className="text-xl font-semibold text-yellow-200 mb-4 text-center">
+            Đặt lại mật khẩu
+          </h1>
+          <p className="text-sm text-yellow-100/80 mb-6 text-center">
+            Nhập mật khẩu mới cho tài khoản {email ? <span className="font-semibold">{email}</span> : 'của bạn'}.
+          </p>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label htmlFor="newPassword" className="block text-sm font-medium text-yellow-200 mb-1">
+                Mật khẩu mới
+              </label>
+              <input
+                id="newPassword"
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="mt-1 block w-full px-4 py-3 bg-black/40 border border-yellow-700 rounded-lg text-white placeholder-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 transition-all duration-200"
+                placeholder="Nhập mật khẩu mới"
+                required
+                disabled={isSubmitting}
+              />
+            </div>
+            <div>
+              <label htmlFor="confirmPassword" className="block text-sm font-medium text-yellow-200 mb-1">
+                Xác nhận mật khẩu
+              </label>
+              <input
+                id="confirmPassword"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="mt-1 block w-full px-4 py-3 bg-black/40 border border-yellow-700 rounded-lg text-white placeholder-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 transition-all duration-200"
+                placeholder="Nhập lại mật khẩu mới"
+                required
+                disabled={isSubmitting}
+              />
+            </div>
+            <p className="text-xs text-yellow-100/70">
+              Mật khẩu phải có tối thiểu 8 ký tự, bao gồm chữ hoa, chữ thường, số và ký tự đặc biệt.
+            </p>
+            <motion.button
+              type="submit"
+              disabled={isSubmitting}
+              className="flex items-center justify-center px-6 py-2 bg-yellow-600 hover:bg-yellow-700 text-black font-semibold rounded-lg transition duration-200 ease-in-out shadow-lg hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 focus:ring-offset-black disabled:opacity-50 disabled:cursor-not-allowed mx-auto min-w-[220px]"
+              whileHover={{ scale: isSubmitting ? 1 : 1.005 }}
+              whileTap={{ scale: isSubmitting ? 1 : 0.995 }}
+            >
+              {isSubmitting ? 'Đang cập nhật...' : 'Cập nhật mật khẩu'}
+            </motion.button>
+            <button
+              type="button"
+              onClick={() => router.push('/login')}
+              className="block mx-auto mt-2 text-sm text-yellow-300 hover:text-yellow-100 transition-colors duration-200"
+            >
+              Quay lại đăng nhập
+            </button>
+          </form>
+          </>
           )}
         </motion.div>
       </div>
@@ -239,19 +204,12 @@ function ResetPasswordForm() {
 
 export default function ResetPasswordPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen flex items-center justify-center p-4 bg-black relative overflow-hidden">
-          <div className="relative z-10 w-full max-w-sm">
-            <div className="w-full mx-auto p-6 bg-gradient-to-br from-red-900/80 to-black/80 backdrop-blur-lg rounded-xl shadow-2xl border border-yellow-600 text-center">
-              <div className="w-8 h-8 border-4 border-yellow-600 border-t-transparent flex justify-center items-center rounded-full animate-spin mx-auto mb-4"></div>
-              <p className="text-yellow-100">Loading...</p>
-            </div>
-          </div>
-        </div>
-      }
-    >
-      <ResetPasswordForm />
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center p-4 bg-black">
+        <p className="text-yellow-100">Đang tải...</p>
+      </div>
+    }>
+      <ResetPasswordContent />
     </Suspense>
   );
 }

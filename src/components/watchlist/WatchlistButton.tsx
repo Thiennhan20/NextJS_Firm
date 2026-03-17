@@ -15,8 +15,8 @@ interface WatchlistButtonProps {
 }
 
 export default function WatchlistButton({ movie }: WatchlistButtonProps) {
-  const { addToWatchlist, removeFromWatchlist, isInWatchlist, fetchWatchlistFromServer } = useWatchlistStore();
-  const { isAuthenticated, token } = useAuthStore();
+  const { addToWatchlist, removeFromWatchlist, isInWatchlist } = useWatchlistStore();
+  const { isAuthenticated } = useAuthStore();
   const isBookmarked = isInWatchlist(movie.id);
 
   const handleClick = async () => {
@@ -26,24 +26,30 @@ export default function WatchlistButton({ movie }: WatchlistButtonProps) {
     }
     try {
       if (isBookmarked) {
+        // Optimistic update: remove from local state first
+        removeFromWatchlist(movie.id);
+        toast.success('Removed from watchlist');
         await api.delete('/auth/watchlist', {
           data: { id: movie.id },
         });
-        removeFromWatchlist(movie.id);
-        toast.success('Removed from watchlist');
       } else {
+        // Optimistic update: add to local state first
+        addToWatchlist(movie);
+        toast.success('Added to watchlist');
         await api.post('/auth/watchlist', {
           id: movie.id,
           title: movie.title,
           poster_path: movie.poster_path,
           type: movie.type || 'movie',
         });
-        addToWatchlist(movie);
-        toast.success('Added to watchlist');
       }
-      // Đồng bộ lại watchlist từ server
-      if (token) await fetchWatchlistFromServer(token);
     } catch (err: unknown) {
+      // Rollback on error
+      if (isBookmarked) {
+        addToWatchlist(movie); // Re-add if remove failed
+      } else {
+        removeFromWatchlist(movie.id); // Re-remove if add failed
+      }
       if (err && typeof err === 'object' && 'response' in err) {
         toast.error((err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'An error occurred');
       } else {
