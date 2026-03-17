@@ -271,7 +271,36 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
 
       let hls: Hls | null = null;
       if (Hls.isSupported()) {
-        hls = new Hls({ enableWorker: true });
+        hls = new Hls({
+          enableWorker: true,
+
+          // Buffer — tải trước video để phát mượt
+          maxBufferLength: 30,              // Buffer tối đa 30s phía trước
+          maxMaxBufferLength: 60,           // Giới hạn tuyệt đối 60s
+          maxBufferSize: 60 * 1000 * 1000,  // 60MB buffer size
+          maxBufferHole: 0.5,               // Cho phép 0.5s gap
+          backBufferLength: 30,             // Giữ 30s video đã xem (tua lại nhanh)
+
+          // ABR (Adaptive Bitrate) — tự động chọn chất lượng
+          startLevel: -1,                   // Auto detect quality ban đầu
+          abrEwmaDefaultEstimate: 500000,   // Ước lượng bandwidth: 500kbps
+          abrBandWidthFactor: 0.95,         // Dùng 95% bandwidth khả dụng
+          abrBandWidthUpFactor: 0.7,        // Thận trọng khi nâng quality
+
+          // Loading & Retry — xử lý mạng yếu
+          fragLoadingTimeOut: 20000,        // Timeout 20s mỗi segment
+          fragLoadingMaxRetry: 6,           // Retry 6 lần
+          fragLoadingRetryDelay: 1000,      // Chờ 1s giữa retry
+          manifestLoadingTimeOut: 15000,    // Timeout 15s cho manifest
+          manifestLoadingMaxRetry: 4,       // Retry manifest 4 lần
+          manifestLoadingRetryDelay: 1000,  // Chờ 1s giữa retry manifest
+          levelLoadingTimeOut: 15000,       // Timeout 15s cho level playlist
+          levelLoadingMaxRetry: 4,          // Retry level 4 lần
+
+          // Misc
+          lowLatencyMode: false,            // VOD, không phải live
+          testBandwidth: true,              // Test bandwidth thực tế
+        });
         hls.loadSource(src);
         hls.attachMedia(video);
         hls.on(Hls.Events.MANIFEST_PARSED, (_, data: { levels: Level[] }) => {
@@ -293,6 +322,28 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
             video.play().catch(() => { });
           }
         });
+
+        // Error recovery tự động
+        hls.on(Hls.Events.ERROR, (_event, data) => {
+          if (data.fatal) {
+            switch (data.type) {
+              case Hls.ErrorTypes.NETWORK_ERROR:
+                // Lỗi mạng → thử load lại
+                hls?.startLoad();
+                break;
+              case Hls.ErrorTypes.MEDIA_ERROR:
+                // Lỗi media → recover
+                hls?.recoverMediaError();
+                break;
+              default:
+                // Không recover được → destroy
+                hls?.destroy();
+                if (onError) onError();
+                break;
+            }
+          }
+        });
+
         hlsRef.current = hls;
       } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
         video.src = src;
@@ -383,6 +434,7 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
         if (hls) hls.destroy();
         hlsRef.current = null;
       };
+      // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [src, autoPlay, ref]);
 
     // Resume video progress logic (server if logged in, else localStorage)

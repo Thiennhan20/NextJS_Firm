@@ -5,6 +5,7 @@ import { motion } from 'framer-motion'
 import { useSearchParams, useRouter } from 'next/navigation'
 import EnhancedMoviePlayer from '@/components/common/EnhancedMoviePlayer'
 import useAuthStore from '@/store/useAuthStore'
+import { proxyHlsUrl } from '@/lib/hlsProxy'
 import WatchNowTVShowsServer1 from './WatchNowTVShowsServer1'
 import WatchNowTVShowsServer2 from './WatchNowTVShowsServer2'
 import WatchNowTVShowsServer3 from './WatchNowTVShowsServer3'
@@ -387,7 +388,7 @@ export default function WatchNowTVShows({
             return videoSrc ? (
               <EnhancedMoviePlayer
                 key={`${selectedSeason}-${selectedEpisode}-${videoSrc}`}
-                src={videoSrc}
+                src={proxyHlsUrl(videoSrc)}
                 poster={tvShow.poster}
                 autoPlay={false}
                 movieId={tvShow.id}

@@ -6,6 +6,7 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import EnhancedMoviePlayer from '@/components/common/EnhancedMoviePlayer'
 import useAuthStore from '@/store/useAuthStore'
 import { setupAudioNodes, cleanupAudioNodes, AudioNodes } from '@/lib/audioUtils'
+import { proxyHlsUrl } from '@/lib/hlsProxy'
 import WatchNowMoviesServer1 from './WatchNowMoviesServer1'
 import WatchNowMoviesServer2 from './WatchNowMoviesServer2'
 import WatchNowMoviesServer3 from './WatchNowMoviesServer3'
@@ -382,7 +383,7 @@ export default function WatchNowMovies({ movie }: WatchNowMoviesProps) {
               <EnhancedMoviePlayer
                 key={videoSrc}
                 ref={videoRef}
-                src={videoSrc}
+                src={proxyHlsUrl(videoSrc)}
                 poster={movie.poster}
                 autoPlay={false}
                 movieId={movie.id}

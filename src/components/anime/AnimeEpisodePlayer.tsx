@@ -5,6 +5,7 @@ import { motion } from 'framer-motion'
 import { useParams, useSearchParams, useRouter } from 'next/navigation'
 import EnhancedMoviePlayer from '@/components/common/EnhancedMoviePlayer'
 import useAuthStore from '@/store/useAuthStore'
+import { proxyHlsUrl } from '@/lib/hlsProxy'
 
 interface AnimeEpisodePlayerProps {
     tvShow: {
@@ -420,7 +421,7 @@ export default function AnimeEpisodePlayer({ tvShow, totalEpisodes, episodeToSea
                         ) : videoSource?.type === 'player' && videoSource.src ? (
                             <EnhancedMoviePlayer
                                 key={`episode-${selectedEpisode}-${videoSource.audio}`}
-                                src={videoSource.src}
+                                src={proxyHlsUrl(videoSource.src)}
                                 poster={tvShow.poster}
                                 autoPlay={false}
                                 movieId={tvShow.id}
