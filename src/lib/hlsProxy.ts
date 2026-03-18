@@ -15,7 +15,7 @@ export function proxyHlsUrl(originalUrl: string): string {
 
   // Only proxy m3u8 URLs (not embed/iframe URLs)
   const isHlsUrl = originalUrl.includes('.m3u8');
-  
+
   if (!isHlsUrl) return originalUrl;
 
   // Don't double-proxy

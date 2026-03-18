@@ -41,7 +41,6 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
     const innerRef = useRef<HTMLVideoElement>(null);
 
     const hlsRef = useRef<Hls | null>(null);
-    const rafRef = useRef<number | null>(null);
     const [isPlaying, setIsPlaying] = useState<boolean>(false);
     const [duration, setDuration] = useState<number>(0);
     const [currentTime, setCurrentTime] = useState<number>(0);
@@ -56,6 +55,7 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
     const [isBuffering, setIsBuffering] = useState<boolean>(false);
     const [isSeeking, setIsSeeking] = useState<boolean>(false);
     const userSeekingRef = useRef<boolean>(false);
+    const seekPositionRef = useRef<number>(0);
     const [showControls, setShowControls] = useState<boolean>(true);
     const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
     const [volume, setVolume] = useState<number>(1);
@@ -274,32 +274,34 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
         hls = new Hls({
           enableWorker: true,
 
-          // Buffer — tải trước video để phát mượt
-          maxBufferLength: 30,              // Buffer tối đa 30s phía trước
-          maxMaxBufferLength: 60,           // Giới hạn tuyệt đối 60s
-          maxBufferSize: 60 * 1000 * 1000,  // 60MB buffer size
-          maxBufferHole: 0.5,               // Cho phép 0.5s gap
-          backBufferLength: 30,             // Giữ 30s video đã xem (tua lại nhanh)
+          // Buffer
+          maxBufferLength: 30,
+          maxMaxBufferLength: 60,
+          maxBufferSize: 60 * 1000 * 1000,
+          maxBufferHole: 0.5,
+          backBufferLength: 10,             // Giảm từ 30 → 10s, tiết kiệm memory
 
-          // ABR (Adaptive Bitrate) — tự động chọn chất lượng
-          startLevel: -1,                   // Auto detect quality ban đầu
-          abrEwmaDefaultEstimate: 500000,   // Ước lượng bandwidth: 500kbps
-          abrBandWidthFactor: 0.95,         // Dùng 95% bandwidth khả dụng
-          abrBandWidthUpFactor: 0.7,        // Thận trọng khi nâng quality
+          // ABR — nâng quality nhanh hơn
+          startLevel: -1,
+          abrEwmaDefaultEstimate: 1000000,  // 1Mbps (tăng từ 500kbps)
+          abrBandWidthFactor: 0.95,
+          abrBandWidthUpFactor: 0.9,        // Mạnh dạn nâng quality hơn (0.7 → 0.9)
 
-          // Loading & Retry — xử lý mạng yếu
-          fragLoadingTimeOut: 20000,        // Timeout 20s mỗi segment
-          fragLoadingMaxRetry: 6,           // Retry 6 lần
-          fragLoadingRetryDelay: 1000,      // Chờ 1s giữa retry
-          manifestLoadingTimeOut: 15000,    // Timeout 15s cho manifest
-          manifestLoadingMaxRetry: 4,       // Retry manifest 4 lần
-          manifestLoadingRetryDelay: 1000,  // Chờ 1s giữa retry manifest
-          levelLoadingTimeOut: 15000,       // Timeout 15s cho level playlist
-          levelLoadingMaxRetry: 4,          // Retry level 4 lần
+          // Loading & Retry
+          fragLoadingTimeOut: 20000,
+          fragLoadingMaxRetry: 6,
+          fragLoadingRetryDelay: 1000,
+          manifestLoadingTimeOut: 10000,    // 10s (giảm từ 15s)
+          manifestLoadingMaxRetry: 3,
+          manifestLoadingRetryDelay: 500,   // 500ms (giảm từ 1000ms)
+          levelLoadingTimeOut: 10000,
+          levelLoadingMaxRetry: 3,
 
-          // Misc
-          lowLatencyMode: false,            // VOD, không phải live
-          testBandwidth: true,              // Test bandwidth thực tế
+          // Performance
+          lowLatencyMode: false,
+          testBandwidth: true,
+          startFragPrefetch: true,          // Prefetch segment tiếp theo sớm hơn
+          progressive: true,                // Bắt đầu phát ngay khi có data
         });
         hls.loadSource(src);
         hls.attachMedia(video);
@@ -411,15 +413,11 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
       // setVolume(video.volume); // Removed
       // setIsMuted(video.muted); // Removed
 
-      // RAF for smoother progress on some browsers
-      const loop = () => {
-        if (!userSeekingRef.current) { setCurrentTime(video.currentTime || 0); }
-        rafRef.current = requestAnimationFrame(loop);
-      };
-      rafRef.current = requestAnimationFrame(loop);
+      // Removed RAF loop — timeupdate event (4/sec) is sufficient
+      // RAF was causing ~60 re-renders/sec and heavy CPU usage
 
       return () => {
-        if (rafRef.current) cancelAnimationFrame(rafRef.current);
+
         video.removeEventListener("loadedmetadata", onLoadedMetadata);
         video.removeEventListener("timeupdate", onTimeUpdate);
         video.removeEventListener("progress", onProgress);
@@ -602,8 +600,7 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
         }
       };
 
-      // Save every 30 seconds instead of on every timeupdate (~4x/sec)
-      const intervalId = setInterval(() => save(), 30000);
+
 
       const onPause = () => save(true);
       const onBeforeUnload = () => saveWithKeepalive();
@@ -612,7 +609,7 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
       window.addEventListener('beforeunload', onBeforeUnload);
       return () => {
         saveWithKeepalive(); // Save on unmount (SPA navigation) — keepalive won't be cancelled
-        clearInterval(intervalId);
+
         video.removeEventListener('timeupdate', onTimeUpdateTrack);
         video.removeEventListener('pause', onPause);
         window.removeEventListener('beforeunload', onBeforeUnload);
@@ -1056,29 +1053,43 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
             onMouseDown={(e) => {
               e.stopPropagation();
               const bar = e.currentTarget;
+              userSeekingRef.current = true;
               const onMove = (ev: MouseEvent) => {
                 const rect = bar.getBoundingClientRect();
                 const x = Math.max(0, Math.min(ev.clientX - rect.left, rect.width));
                 const pct = x / rect.width;
-                const v = (ref && typeof ref === "object" && ref !== null ? ref.current : innerRef.current) as HTMLVideoElement | null;
-                if (v && duration > 0) { userSeekingRef.current = true; v.currentTime = pct * duration; setCurrentTime(pct * duration); }
+                seekPositionRef.current = pct * duration;
+                setCurrentTime(pct * duration);
               };
-              const onUp = () => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
+              const onUp = () => {
+                const v = (ref && typeof ref === "object" && ref !== null ? ref.current : innerRef.current) as HTMLVideoElement | null;
+                if (v && duration > 0) { v.currentTime = seekPositionRef.current; }
+                userSeekingRef.current = false;
+                document.removeEventListener('mousemove', onMove);
+                document.removeEventListener('mouseup', onUp);
+              };
               document.addEventListener('mousemove', onMove);
               document.addEventListener('mouseup', onUp);
             }}
             onTouchStart={(e) => {
               e.stopPropagation();
               const bar = e.currentTarget;
+              userSeekingRef.current = true;
               const onTouchMove = (ev: TouchEvent) => {
                 const touch = ev.touches[0];
                 const rect = bar.getBoundingClientRect();
                 const x = Math.max(0, Math.min(touch.clientX - rect.left, rect.width));
                 const pct = x / rect.width;
-                const v = (ref && typeof ref === "object" && ref !== null ? ref.current : innerRef.current) as HTMLVideoElement | null;
-                if (v && duration > 0) { userSeekingRef.current = true; v.currentTime = pct * duration; setCurrentTime(pct * duration); }
+                seekPositionRef.current = pct * duration;
+                setCurrentTime(pct * duration);
               };
-              const onTouchEnd = () => { document.removeEventListener('touchmove', onTouchMove); document.removeEventListener('touchend', onTouchEnd); };
+              const onTouchEnd = () => {
+                const v = (ref && typeof ref === "object" && ref !== null ? ref.current : innerRef.current) as HTMLVideoElement | null;
+                if (v && duration > 0) { v.currentTime = seekPositionRef.current; }
+                userSeekingRef.current = false;
+                document.removeEventListener('touchmove', onTouchMove);
+                document.removeEventListener('touchend', onTouchEnd);
+              };
               document.addEventListener('touchmove', onTouchMove);
               document.addEventListener('touchend', onTouchEnd);
             }}
