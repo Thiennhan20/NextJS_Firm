@@ -16,7 +16,8 @@ export function proxyHlsUrl(originalUrl: string): string {
   // Only proxy m3u8 URLs (not embed/iframe URLs)
   const isHlsUrl = originalUrl.includes('.m3u8') || 
                    originalUrl.includes('/m3u8') ||
-                   originalUrl.includes('kkphimplayer');
+                   originalUrl.includes('kkphimplayer') ||
+                   originalUrl.includes('phim1280.tv');
   
   if (!isHlsUrl) return originalUrl;
 
