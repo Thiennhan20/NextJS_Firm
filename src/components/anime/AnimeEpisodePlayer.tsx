@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import { useParams, useSearchParams, useRouter } from 'next/navigation'
-import EnhancedMoviePlayer from '@/components/common/EnhancedMoviePlayer'
+import EnhancedMoviePlayer from '@/components/common/video-player/EnhancedMoviePlayer'
 import useAuthStore from '@/store/useAuthStore'
 import { proxyHlsUrl } from '@/lib/hlsProxy'
 

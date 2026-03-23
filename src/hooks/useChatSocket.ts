@@ -62,7 +62,7 @@ export const quickEmojis: Emoji[] = [
   { emoji: '🤢', name: 'nauseated', category: 'Faces' },
   { emoji: '🤮', name: 'vomiting', category: 'Faces' },
   { emoji: '🤧', name: 'sneezing', category: 'Faces' },
-  
+
   // Love
   { emoji: '❤️', name: 'heart', category: 'Love' },
   { emoji: '💕', name: 'hearts', category: 'Love' },
@@ -75,7 +75,7 @@ export const quickEmojis: Emoji[] = [
   { emoji: '💟', name: 'heart decoration', category: 'Love' },
   { emoji: '💌', name: 'love letter', category: 'Love' },
   { emoji: '💋', name: 'kiss mark', category: 'Love' },
-  
+
   // Animals
   { emoji: '🐶', name: 'dog', category: 'Animals' },
   { emoji: '🐱', name: 'cat', category: 'Animals' },
@@ -91,7 +91,7 @@ export const quickEmojis: Emoji[] = [
   { emoji: '🦨', name: 'skunk', category: 'Animals' },
   { emoji: '🦡', name: 'badger', category: 'Animals' },
   { emoji: '🦫', name: 'beaver', category: 'Animals' },
-  
+
   // Food
   { emoji: '🍕', name: 'pizza', category: 'Food' },
   { emoji: '🍔', name: 'hamburger', category: 'Food' },
@@ -109,7 +109,7 @@ export const quickEmojis: Emoji[] = [
   { emoji: '🍡', name: 'dango', category: 'Food' },
   { emoji: '🍧', name: 'shaved ice', category: 'Food' },
   { emoji: '🍨', name: 'ice cream', category: 'Food' },
-  
+
   // Activities
   { emoji: '⚽', name: 'soccer', category: 'Activities' },
   { emoji: '🎮', name: 'game', category: 'Activities' },
@@ -127,7 +127,7 @@ export const quickEmojis: Emoji[] = [
   { emoji: '🎺', name: 'trumpet', category: 'Activities' },
   { emoji: '🎻', name: 'violin', category: 'Activities' },
   { emoji: '🎷', name: 'saxophone', category: 'Activities' },
-  
+
   // Travel
   { emoji: '✈️', name: 'airplane', category: 'Travel' },
   { emoji: '🚗', name: 'car', category: 'Travel' },
@@ -145,7 +145,7 @@ export const quickEmojis: Emoji[] = [
   { emoji: '⛱️', name: 'umbrella on ground', category: 'Travel' },
   { emoji: '🏖️', name: 'beach with umbrella', category: 'Travel' },
   { emoji: '⛰️', name: 'mountain', category: 'Travel' },
-  
+
   // Objects
   { emoji: '💡', name: 'light bulb', category: 'Objects' },
   { emoji: '📱', name: 'phone', category: 'Objects' },
@@ -163,7 +163,7 @@ export const quickEmojis: Emoji[] = [
   { emoji: '🎨', name: 'artist palette', category: 'Objects' },
   { emoji: '🎭', name: 'performing arts', category: 'Objects' },
   { emoji: '🎪', name: 'circus tent', category: 'Objects' },
-  
+
   // Symbols
   { emoji: '✨', name: 'sparkles', category: 'Symbols' },
   { emoji: '💫', name: 'dizzy', category: 'Symbols' },
@@ -244,17 +244,17 @@ export const useChatSocket = ({ username, onUserCountChange }: UseChatSocketProp
             return prev.map((msg, index) =>
               index === existingLoadingImageIndex
                 ? {
-                    ...msg,
-                    id: message.id || msg.id, // Use server ID, fallback to client temp ID
-                    imageStatus: 'success',
-                    progress: 100,
-                    timestamp: new Date(message.timestamp)
-                  }
+                  ...msg,
+                  id: message.id || msg.id, // Use server ID, fallback to client temp ID
+                  imageStatus: 'success',
+                  progress: 100,
+                  timestamp: new Date(message.timestamp)
+                }
                 : msg
             );
           }
         }
-        
+
         // If not our own image update, or no matching loading message found, add as new
         const newMessage: Message = {
           id: message.id || Date.now().toString(),
@@ -316,8 +316,10 @@ export const useChatSocket = ({ username, onUserCountChange }: UseChatSocketProp
   // Monitor network status
   useEffect(() => {
     const checkNetworkStatus = () => {
-      if ('connection' in navigator && navigator.connection) {
-        const connection = navigator.connection;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const nav = navigator as any;
+      if ('connection' in nav && nav.connection) {
+        const connection = nav.connection;
         if (connection.effectiveType === '4g') {
           setNetworkStatus('good');
         } else if (connection.effectiveType === '3g') {
@@ -345,8 +347,8 @@ export const useChatSocket = ({ username, onUserCountChange }: UseChatSocketProp
         id: Date.now().toString(),
         sender: 'system',
         username: '',
-        text: networkStatus === 'slow' 
-          ? 'Mạng chậm, có thể ảnh hưởng đến việc gửi tin nhắn và hình ảnh' 
+        text: networkStatus === 'slow'
+          ? 'Mạng chậm, có thể ảnh hưởng đến việc gửi tin nhắn và hình ảnh'
           : 'Kết nối mạng yếu, vui lòng kiểm tra lại kết nối',
         timestamp: new Date(),
         type: 'system',
@@ -406,7 +408,7 @@ export const useChatSocket = ({ username, onUserCountChange }: UseChatSocketProp
 
         const compressedFile = await imageCompression(file, options);
         const reader = new FileReader();
-        
+
         reader.onload = (e) => {
           const imageData = e.target?.result as string;
 

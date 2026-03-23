@@ -3,13 +3,14 @@
 import { useEffect, useState, useRef, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { useSearchParams, useRouter } from 'next/navigation'
-import EnhancedMoviePlayer from '@/components/common/EnhancedMoviePlayer'
+import EnhancedMoviePlayer from '@/components/common/video-player/EnhancedMoviePlayer'
 import useAuthStore from '@/store/useAuthStore'
 import { setupAudioNodes, cleanupAudioNodes, AudioNodes } from '@/lib/audioUtils'
 import { proxyHlsUrl } from '@/lib/hlsProxy'
 import WatchNowMoviesServer1 from './WatchNowMoviesServer1'
 import WatchNowMoviesServer2 from './WatchNowMoviesServer2'
 import WatchNowMoviesServer3 from './WatchNowMoviesServer3'
+import { Radio } from 'lucide-react'
 
 // Định nghĩa kiểu Movie
 interface Movie {
@@ -36,6 +37,8 @@ interface WatchNowMoviesProps {
 export default function WatchNowMovies({ movie }: WatchNowMoviesProps) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const userId = useAuthStore((s) => (s.user as any)?.id || (s.user as any)?._id)
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
+  const [streamAuthMessage, setStreamAuthMessage] = useState(false)
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -160,6 +163,17 @@ export default function WatchNowMovies({ movie }: WatchNowMoviesProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedAudio, movieLinks.vietsub, movieLinks.dubbed, server3Links.vietsub, server3Links.dubbed, selectedServer]);
 
+  // Stream URL hiệu lực cho nút Stream (chỉ Server 1)
+  const effectiveStreamUrl = useMemo(() => {
+    if (selectedServer !== 'server1') return '';
+    if (!apiSearchCompleted || movieLinksLoading) return '';
+    if (selectedAudio === 'vietsub' && movieLinks.vietsub) return movieLinks.vietsub;
+    if (selectedAudio === 'dubbed' && movieLinks.dubbed) return movieLinks.dubbed;
+    if (movieLinks.vietsub) return movieLinks.vietsub;
+    if (movieLinks.dubbed) return movieLinks.dubbed;
+    return movieLinks.m3u8;
+  }, [selectedServer, apiSearchCompleted, movieLinksLoading, selectedAudio, movieLinks.vietsub, movieLinks.dubbed, movieLinks.m3u8]);
+
   const videoRef = useRef<HTMLVideoElement>(null);
   // State cho các bộ lọc âm thanh (không hiển thị trong UI)
   const audioNodesRef = useRef<AudioNodes | null>(null);
@@ -187,7 +201,22 @@ export default function WatchNowMovies({ movie }: WatchNowMoviesProps) {
     };
   }, [selectedServer]);
 
+  // Handler cho nút Stream
+  const handleStreamClick = () => {
+    if (!isAuthenticated) {
+      setStreamAuthMessage(true);
+      return;
+    }
+    if (!effectiveStreamUrl) return;
 
+    const params = new URLSearchParams({
+      streamUrl: effectiveStreamUrl,
+      title: movie.title,
+      movieId: String(movie.id),
+      poster: movie.poster || '',
+    });
+    router.push(`/streaming-lobby?${params.toString()}`);
+  };
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 text-white">
@@ -325,6 +354,41 @@ export default function WatchNowMovies({ movie }: WatchNowMoviesProps) {
             </span>
           )}
         </div>
+
+        {/* Stream Button — chỉ hiện khi Server 1 đã load xong m3u8 */}
+        {selectedServer === 'server1' && effectiveStreamUrl && (
+          <div className="relative">
+            <button
+              onClick={handleStreamClick}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-yellow-500 to-amber-500 text-black text-xs sm:text-sm font-semibold hover:from-yellow-400 hover:to-amber-400 transition-all duration-300 shadow-lg shadow-yellow-500/20 hover:shadow-yellow-500/40 whitespace-nowrap"
+              title="Start Watch Party"
+            >
+              <Radio className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Stream</span>
+            </button>
+
+            {/* Auth notification dropdown */}
+            {streamAuthMessage && (
+              <div className="absolute top-full right-0 mt-2 p-3 bg-gray-900/95 backdrop-blur-sm border border-yellow-500/30 rounded-xl shadow-2xl z-50 w-64">
+                <p className="text-sm text-white mb-2.5">You need to sign in to use this feature.</p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => router.push('/login')}
+                    className="flex-1 px-3 py-1.5 bg-yellow-500 text-black text-xs font-semibold rounded-lg hover:bg-yellow-400 transition-colors"
+                  >
+                    Sign In
+                  </button>
+                  <button
+                    onClick={() => { setStreamAuthMessage(false); }}
+                    className="px-3 py-1.5 bg-gray-700 text-white text-xs font-semibold rounded-lg hover:bg-gray-600 transition-colors"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="relative w-full rounded-lg overflow-hidden bg-black/50 aspect-video">

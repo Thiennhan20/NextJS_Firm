@@ -39,12 +39,12 @@ const ContentCard = memo(({ item, index, onContinue, onRemove }: {
   onRemove: (item: RecentlyWatchedItem) => void
 }) => {
   const shouldReduceMotion = useReducedMotion()
-  
+
   const formatTime = useCallback((seconds: number) => {
     const hours = Math.floor(seconds / 3600)
     const minutes = Math.floor((seconds % 3600) / 60)
     const secs = Math.floor(seconds % 60)
-    
+
     if (hours > 0) {
       return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
     }
@@ -55,17 +55,17 @@ const ContentCard = memo(({ item, index, onContinue, onRemove }: {
     const date = new Date(dateString)
     const now = new Date()
     const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60))
-    
+
     if (diffInHours < 1) return 'Just now'
     if (diffInHours < 24) return `${diffInHours}h ago`
     return `${Math.floor(diffInHours / 24)}d ago`
   }, [])
 
-  const progress = useMemo(() => 
+  const progress = useMemo(() =>
     (item.currentTime / (item.duration || item.currentTime * 2)) * 100,
     [item.currentTime, item.duration]
   )
-  
+
   const subtitle = useMemo(() => {
     if (item.isTVShow && item.season && item.episode) {
       return `S${item.season} E${item.episode}`
@@ -90,14 +90,14 @@ const ContentCard = memo(({ item, index, onContinue, onRemove }: {
       initial="initial"
       animate="animate"
       exit="exit"
-      transition={{ 
+      transition={{
         duration: shouldReduceMotion ? 0.15 : 0.3,
         delay: shouldReduceMotion ? 0 : Math.min(index * 0.03, 0.2), // Giảm delay
         ease: [0.25, 0.1, 0.25, 1]
       }}
       onClick={() => onContinue(item)}
       className="group relative bg-gray-900/50 backdrop-blur-sm rounded-2xl overflow-hidden border border-gray-800/50 hover:border-red-500/50 transition-all duration-300 flex-shrink-0 snap-center cursor-pointer [&:hover_img]:scale-105"
-      style={{ 
+      style={{
         width: 'clamp(180px, 25vw, 260px)',
         minWidth: '180px'
       }}
@@ -116,12 +116,12 @@ const ContentCard = memo(({ item, index, onContinue, onRemove }: {
             loading={index < 3 ? 'eager' : 'lazy'}
           />
         )}
-        
+
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent z-10" />
-        
+
         <div className="absolute bottom-0 left-0 right-0 z-20">
           <div className="w-full h-1 bg-gray-700">
-            <div 
+            <div
               className="h-full bg-red-500 transition-all duration-300"
               style={{ width: `${progress}%` }}
             />
@@ -153,7 +153,7 @@ const ContentCard = memo(({ item, index, onContinue, onRemove }: {
         {subtitle && (
           <p className="text-xs text-gray-400 mb-1">{subtitle}</p>
         )}
-        
+
         <div className="flex items-center justify-between text-xs text-gray-400">
           <div className="flex items-center gap-1">
             <Clock className="w-3 h-3" />
@@ -201,13 +201,13 @@ export default function RecentlyWatched({ className = '' }: RecentlyWatchedProps
   useEffect(() => {
     checkScrollPosition()
     const timeoutId = setTimeout(checkScrollPosition, 350)
-    
+
     const container = scrollContainerRef.current
     if (container) {
       container.addEventListener('scroll', checkScrollPosition)
     }
     window.addEventListener('resize', checkScrollPosition)
-    
+
     return () => {
       clearTimeout(timeoutId)
       if (container) {
@@ -220,12 +220,12 @@ export default function RecentlyWatched({ className = '' }: RecentlyWatchedProps
   const scrollToTrending = useCallback(() => {
     const trendingSection = document.querySelector('[data-section="trending"]')
     if (trendingSection) {
-      trendingSection.scrollIntoView({ 
+      trendingSection.scrollIntoView({
         behavior: 'smooth',
         block: 'start',
         inline: 'nearest'
       })
-      
+
       setTimeout(() => {
         const elementTop = trendingSection.getBoundingClientRect().top + window.pageYOffset
         const offsetTop = elementTop - 120
@@ -273,18 +273,18 @@ export default function RecentlyWatched({ className = '' }: RecentlyWatchedProps
       const allKeys = Object.keys(localStorage)
       let processedCount = 0
       const MAX_PROCESS = 30 // Giảm từ 50 xuống 30
-      
+
       for (const key of allKeys) {
         if (processedCount >= MAX_PROCESS) break
-        
+
         const isMovie = key.startsWith('movie-progress-')
         const isTVShow = key.startsWith('tvshow-progress-')
-        
+
         if (!isMovie && !isTVShow) continue
-        
+
         const value = localStorage.getItem(key)
         if (!value) continue
-        
+
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let progressData: any
         try {
@@ -292,16 +292,16 @@ export default function RecentlyWatched({ className = '' }: RecentlyWatchedProps
         } catch {
           continue
         }
-        
+
         if (!progressData.currentTime || progressData.currentTime <= 0) continue
-        
+
         if (isMovie) {
           const keyParts = key.replace('movie-progress-', '').split('-')
           if (keyParts.length < 3) continue
-          
+
           const [id, server, ...audioParts] = keyParts
           const audio = audioParts.join('-')
-          
+
           items.push({
             id,
             server,
@@ -317,10 +317,10 @@ export default function RecentlyWatched({ className = '' }: RecentlyWatchedProps
         } else if (isTVShow) {
           const keyParts = key.replace('tvshow-progress-', '').split('-')
           if (keyParts.length < 5) continue
-          
+
           const [id, season, episode, server, ...audioParts] = keyParts
           const audio = audioParts.join('-')
-          
+
           items.push({
             id,
             server,
@@ -337,13 +337,13 @@ export default function RecentlyWatched({ className = '' }: RecentlyWatchedProps
           processedCount++
         }
       }
-      
-      const sortedItems = items.sort((a, b) => 
+
+      const sortedItems = items.sort((a, b) =>
         new Date(b.lastWatched || 0).getTime() - new Date(a.lastWatched || 0).getTime()
       ).slice(0, 10) // Giảm từ 12 xuống 10 items
-      
+
       cachedData = { items: sortedItems, timestamp: now }
-      
+
       setRecentItems(sortedItems)
     } catch (error) {
       console.error('Error fetching recent items:', error)
@@ -354,14 +354,14 @@ export default function RecentlyWatched({ className = '' }: RecentlyWatchedProps
 
   useEffect(() => {
     fetchRecentItems()
-    
+
     let timeoutId: NodeJS.Timeout
     const handleStorageChange = () => {
       cachedData = null // Invalidate cache
       clearTimeout(timeoutId)
       timeoutId = setTimeout(fetchRecentItems, 500) // Tăng từ 300ms lên 500ms
     }
-    
+
     window.addEventListener('storage', handleStorageChange)
     return () => {
       clearTimeout(timeoutId)
@@ -379,8 +379,8 @@ export default function RecentlyWatched({ className = '' }: RecentlyWatchedProps
 
   const handleRemoveFromRecent = useCallback(async (item: RecentlyWatchedItem) => {
     // Optimistic update: remove from UI immediately
-    setRecentItems(prev => prev.filter(i => 
-      !(i.id === item.id && i.server === item.server && i.audio === item.audio && 
+    setRecentItems(prev => prev.filter(i =>
+      !(i.id === item.id && i.server === item.server && i.audio === item.audio &&
         i.isTVShow === item.isTVShow && i.season === item.season && i.episode === item.episode)
     ))
 
@@ -420,8 +420,8 @@ export default function RecentlyWatched({ className = '' }: RecentlyWatchedProps
             <div className="h-8 bg-gray-800 rounded-lg w-64 mb-8"></div>
             <div className="flex gap-4 overflow-x-hidden">
               {[...Array(4)].map((_, i) => (
-                <div 
-                  key={i} 
+                <div
+                  key={i}
                   className="bg-gray-800 rounded-xl flex-shrink-0"
                   style={{ width: 'clamp(180px, 25vw, 260px)', aspectRatio: '16/10' }}
                 />
@@ -468,7 +468,7 @@ export default function RecentlyWatched({ className = '' }: RecentlyWatchedProps
           viewport={{ once: true, margin: "-50px" }}
           className="relative group"
         >
-          <div 
+          <div
             ref={scrollContainerRef}
             className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide"
             style={{
@@ -496,7 +496,7 @@ export default function RecentlyWatched({ className = '' }: RecentlyWatchedProps
                   className="flex items-center justify-center py-16 px-8 w-full"
                 >
                   <div className="text-center w-full max-w-md mx-auto">
-                    <motion.h3 
+                    <motion.h3
                       initial={{ opacity: 0, y: shouldReduceMotion ? 0 : 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: shouldReduceMotion ? 0 : 0.1 }}
@@ -504,7 +504,7 @@ export default function RecentlyWatched({ className = '' }: RecentlyWatchedProps
                     >
                       No movies watched yet
                     </motion.h3>
-                    
+
                     <div className="flex justify-center mb-4">
                       <motion.button
                         initial={{ opacity: 0, scale: shouldReduceMotion ? 1 : 0.8 }}
@@ -541,8 +541,8 @@ export default function RecentlyWatched({ className = '' }: RecentlyWatchedProps
                         )}
                       </motion.button>
                     </div>
-                    
-                    <motion.p 
+
+                    <motion.p
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       transition={{ delay: shouldReduceMotion ? 0 : 0.3 }}
@@ -555,7 +555,7 @@ export default function RecentlyWatched({ className = '' }: RecentlyWatchedProps
               )}
             </AnimatePresence>
           </div>
-          
+
           {recentItems.length > 0 && (
             <>
               {canScrollLeft && (

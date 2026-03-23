@@ -665,3 +665,36 @@ select {
 .more-badge {
   animation: badge-pulse 2s ease-in-out infinite;
 }
+
+/* Chat scrollbar — ultra-thin, hidden by default, appears on hover */
+.chat-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+  transition: scrollbar-color 0.3s;
+}
+
+.chat-scrollbar:hover {
+  scrollbar-color: rgba(100, 100, 100, 0.4) transparent;
+}
+
+.chat-scrollbar::-webkit-scrollbar {
+  width: 3px;
+}
+
+.chat-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.chat-scrollbar::-webkit-scrollbar-thumb {
+  background-color: transparent;
+  border-radius: 3px;
+  transition: background-color 0.3s;
+}
+
+.chat-scrollbar:hover::-webkit-scrollbar-thumb {
+  background-color: rgba(100, 100, 100, 0.4);
+}
+
+.chat-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(140, 140, 140, 0.6);
+}
