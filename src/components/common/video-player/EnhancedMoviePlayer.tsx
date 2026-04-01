@@ -117,6 +117,9 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
     const [isSeeking, setIsSeeking] = useState(false);
     const userSeekingRef = useRef(false);
     const seekPositionRef = useRef(0);
+    // Timeline jump guard: only allow seeks initiated by user interaction
+    const allowedSeekRef = useRef(false);
+    const lastKnownTimeRef = useRef(0);
     const [showControls, setShowControls] = useState(true);
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [volume, setVolume] = useState(1);
@@ -266,7 +269,20 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
       const onLoadedMetadata = () => setDuration(video.duration || 0);
       const onTimeUpdate = () => {
         if (userSeekingRef.current) return;
-        setCurrentTime(video.currentTime || 0);
+        const newTime = video.currentTime || 0;
+        const delta = Math.abs(newTime - lastKnownTimeRef.current);
+
+        // Guard: block unexpected jumps > 3s unless user initiated
+        if (lastKnownTimeRef.current > 0 && delta > 3 && !allowedSeekRef.current) {
+          // Revert to last known position — this was not user-initiated
+          video.currentTime = lastKnownTimeRef.current;
+          return;
+        }
+
+        // Accept the time update
+        allowedSeekRef.current = false;
+        lastKnownTimeRef.current = newTime;
+        setCurrentTime(newTime);
         setIsBuffering(false);
       };
       const onWaiting = () => setIsBuffering(true);
@@ -374,16 +390,39 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
         newHls.loadSource(src);
         newHls.attachMedia(video);
         newHls.on(Hls.Events.MANIFEST_PARSED, (_, data: { levels: Level[] }) => {
-          // Setup quality list (was missing before!)
+          // Setup quality list
           setQualities(parseQualities(data.levels));
           setCurrentQuality(-1);
-          // Seek to saved position
-          const seekTo = Math.min(savedTime, video.duration > 0 ? video.duration - 1 : savedTime);
-          video.currentTime = seekTo;
-          setCurrentTime(seekTo);
-          setDuration(video.duration || 0);
-          setControlsReady(true);
-          video.play().catch(() => { });
+
+          // Wait for loadedmetadata so video.duration is available for proper clamping
+          const doSeek = () => {
+            const dur = video.duration;
+            allowedSeekRef.current = true; // Mark as user-initiated (resume)
+            if (dur && isFinite(dur) && dur > 0) {
+              const seekTo = Math.min(savedTime, dur - 1);
+              video.currentTime = seekTo;
+              lastKnownTimeRef.current = seekTo;
+              setCurrentTime(seekTo);
+              setDuration(dur);
+            } else {
+              video.currentTime = savedTime;
+              lastKnownTimeRef.current = savedTime;
+            }
+            setControlsReady(true);
+            video.play().catch(() => { });
+          };
+
+          // If duration is already available (cached manifest), seek immediately
+          if (video.duration && isFinite(video.duration) && video.duration > 0) {
+            doSeek();
+          } else {
+            // Otherwise wait for metadata
+            const onMeta = () => {
+              video.removeEventListener('loadedmetadata', onMeta);
+              doSeek();
+            };
+            video.addEventListener('loadedmetadata', onMeta);
+          }
         });
         newHls.on(Hls.Events.ERROR, (_event, data) => {
           if (data.fatal) {
@@ -397,10 +436,20 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
         hlsRef.current = newHls;
       } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
         video.src = src;
-        video.currentTime = savedTime;
-        setCurrentTime(savedTime);
-        setControlsReady(true);
-        video.play().catch(() => { });
+        // For Safari native HLS, wait for loadedmetadata then seek
+        const onMetaSafari = () => {
+          video.removeEventListener('loadedmetadata', onMetaSafari);
+          const dur = video.duration;
+          const seekTo = (dur && isFinite(dur) && dur > 0) ? Math.min(savedTime, dur - 1) : savedTime;
+          allowedSeekRef.current = true; // Mark as user-initiated (resume Safari)
+          video.currentTime = seekTo;
+          lastKnownTimeRef.current = seekTo;
+          setCurrentTime(seekTo);
+          if (dur && isFinite(dur)) setDuration(dur);
+          setControlsReady(true);
+          video.play().catch(() => { });
+        };
+        video.addEventListener('loadedmetadata', onMetaSafari);
       } else {
         setControlsReady(true);
       }
@@ -411,10 +460,11 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
       setControlsReady(true);
     }, []);
 
-    // ─── Save progress ──────────────────────────────────────
+    // ─── Save progress (5 triggers: interval 10s, pause, seek single, seek debounce, beforeunload) ──
     const lastSavedTimeRef = useRef(0);
     const videoProgressRef = useRef<{ currentTime: number; duration: number }>({ currentTime: 0, duration: 0 });
     const hasEverPlayedRef = useRef(false);
+    const seekDebounceRef = useRef<NodeJS.Timeout | null>(null);
 
     useEffect(() => {
       if (!movieId || !server || !audio) return;
@@ -422,7 +472,6 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
       if (!video) return;
 
       // When logged in, clear stale localStorage guest data for this movie/show
-      // This prevents old/corrupted guest data from appearing after logout
       if (userId) {
         const movieKey = `movie-progress-${movieId}-${server}-${audio}`;
         const tvKey = isTVShow && season && episode
@@ -436,11 +485,9 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
       const onPlayMark = () => { hasEverPlayedRef.current = true; };
       video.addEventListener('play', onPlayMark);
 
-      // Only track when genuinely playing (not during HLS pre-buffer/seek)
+      // Track currentTime/duration continuously (including during seek)
       const onTimeUpdateTrack = () => {
-        if (!video.paused && !video.seeking) {
-          videoProgressRef.current = { currentTime: video.currentTime, duration: video.duration };
-        }
+        videoProgressRef.current = { currentTime: video.currentTime, duration: video.duration };
       };
       video.addEventListener('timeupdate', onTimeUpdateTrack);
 
@@ -463,51 +510,76 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
         }));
       };
 
-      const save = (force?: boolean) => {
+      // ── Core save function ──
+      // skipDedup: bypass the 5s dedup check (used for seek saves where position matters)
+      const save = (useBeacon = false, skipDedup = false) => {
         if (!hasEverPlayedRef.current) return;
         const { currentTime: ct, duration: dur } = videoProgressRef.current;
         if (ct > 0 && dur > 0) {
-          if (!force && Math.abs(ct - lastSavedTimeRef.current) < 5) return;
-          lastSavedTimeRef.current = ct;
-          if (userId) { api.post('/recently-watched', buildPayload(ct, dur)).catch(() => { }); }
-          else { saveToLocalStorage(ct, dur); }
-        }
-      };
-
-      const saveWithKeepalive = () => {
-        if (!hasEverPlayedRef.current) return;
-        const { currentTime: ct, duration: dur } = videoProgressRef.current;
-        if (ct > 0 && dur > 0 && Math.abs(ct - lastSavedTimeRef.current) >= 2) {
-          lastSavedTimeRef.current = ct;
+          const clampedCt = Math.min(ct, dur);
+          if (!skipDedup && Math.abs(clampedCt - lastSavedTimeRef.current) < 5) return;
+          lastSavedTimeRef.current = clampedCt;
           if (userId) {
-            let fetchBaseURL = process.env.NEXT_PUBLIC_API_URL || '';
-            if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
-              fetchBaseURL = 'http://localhost:3001/api';
+            if (useBeacon && navigator.sendBeacon) {
+              let fetchBaseURL = process.env.NEXT_PUBLIC_API_URL || '';
+              if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+                fetchBaseURL = 'http://localhost:3001/api';
+              }
+              const blob = new Blob([JSON.stringify(buildPayload(clampedCt, dur))], { type: 'application/json' });
+              navigator.sendBeacon(`${fetchBaseURL}/recently-watched`, blob);
+            } else {
+              api.post('/recently-watched', buildPayload(clampedCt, dur)).catch(() => { });
             }
-            const token = localStorage.getItem('token');
-            fetch(`${fetchBaseURL}/recently-watched`, {
-              method: 'POST', keepalive: true,
-              headers: { 'Content-Type': 'application/json', ...(token ? { 'Authorization': `Bearer ${token}` } : {}) },
-              body: JSON.stringify(buildPayload(ct, dur))
-            }).catch(() => { });
-          } else { saveToLocalStorage(ct, dur); }
+          } else { saveToLocalStorage(clampedCt, dur); }
         }
       };
 
-      const onPauseSave = () => save(true);
-      const onBeforeUnload = () => saveWithKeepalive();
+      // ── 1) Interval 10s — save while playing ──
+      const intervalId = setInterval(() => {
+        if (!hasEverPlayedRef.current) return;
+        if (video.paused || video.ended) return;
+        save();
+      }, 10_000);
 
+      // ── 2) Pause — save immediately ──
+      const onPauseSave = () => save();
       video.addEventListener('pause', onPauseSave);
-      window.addEventListener('beforeunload', onBeforeUnload);
-      return () => {
-        // Pause video first → triggers onPauseSave → save(true) with OLD userId
-        // This ensures progress is saved before logout completes
-        if (!video.paused) video.pause();
 
-        saveWithKeepalive(); // Fallback (safe no-op if pause already saved)
+      // ── 3+4) Seek — single seek → API ngay, continuous scrub → debounce 0.5s → API ──
+      const onSeekedSave = () => {
+        if (!hasEverPlayedRef.current) return;
+
+        // Clear any pending debounce
+        if (seekDebounceRef.current) clearTimeout(seekDebounceRef.current);
+
+        // Wait 500ms — if no more seeks come in, save
+        seekDebounceRef.current = setTimeout(() => {
+          // Update progress to latest position after seek settled
+          videoProgressRef.current = { currentTime: video.currentTime, duration: video.duration };
+          save(false, true); // skipDedup since seek position matters
+          seekDebounceRef.current = null;
+        }, 500);
+      };
+      video.addEventListener('seeked', onSeekedSave);
+
+      // ── 5) Đóng tab — sendBeacon (no pause needed, just read currentTime) ──
+      const onBeforeUnload = () => {
+        // Grab latest position right now
+        videoProgressRef.current = { currentTime: video.currentTime, duration: video.duration };
+        save(true, true);
+      };
+      window.addEventListener('beforeunload', onBeforeUnload);
+
+      return () => {
+        clearInterval(intervalId);
+        if (seekDebounceRef.current) clearTimeout(seekDebounceRef.current);
+        // Unmount (Next.js navigation) — save with sendBeacon
+        videoProgressRef.current = { currentTime: video.currentTime, duration: video.duration };
+        save(true, true);
         video.removeEventListener('play', onPlayMark);
         video.removeEventListener('timeupdate', onTimeUpdateTrack);
         video.removeEventListener('pause', onPauseSave);
+        video.removeEventListener('seeked', onSeekedSave);
         window.removeEventListener('beforeunload', onBeforeUnload);
       };
     }, [movieId, server, audio, ref, title, poster, season, episode, isTVShow, userId]);
@@ -522,7 +594,7 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
     const handleReplay = useCallback(() => {
       const v = getVideo(ref, innerRef);
       if (!v) return;
-      v.currentTime = 0; setIsEnded(false); v.play().catch(() => { });
+      allowedSeekRef.current = true; v.currentTime = 0; lastKnownTimeRef.current = 0; setIsEnded(false); v.play().catch(() => { });
     }, [ref]);
 
     const changeSpeed = useCallback((s: AvailableSpeed) => {
@@ -599,15 +671,16 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
     useEffect(() => {
       const handler = (e: KeyboardEvent) => {
         if (!innerContainerRef.current) return;
+        if (!controlsReady) return; // Block keyboard when resume popup is showing
         const target = e.target as HTMLElement;
         if (target?.tagName === "INPUT" || target?.tagName === "TEXTAREA" || target?.isContentEditable) return;
         switch (e.key.toLowerCase()) {
           case " ": case "k": e.preventDefault(); togglePlay(); break;
           case "arrowright":
-            if (!viewerMode) { const v = getVideo(ref, innerRef); if (v) v.currentTime = Math.min(v.currentTime + 10, v.duration || v.currentTime + 10); }
+            if (!viewerMode) { allowedSeekRef.current = true; const v = getVideo(ref, innerRef); if (v) { v.currentTime = Math.min(v.currentTime + 10, v.duration || v.currentTime + 10); lastKnownTimeRef.current = v.currentTime; } }
             break;
           case "arrowleft":
-            if (!viewerMode) { const v = getVideo(ref, innerRef); if (v) v.currentTime = Math.max(v.currentTime - 10, 0); }
+            if (!viewerMode) { allowedSeekRef.current = true; const v = getVideo(ref, innerRef); if (v) { v.currentTime = Math.max(v.currentTime - 10, 0); lastKnownTimeRef.current = v.currentTime; } }
             break;
           case "f": toggleFullscreen(); break;
           case "m": toggleMute(); break;
@@ -616,7 +689,7 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
       };
       window.addEventListener("keydown", handler);
       return () => window.removeEventListener("keydown", handler);
-    }, [togglePlay, toggleFullscreen, toggleMute, ref, viewerMode]);
+    }, [togglePlay, toggleFullscreen, toggleMute, ref, viewerMode, controlsReady]);
 
     // ─── Seek helper (guard duration) ───────────────────────
     const seekTo = useCallback((pct: number) => {
@@ -624,8 +697,10 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
       const v = getVideo(ref, innerRef);
       if (!v) return;
       const time = pct * duration;
+      allowedSeekRef.current = true;
       userSeekingRef.current = true;
       v.currentTime = time;
+      lastKnownTimeRef.current = time;
       setCurrentTime(time);
     }, [duration, ref]);
 
@@ -640,6 +715,7 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
           const target = e.target as HTMLElement;
           if (target.closest('button') || target.closest('input') || target.closest('[data-no-toggle]')) return;
           if (viewerMode) return;
+          if (!controlsReady) return; // Block click when resume popup is showing
           togglePlay();
         }}
         onMouseLeave={handleMouseLeave}
@@ -716,7 +792,7 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
                 <>
                   {/* Rewind 10s */}
                   <button
-                    onClick={(e) => { e.stopPropagation(); if (viewerMode) return; const v = getVideo(ref, innerRef); if (v) v.currentTime = Math.max(v.currentTime - 10, 0); }}
+                    onClick={(e) => { e.stopPropagation(); if (viewerMode) return; allowedSeekRef.current = true; const v = getVideo(ref, innerRef); if (v) { v.currentTime = Math.max(v.currentTime - 10, 0); lastKnownTimeRef.current = v.currentTime; } }}
                     className={`flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-white/15 hover:bg-white/25 text-white transition ${viewerMode ? 'opacity-40 cursor-not-allowed' : ''}`}
                     aria-label="Rewind 10 seconds" title="Rewind 10 seconds"
                   >
@@ -743,7 +819,7 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
 
                   {/* Forward 10s */}
                   <button
-                    onClick={(e) => { e.stopPropagation(); if (viewerMode) return; const v = getVideo(ref, innerRef); if (v) v.currentTime = Math.min(v.currentTime + 10, v.duration || v.currentTime + 10); }}
+                    onClick={(e) => { e.stopPropagation(); if (viewerMode) return; allowedSeekRef.current = true; const v = getVideo(ref, innerRef); if (v) { v.currentTime = Math.min(v.currentTime + 10, v.duration || v.currentTime + 10); lastKnownTimeRef.current = v.currentTime; } }}
                     className={`flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-white/15 hover:bg-white/25 text-white transition ${viewerMode ? 'opacity-40 cursor-not-allowed' : ''}`}
                     aria-label="Forward 10 seconds" title="Forward 10 seconds"
                   >
@@ -763,7 +839,7 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
             <div className="pointer-events-auto flex items-center gap-4">
               {/* Rewind 10s */}
               <button
-                onClick={(e) => { e.stopPropagation(); if (viewerMode) return; const v = getVideo(ref, innerRef); if (v) v.currentTime = Math.max(v.currentTime - 10, 0); }}
+                onClick={(e) => { e.stopPropagation(); if (viewerMode) return; allowedSeekRef.current = true; const v = getVideo(ref, innerRef); if (v) { v.currentTime = Math.max(v.currentTime - 10, 0); lastKnownTimeRef.current = v.currentTime; } }}
                 className={`flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-transparent hover:bg-white/10 text-white transition ${showControls ? 'opacity-100' : 'opacity-0 hover:opacity-100'} ${viewerMode ? 'opacity-40 cursor-not-allowed' : ''}`}
                 aria-label="Rewind 10 seconds" title="Rewind 10 seconds"
               >
@@ -783,7 +859,7 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
 
               {/* Forward 10s */}
               <button
-                onClick={(e) => { e.stopPropagation(); if (viewerMode) return; const v = getVideo(ref, innerRef); if (v) v.currentTime = Math.min(v.currentTime + 10, v.duration || v.currentTime + 10); }}
+                onClick={(e) => { e.stopPropagation(); if (viewerMode) return; allowedSeekRef.current = true; const v = getVideo(ref, innerRef); if (v) { v.currentTime = Math.min(v.currentTime + 10, v.duration || v.currentTime + 10); lastKnownTimeRef.current = v.currentTime; } }}
                 className={`flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-transparent hover:bg-white/10 text-white transition ${showControls ? 'opacity-100' : 'opacity-0 hover:opacity-100'} ${viewerMode ? 'opacity-40 cursor-not-allowed' : ''}`}
                 aria-label="Forward 10 seconds" title="Forward 10 seconds"
               >
@@ -886,7 +962,7 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
               </div>
 
               <span className="text-[10px] sm:text-xs text-gray-200 tabular-nums" aria-live="polite">
-                {formatTime(currentTime)} / {formatTime(duration)}
+                {formatTime(duration > 0 ? Math.min(currentTime, duration) : currentTime)} / {formatTime(duration)}
               </span>
             </div>
 

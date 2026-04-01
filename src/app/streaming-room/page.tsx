@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Copy, Check, ArrowLeft, Users, Hash, Send, Smile,
-  Crown, Lock, Unlock, LogOut, Radio, Clock, AlertTriangle, Share2
+  Crown, Lock, Unlock, LogOut, Radio, Clock, AlertTriangle, Share2, ChevronDown
 } from 'lucide-react';
 import useAuthStore from '@/store/useAuthStore';
 import EnhancedMoviePlayer from '@/components/common/video-player/EnhancedMoviePlayer';
@@ -46,6 +46,8 @@ function StreamingRoomContent() {
   const [waitingForHost, setWaitingForHost] = useState(false);
   const [waitReason, setWaitReason] = useState<'host_paused' | 'syncing' | 'host_buffering' | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [isAtBottom, setIsAtBottom] = useState(true);
+  const [hasNewMessage, setHasNewMessage] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const syncLockRef = useRef(false); // Prevents feedback loops
@@ -372,11 +374,36 @@ function StreamingRoomContent() {
 
   // Auto-scroll chat (only scroll chat container, not the page)
   const chatScrollRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = useCallback(() => {
+    if (chatScrollRef.current) {
+      chatScrollRef.current.scrollTo({
+        top: chatScrollRef.current.scrollHeight,
+        behavior: 'smooth'
+      });
+      setIsAtBottom(true);
+      setHasNewMessage(false);
+    }
+  }, []);
+
+  const handleChatScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+    const atBottom = scrollHeight - scrollTop - clientHeight < 50;
+    setIsAtBottom(atBottom);
+    if (atBottom) {
+      setHasNewMessage(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (chatScrollRef.current) {
-      chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
+      if (isAtBottom) {
+        chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
+      } else {
+        setHasNewMessage(true);
+      }
     }
-  }, [chatMessages]);
+  }, [chatMessages, isAtBottom]);
 
   // Emit LEAVE_ROOM on tab close / page refresh
   useEffect(() => {
@@ -687,10 +714,10 @@ function StreamingRoomContent() {
           {/* ─── Chat Panel ─── */}
           {showChat && (
             <div
-              className={`flex flex-col shrink-0 overflow-hidden ${
+              className={`flex flex-col shrink-0 overflow-hidden relative ${
                 isPlayerFullscreen
                   ? 'w-[340px] h-full bg-gray-950/95 backdrop-blur-md border-l border-gray-700/50'
-                  : 'w-full flex-grow sm:flex-grow-0 sm:w-[280px] md:w-[300px] lg:w-[320px] xl:w-[340px] min-h-[180px] sm:min-h-0 sm:h-full bg-gray-900/70 backdrop-blur-sm border border-gray-800 rounded-xl sm:rounded-l-none sm:rounded-r-xl sm:border-l-0'
+                  : 'w-full h-[40vh] sm:h-full sm:flex-grow-0 sm:w-[280px] md:w-[300px] lg:w-[320px] xl:w-[340px] bg-gray-900/70 backdrop-blur-sm border border-gray-800 rounded-xl sm:rounded-l-none sm:rounded-r-xl sm:border-l-0'
               }`}
             >
               {/* Chat Header */}
@@ -711,6 +738,7 @@ function StreamingRoomContent() {
               {/* Messages */}
               <div
                 ref={chatScrollRef}
+                onScroll={handleChatScroll}
                 className="chat-scrollbar flex-grow overflow-y-auto px-2 sm:px-3 py-1.5 sm:py-2 space-y-0.5 sm:space-y-1"
               >
                 {chatMessages.length === 0 && (
@@ -737,6 +765,22 @@ function StreamingRoomContent() {
                   )
                 ))}
               </div>
+
+              {/* Scroll To Bottom Button */}
+              <AnimatePresence>
+                {!isAtBottom && hasNewMessage && (
+                  <motion.button
+                    initial={{ opacity: 0, y: 10, scale: 0.9 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.9 }}
+                    onClick={scrollToBottom}
+                    className="absolute bottom-16 sm:bottom-20 left-1/2 -translate-x-1/2 bg-yellow-500 text-black px-4 py-1.5 rounded-full shadow-[0_4px_12px_rgba(0,0,0,0.5)] font-semibold text-xs sm:text-sm flex items-center gap-1.5 hover:bg-yellow-400 z-50 transition-colors border border-yellow-600/50"
+                  >
+                    <ChevronDown className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[3]" />
+                    New message
+                  </motion.button>
+                )}
+              </AnimatePresence>
 
               {/* Emoji Bar */}
               <AnimatePresence>

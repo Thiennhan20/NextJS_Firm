@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 
 // Định nghĩa kiểu TVShow
 interface TVShow {
@@ -163,6 +163,10 @@ export default function WatchNowTVShowsServer3({
     // Cache episodes data for quick episode switching
     const [cachedEpisodes, setCachedEpisodes] = useState<NguoncEpisodeServer[] | null>(null);
 
+    // Track which episode the server already returned correct links for
+    // This prevents the client-side useEffect from overwriting server results
+    const lastSearchEpisodeRef = useRef<number>(0);
+
     // Search using the backend API
     const searchAndFetch = useCallback(async (keyword: string) => {
         if (!keyword.trim()) return;
@@ -182,6 +186,7 @@ export default function WatchNowTVShowsServer3({
             const data = await res.json();
 
             if (data.status === 'success' && data.data) {
+                lastSearchEpisodeRef.current = episode;
                 setCachedEpisodes(data.data.detail.episodes);
                 if (onLinksChange) onLinksChange(data.data.links);
             }
@@ -213,47 +218,54 @@ export default function WatchNowTVShowsServer3({
     }, [selectedSeason]);
 
     // When episode changes, extract links from cached data
+    // Skip if server already returned correct links for this episode
     useEffect(() => {
-        if (cachedEpisodes && selectedEpisode > 0) {
-            let bestVietsub = '';
-            let bestDubbed = '';
-            let fallback = '';
+        if (!cachedEpisodes || selectedEpisode <= 0) return;
+        // Server already returned correct links for this episode via searchAndFetch
+        if (lastSearchEpisodeRef.current === selectedEpisode) return;
 
-            for (const epServer of cachedEpisodes) {
-                const serverName = epServer.server_name?.toLowerCase() || '';
-                const isVietsub = serverName.includes('vietsub');
-                const isDubbed = serverName.includes('thuyet minh') || serverName.includes('lồng tiếng') || serverName.includes('dubbed');
+        let bestVietsub = '';
+        let bestDubbed = '';
+        let fallback = '';
 
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const targetEpisode = epServer.items?.find((ep: any) => {
-                    const n = ep.name?.toLowerCase() || '';
-                    const epStr = selectedEpisode.toString();
-                    const epStrPadded = epStr.padStart(2, '0');
-                    return n === `tập ${epStr}` ||
-                        n === `episode ${epStr}` ||
-                        n === epStr ||
-                        n === `tập ${epStrPadded}` ||
-                        n === `tap-${epStr}` ||
-                        n === `tap-${epStrPadded}` ||
-                        ep.slug === `tap-${epStr}` ||
-                        ep.slug === `tap-${epStrPadded}`;
-                });
+        for (const epServer of cachedEpisodes) {
+            // Normalize diacritics (strip Vietnamese accents) before matching
+            const serverName = (epServer.server_name || '')
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .toLowerCase();
+            const isVietsub = serverName.includes('vietsub');
+            const isDubbed = serverName.includes('thuyet minh') || serverName.includes('long tieng') || serverName.includes('dubbed');
 
-                if (targetEpisode) {
-                    const link = targetEpisode.embed || targetEpisode.m3u8 || '';
-                    if (isVietsub && !bestVietsub) bestVietsub = link;
-                    else if (isDubbed && !bestDubbed) bestDubbed = link;
-                    else if (!fallback) fallback = link;
-                }
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const targetEpisode = epServer.items?.find((ep: any) => {
+                const n = ep.name?.toLowerCase() || '';
+                const epStr = selectedEpisode.toString();
+                const epStrPadded = epStr.padStart(2, '0');
+                return n === `tập ${epStr}` ||
+                    n === `episode ${epStr}` ||
+                    n === epStr ||
+                    n === `tập ${epStrPadded}` ||
+                    n === `tap-${epStr}` ||
+                    n === `tap-${epStrPadded}` ||
+                    ep.slug === `tap-${epStr}` ||
+                    ep.slug === `tap-${epStrPadded}`;
+            });
+
+            if (targetEpisode) {
+                const link = targetEpisode.embed || targetEpisode.m3u8 || '';
+                if (isVietsub && !bestVietsub) bestVietsub = link;
+                else if (isDubbed && !bestDubbed) bestDubbed = link;
+                else if (!fallback) fallback = link;
             }
-
-            const links = {
-                vietsub: bestVietsub || fallback,
-                dubbed: bestDubbed,
-                m3u8: fallback || bestVietsub || bestDubbed
-            };
-            if (onLinksChange) onLinksChange(links);
         }
+
+        const links = {
+            vietsub: bestVietsub || fallback,
+            dubbed: bestDubbed,
+            m3u8: fallback || bestVietsub || bestDubbed
+        };
+        if (onLinksChange) onLinksChange(links);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedEpisode, cachedEpisodes]);
 

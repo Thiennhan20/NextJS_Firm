@@ -72,6 +72,7 @@ export default function WatchNowTVShowsServer1({
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
     async function fetchPhimApiEmbed() {
+
       // Nếu đã có audio links cho season hiện tại thì không cần tìm kiếm lại
       if (tvShowLinks.currentSeason === selectedSeason && !tvShowLinks.seasonChanged &&
         (tvShowLinks.vietsub || tvShowLinks.dubbed)) {
@@ -100,6 +101,7 @@ export default function WatchNowTVShowsServer1({
                 episode.server_name?.toLowerCase().includes('lồng tiếng') ||
                 episode.server_name?.toLowerCase().includes('dubbed')) {
                 dubbedLink = targetEpisode.link_m3u8 || targetEpisode.link_embed?.split('?url=')[1] || '';
+              } else {
               }
             }
           }
@@ -205,6 +207,8 @@ export default function WatchNowTVShowsServer1({
 
                 for (const item of data.data.items) {
                   const score = scoreMatch(item);
+                  if (score > 0) {
+                  }
                   if (score > bestScore) {
                     bestScore = score;
                     bestMatch = item;
@@ -218,46 +222,59 @@ export default function WatchNowTVShowsServer1({
                     score: bestScore,
                     strategy: strategyName
                   };
+                } else {
                 }
+              } else {
               }
             } catch {
-              // Search error
             }
             return null;
           };
 
           try {
-            // Priority-ordered keywords (most likely to least likely)
-            const searchPriorities = [
-              { keyword: id, name: 'TMDB ID', minScore: 100 },
-              { keyword: originNameWithSeason, name: 'Origin name', minScore: 80 },
-              { keyword: `${normalizedName} phần ${selectedSeason}`, name: 'Vietnamese', minScore: 60 },
-              { keyword: tvShow.name, name: 'Show name', minScore: 40 }
-            ];
+            // Step 1: Direct TMDB TV lookup (fastest, most reliable)
+            try {
+              const tmdbRes = await fetch(`${apiUrl}/server1/tmdb/tv/${id}`);
+              const tmdbData = await tmdbRes.json();
+              if (tmdbData?.status === true && tmdbData?.movie?.slug) {
+                slug = tmdbData.movie.slug;
+              } else {
+              }
+            } catch {
+            }
 
-            let bestResult = null;
-            let bestScore = 0;
+            // Step 2: If TMDB lookup failed, fall back to text search strategies
+            if (!slug) {
+              const searchPriorities = [
+                { keyword: originNameWithSeason, name: 'Origin name', minScore: 80 },
+                { keyword: `${normalizedName} phần ${selectedSeason}`, name: 'Vietnamese', minScore: 60 },
+                { keyword: tvShow.name, name: 'Show name', minScore: 40 }
+              ];
 
-            // Try each keyword sequentially, but stop early if we get a high-confidence match
-            for (const { keyword, name, minScore } of searchPriorities) {
-              const result = await searchAndScore(keyword, name);
+              let bestResult = null;
+              let bestScore = 0;
 
-              if (result && result.score > bestScore) {
-                bestScore = result.score;
-                bestResult = result;
+              // Try each keyword sequentially, but stop early if we get a high-confidence match
+              for (const { keyword, name, minScore } of searchPriorities) {
+                const result = await searchAndScore(keyword, name);
 
-                // Early exit if we have a high-confidence match
-                if (result.score >= minScore) {
-                  slug = result.slug;
-                  break;
+                if (result && result.score > bestScore) {
+                  bestScore = result.score;
+                  bestResult = result;
+
+                  // Early exit if we have a high-confidence match
+                  if (result.score >= minScore) {
+                    slug = result.slug;
+                    break;
+                  }
                 }
               }
-            }
 
-            // If no early exit, use best result found
-            if (!slug && bestResult) {
-              slug = bestResult.slug;
-            }
+              // If no early exit, use best result found
+              if (!slug && bestResult) {
+                slug = bestResult.slug;
+              }
+            } // end if (!slug)
           } catch {
             // Search error
           }
@@ -356,13 +373,16 @@ export default function WatchNowTVShowsServer1({
             if (targetEpisode) {
 
               // Phân loại theo server_name
-              if (episode.server_name?.toLowerCase().includes('vietsub')) {
+              const sName = episode.server_name?.toLowerCase() || '';
+              if (sName.includes('vietsub')) {
                 vietsubLink = targetEpisode.link_m3u8 || targetEpisode.link_embed?.split('?url=')[1] || '';
-              } else if (episode.server_name?.toLowerCase().includes('thuyết minh') ||
-                episode.server_name?.toLowerCase().includes('lồng tiếng') ||
-                episode.server_name?.toLowerCase().includes('dubbed')) {
+              } else if (sName.includes('thuyết minh') ||
+                sName.includes('lồng tiếng') ||
+                sName.includes('dubbed')) {
                 dubbedLink = targetEpisode.link_m3u8 || targetEpisode.link_embed?.split('?url=')[1] || '';
+              } else {
               }
+            } else {
             }
           }
 
@@ -386,6 +406,7 @@ export default function WatchNowTVShowsServer1({
         setEpisodesData(finalDetailData.episodes);
 
         // Cập nhật tvShowLinks với tất cả audio options
+
         const updatedLinks = {
           embed: '',
           m3u8: defaultEmbed,
