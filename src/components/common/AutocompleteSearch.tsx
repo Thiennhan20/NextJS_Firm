@@ -2,8 +2,9 @@ import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import axios, { CancelTokenSource } from 'axios';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { MagnifyingGlassIcon, SparklesIcon, MicrophoneIcon } from '@heroicons/react/24/outline';
+import { MagnifyingGlassIcon, SparklesIcon, MicrophoneIcon, ClockIcon, XMarkIcon as XMarkMiniIcon } from '@heroicons/react/24/outline';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useSearchHistory } from '@/hooks/useSearchHistory';
 
 // Type definitions for Web Speech API
 interface SpeechRecognitionEvent extends Event {
@@ -129,6 +130,13 @@ export default function AutocompleteSearch({
   const cancelTokenRef = useRef<CancelTokenSource | null>(null);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const router = useRouter();
+  const historyContainerRef = useRef<HTMLDivElement>(null);
+
+  // Search history hook
+  const { displayHistory, addSearch: addToSearchHistory, removeSearch, clearAll: clearSearchHistory } = useSearchHistory();
+
+  // Whether to show history dropdown (focused + empty query + has history)
+  const showHistory = isFocused && !query.trim() && displayHistory.length > 0;
 
   // Check if voice recognition is supported
   useEffect(() => {
@@ -479,18 +487,20 @@ export default function AutocompleteSearch({
         dropdownRef.current && 
         !dropdownRef.current.contains(e.target as Node) && 
         inputRef.current && 
-        !inputRef.current.contains(e.target as Node)
+        !inputRef.current.contains(e.target as Node) &&
+        (!historyContainerRef.current || !historyContainerRef.current.contains(e.target as Node))
       ) {
         setShowDropdown(false);
+        setIsFocused(false);
       }
     }
     
-    if (showDropdown) {
+    if (showDropdown || showHistory) {
       document.addEventListener('mousedown', handleClick);
     }
     
     return () => document.removeEventListener('mousedown', handleClick);
-  }, [showDropdown]);
+  }, [showDropdown, showHistory]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -505,6 +515,9 @@ export default function AutocompleteSearch({
   }, []);
 
   const handleSelect = useCallback((item: SearchResult) => {
+    if (query.trim()) {
+      addToSearchHistory(query.trim());
+    }
     setShowDropdown(false);
     setQuery('');
     onSelectMovie?.();
@@ -516,34 +529,36 @@ export default function AutocompleteSearch({
     } else if (item.type === 'season') {
       router.push(`/tvshows/${item.tvShowId}?season=${item.season_number}`);
     }
-  }, [router, onSelectMovie]);
+  }, [router, onSelectMovie, query, addToSearchHistory]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && query.trim()) {
       e.preventDefault();
+      addToSearchHistory(query.trim());
       router.push(`/search?q=${encodeURIComponent(query.trim())}`);
       setShowDropdown(false);
       setQuery('');
       inputRef.current?.blur();
       onSelectMovie?.();
     }
-  }, [query, router, onSelectMovie]);
+  }, [query, router, onSelectMovie, addToSearchHistory]);
 
   const handleSearchClick = useCallback(() => {
     if (query.trim()) {
+      addToSearchHistory(query.trim());
       router.push(`/search?q=${encodeURIComponent(query.trim())}`);
       setShowDropdown(false);
       setQuery('');
       inputRef.current?.blur();
       onSelectMovie?.();
     }
-  }, [query, router, onSelectMovie]);
+  }, [query, router, onSelectMovie, addToSearchHistory]);
 
   const handleFocus = useCallback(() => {
     setIsFocused(true);
-    if (results.length > 0) setShowDropdown(true);
+    if (results.length > 0 && query.trim()) setShowDropdown(true);
     onFocusChange?.(true);
-  }, [results.length, onFocusChange]);
+  }, [results.length, onFocusChange, query]);
 
   const handleBlur = useCallback(() => {
     setIsFocused(false);
@@ -891,6 +906,85 @@ export default function AutocompleteSearch({
                 </motion.div>
               )}
             </AnimatePresence>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Search History Dropdown */}
+      <AnimatePresence>
+        {showHistory && !showDropdown && (
+          <motion.div
+            ref={historyContainerRef}
+            initial={{ opacity: 0, y: -10, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -10, scale: 0.95 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+            className={`absolute left-0 right-0 mt-2 rounded-2xl shadow-2xl z-50 border border-gray-200 ${
+              menu ? 'bg-white text-gray-900' : 'bg-white'
+            }`}
+            style={{ 
+              minWidth: menu ? '100%' : '220px', 
+              maxWidth: '100%'
+            }}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 pt-3 pb-2">
+              <div className="flex items-center gap-2 text-gray-500">
+                <ClockIcon className="h-4 w-4" />
+                <span className="text-xs font-medium uppercase tracking-wide">Recent Searches</span>
+              </div>
+              <button
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  clearSearchHistory();
+                }}
+                className="text-xs text-gray-400 hover:text-red-500 transition-colors font-medium"
+              >
+                Clear All
+              </button>
+            </div>
+            {/* History Items — show 10 visible, scroll for 15 total */}
+            <div className="max-h-[420px] overflow-y-auto scrollbar-hide">
+              <ul className="divide-y divide-gray-100">
+                {displayHistory.map((entry, index) => (
+                  <motion.li
+                    key={entry.query}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.02 }}
+                    className="group flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-gray-50 transition-colors"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      addToSearchHistory(entry.query);
+                      router.push(`/search?q=${encodeURIComponent(entry.query)}`);
+                      setIsFocused(false);
+                      setQuery('');
+                      inputRef.current?.blur();
+                      onSelectMovie?.();
+                    }}
+                  >
+                    {/* Clock icon */}
+                    <ClockIcon className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                    {/* Query text */}
+                    <span className="flex-1 text-sm text-gray-700 truncate group-hover:text-gray-900 transition-colors">
+                      {entry.query}
+                    </span>
+                    {/* Delete button — visible on hover */}
+                    <button
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        removeSearch(entry.query);
+                      }}
+                      className="p-1 rounded-full opacity-0 group-hover:opacity-100 hover:bg-gray-200 text-gray-400 hover:text-red-500 transition-all"
+                      aria-label={`Remove ${entry.query}`}
+                    >
+                      <XMarkMiniIcon className="h-4 w-4" />
+                    </button>
+                  </motion.li>
+                ))}
+              </ul>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

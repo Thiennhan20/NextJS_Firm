@@ -122,6 +122,20 @@ const useAuthStore = create<AuthStore>()(
       },
 
       logout: async () => {
+        // Flush pending search history sync before logout
+        try {
+          // The hook exposes flushSync but we can't call hooks outside React.
+          // Instead, fire a beforeunload-like sync using direct API call
+          const token = localStorage.getItem('token');
+          if (token) {
+            // The beforeunload handler in useSearchHistory will handle this,
+            // but we also flush here as a safety net via a custom event
+            window.dispatchEvent(new Event('searchhistory:flush'));
+          }
+        } catch {
+          // Silently ignore — search history flush is best-effort
+        }
+        
         try {
           // Gọi API logout để blacklist token và clear cookie
           await api.post('/auth/logout');

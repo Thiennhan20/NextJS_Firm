@@ -7,6 +7,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import axios, { CancelTokenSource } from 'axios'
 import { MagnifyingGlassIcon, ExclamationCircleIcon } from '@heroicons/react/24/outline'
+import { useSearchHistory } from '@/hooks/useSearchHistory'
 import Pagination from '@/components/Pagination'
 import FilterIcon from '@/components/FilterIcon'
 import CardWithHover from '@/components/common/CardWithHover'
@@ -63,6 +64,7 @@ function SearchPageContent() {
   const router = useRouter()
   const navRouter = useNavRouter()
   const searchParams = useSearchParams()
+  const { addSearch: addToSearchHistory } = useSearchHistory()
   
   // URL params
   const queryFromUrl = searchParams.get('q') || ''
@@ -718,9 +720,15 @@ function SearchPageContent() {
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current)
     }
+    const trimmed = inputValue.trim()
+    if (trimmed) {
+      addToSearchHistory(trimmed)
+    }
     setQuery(inputValue)
     setPage(1)
   }
+
+
   
   // Handle filter changes
   const handleYearChange = useCallback((year: string | number) => {
@@ -820,6 +828,7 @@ function SearchPageContent() {
               Search
             </button>
           </form>
+          
           
           {/* Filter Icon */}
           <div className="mb-4">
