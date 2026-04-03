@@ -141,6 +141,7 @@ export default function WatchNowTVShowsServer1({
       onSearchComplete(false);
       onDataReadyChange(false);
 
+
       timeoutId = setTimeout(() => {
         // Timeout handler
       }, 60000);
@@ -237,7 +238,40 @@ export default function WatchNowTVShowsServer1({
               const tmdbRes = await fetch(`${apiUrl}/server1/tmdb/tv/${id}`);
               const tmdbData = await tmdbRes.json();
               if (tmdbData?.status === true && tmdbData?.movie?.slug) {
-                slug = tmdbData.movie.slug;
+                const apiSlug = tmdbData.movie.slug;
+                const apiName = tmdbData.movie.name || '';
+                const apiOriginName = tmdbData.movie.origin_name || '';
+                
+                // Trích xuất số Session từ tên hoặc slug
+                const extractSeason = (text: string): number | null => {
+                  const patterns = [
+                      /ph[aầ]n[-\s]*(\d+)/i,
+                      /season[-\s]*(\d+)/i,
+                      /m[uù]a[-\s]*(\d+)/i,
+                      /part[-\s]*(\d+)/i,
+                      /\bs(\d{1,2})\b/i,
+                  ];
+                  for (const p of patterns) {
+                      const m = text.match(p);
+                      if (m) return parseInt(m[1], 10);
+                  }
+                  const trailing = text.match(/-(\d+)$|\s(\d+)$/);
+                  if (trailing) {
+                    const num = parseInt(trailing[1] || trailing[2], 10);
+                    if (num < 100) return num;
+                  }
+                  return null;
+                };
+
+                const textToSearch = `${apiName} ${apiOriginName} ${apiSlug}`.toLowerCase();
+                const detectedSeason = extractSeason(textToSearch);
+
+                if (detectedSeason === selectedSeason) {
+                  slug = apiSlug;
+                } else if (!detectedSeason && selectedSeason === 1) {
+                  slug = apiSlug;
+                } else {
+                }
               } else {
               }
             } catch {
@@ -415,6 +449,10 @@ export default function WatchNowTVShowsServer1({
           seasonChanged: false,
           currentSeason: selectedSeason
         };
+
+        if (vietsubLink || dubbedLink || defaultEmbed) {
+        } else {
+        }
 
         setTVShowLinks(updatedLinks);
 

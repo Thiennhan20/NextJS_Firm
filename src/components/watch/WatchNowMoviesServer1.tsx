@@ -126,6 +126,10 @@ export default function WatchNowMoviesServer1({
                 slug = apiSlug;
               }
             }
+            if (slug) {
+            } else {
+            }
+          } else {
           }
         } catch {
           // TMDB direct API failed
@@ -151,6 +155,7 @@ export default function WatchNowMoviesServer1({
             ...keywords,           // Keywords
             ...titleVariations     // Variations
           ].filter((v, i, a) => a.indexOf(v) === i); // Remove duplicates
+
 
           // Search all keywords in parallel using Promise.race
           const searchPromises = allKeywords.map(async (keyword) => {
@@ -180,6 +185,7 @@ export default function WatchNowMoviesServer1({
             const firstMatch = allResults.find(r => r !== null);
             if (firstMatch) {
               slug = firstMatch.match.slug;
+            } else {
             }
           }
         }
@@ -280,6 +286,7 @@ export default function WatchNowMoviesServer1({
           });
           onLoadingChange(false);
           onSearchComplete(true);
+        } else {
         }
 
       } catch {

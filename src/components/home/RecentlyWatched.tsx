@@ -296,16 +296,13 @@ export default function RecentlyWatched({ className = '' }: RecentlyWatchedProps
         if (!progressData.currentTime || progressData.currentTime <= 0) continue
 
         if (isMovie) {
-          const keyParts = key.replace('movie-progress-', '').split('-')
-          if (keyParts.length < 3) continue
-
-          const [id, server, ...audioParts] = keyParts
-          const audio = audioParts.join('-')
+          const keyParts = key.replace('movie-progress-', '')
+          const id = keyParts
 
           items.push({
             id,
-            server,
-            audio,
+            server: progressData.server || 'server1',
+            audio: progressData.audio || 'vietsub',
             currentTime: progressData.currentTime,
             duration: progressData.duration,
             title: progressData.title,
@@ -316,15 +313,14 @@ export default function RecentlyWatched({ className = '' }: RecentlyWatchedProps
           processedCount++
         } else if (isTVShow) {
           const keyParts = key.replace('tvshow-progress-', '').split('-')
-          if (keyParts.length < 5) continue
+          if (keyParts.length < 3) continue
 
-          const [id, season, episode, server, ...audioParts] = keyParts
-          const audio = audioParts.join('-')
+          const [id, season, episode] = keyParts
 
           items.push({
             id,
-            server,
-            audio,
+            server: progressData.server || 'server1',
+            audio: progressData.audio || 'vietsub',
             currentTime: progressData.currentTime,
             duration: progressData.duration,
             title: progressData.title,
@@ -380,8 +376,7 @@ export default function RecentlyWatched({ className = '' }: RecentlyWatchedProps
   const handleRemoveFromRecent = useCallback(async (item: RecentlyWatchedItem) => {
     // Optimistic update: remove from UI immediately
     setRecentItems(prev => prev.filter(i =>
-      !(i.id === item.id && i.server === item.server && i.audio === item.audio &&
-        i.isTVShow === item.isTVShow && i.season === item.season && i.episode === item.episode)
+      !(i.id === item.id && i.isTVShow === item.isTVShow && i.season === item.season && i.episode === item.episode)
     ))
 
     if (userId) {
@@ -393,8 +388,6 @@ export default function RecentlyWatched({ className = '' }: RecentlyWatchedProps
             isTVShow: item.isTVShow || false,
             season: item.season ?? null,
             episode: item.episode ?? null,
-            server: item.server,
-            audio: item.audio,
           },
         })
       } catch (error) {
@@ -405,8 +398,8 @@ export default function RecentlyWatched({ className = '' }: RecentlyWatchedProps
     } else {
       // Guest: delete from localStorage
       const key = item.isTVShow && item.season && item.episode
-        ? `tvshow-progress-${item.id}-${item.season}-${item.episode}-${item.server}-${item.audio}`
-        : `movie-progress-${item.id}-${item.server}-${item.audio}`
+        ? `tvshow-progress-${item.id}-${item.season}-${item.episode}`
+        : `movie-progress-${item.id}`
       localStorage.removeItem(key)
       cachedData = null // Invalidate cache
     }
@@ -480,7 +473,7 @@ export default function RecentlyWatched({ className = '' }: RecentlyWatchedProps
             <AnimatePresence mode="popLayout">
               {recentItems.length > 0 ? recentItems.map((item, index) => (
                 <ContentCard
-                  key={`${item.isTVShow ? 'tv' : 'movie'}-${item.id}-${item.season || ''}-${item.episode || ''}-${item.server}-${item.audio}`}
+                  key={`${item.isTVShow ? 'tv' : 'movie'}-${item.id}-${item.season || ''}-${item.episode || ''}`}
                   item={item}
                   index={index}
                   onContinue={handleContinueWatching}

@@ -181,6 +181,7 @@ export default function WatchNowTVShowsServer3({
             const season = selectedSeason || 1;
             const episode = selectedEpisode || 1;
 
+
             const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
             const res = await fetch(`${apiUrl}/server3/search-tv?keyword=${encodeURIComponent(keyword.trim())}&name=${encodeURIComponent(normalizedTitle)}&year=${tmdbYear}&season=${season}&episode=${episode}`);
             const data = await res.json();
@@ -189,9 +190,9 @@ export default function WatchNowTVShowsServer3({
                 lastSearchEpisodeRef.current = episode;
                 setCachedEpisodes(data.data.detail.episodes);
                 if (onLinksChange) onLinksChange(data.data.links);
+            } else {
             }
-        } catch (e) {
-            console.error('Error fetching from backend API:', e);
+        } catch {
         } finally {
             setIsSearching(false);
             setSearchCompleted(true);
@@ -223,6 +224,7 @@ export default function WatchNowTVShowsServer3({
         if (!cachedEpisodes || selectedEpisode <= 0) return;
         // Server already returned correct links for this episode via searchAndFetch
         if (lastSearchEpisodeRef.current === selectedEpisode) return;
+
 
         let bestVietsub = '';
         let bestDubbed = '';
@@ -265,6 +267,11 @@ export default function WatchNowTVShowsServer3({
             dubbed: bestDubbed,
             m3u8: fallback || bestVietsub || bestDubbed
         };
+        
+        if (links.vietsub || links.dubbed || links.m3u8) {
+        } else {
+        }
+        
         if (onLinksChange) onLinksChange(links);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedEpisode, cachedEpisodes]);

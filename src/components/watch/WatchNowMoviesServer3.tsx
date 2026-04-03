@@ -188,6 +188,7 @@ export default function WatchNowMoviesServer3({
         setSearchResults([]);
         if (onLinksChange) onLinksChange({ vietsub: '', dubbed: '', m3u8: '' });
 
+
         try {
             const normalizedTitle = movie?.title?.toLowerCase().trim() || '';
             const tmdbYear = movie?.year || (movie?.releaseDate ? parseInt(movie.releaseDate.substring(0, 4)) : 0);
