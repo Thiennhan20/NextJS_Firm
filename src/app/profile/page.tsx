@@ -623,6 +623,22 @@ export default function ProfilePage() {
                     <p className="text-white text-sm sm:text-base">{formatDate(user.updatedAt)}</p>
                   </div>
                 </div>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 bg-gray-800/50 rounded-lg sm:rounded-xl border border-gray-700/50">
+                  <div className="mb-2 sm:mb-0 min-w-0 flex-1">
+                    <p className="text-gray-400 text-xs sm:text-sm mb-1">Web Version (Hash)</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-white font-mono text-sm sm:text-base">
+                        #{process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA?.substring(0, 7) || 'dev'}
+                      </p>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => window.location.reload()} 
+                    className="mt-3 sm:mt-0 px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 border border-gray-600 text-white font-medium text-xs sm:text-sm transition-colors"
+                  >
+                    Check for Updates
+                  </button>
+                </div>
               </div>
             </motion.div>
           </div>
