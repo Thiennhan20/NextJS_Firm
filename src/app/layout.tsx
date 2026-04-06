@@ -13,6 +13,7 @@ import { SpeedInsights } from '@vercel/speed-insights/next';
 import WatchlistSyncer from "@/components/WatchlistSyncer";
 import FloatingChatbox from "@/components/FloatingChatbox";
 import ProgressCleanup from '@/components/ProgressCleanup';
+import VersionChecker from '@/components/VersionChecker';
 
 const inter = Inter({
   subsets: ["latin"],
@@ -65,6 +66,7 @@ export default function RootLayout({
           <Footer />
           <FloatingChatbox />
           <CustomToaster />
+          <VersionChecker />
           <SpeedInsights />
         </HeaderProvider>
       </body>

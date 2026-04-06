@@ -817,16 +817,16 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
         {resumePopup.show && (
           <div className="absolute inset-0 flex items-center justify-center z-50 bg-black/70">
             <div className="bg-gray-900/95 border border-gray-700 rounded-2xl px-6 py-5 sm:px-8 sm:py-6 flex flex-col items-center gap-4 shadow-2xl max-w-sm mx-4 backdrop-blur-sm">
-              <h3 className="text-white text-base sm:text-lg font-bold tracking-wide">THÔNG BÁO!</h3>
+              <h3 className="text-white text-base sm:text-lg font-bold tracking-wide">NOTIFICATION!</h3>
               <p className="text-gray-300 text-sm sm:text-base text-center">
-                Bạn đã dừng lại ở{' '}
+                You stopped at{' '}
                 <span className="inline-block bg-gray-800 border border-gray-600 text-yellow-400 font-mono font-bold px-2.5 py-0.5 rounded text-sm sm:text-base">
-                  {Math.floor(resumePopup.savedTime / 60)} phút {Math.floor(resumePopup.savedTime % 60)} giây
+                  {Math.floor(resumePopup.savedTime / 60)} minutes {Math.floor(resumePopup.savedTime % 60)} seconds
                 </span>
               </p>
               <div className="flex gap-3 mt-1">
-                <button onClick={handleResumeContinue} className="px-5 py-2.5 rounded-lg bg-green-600 hover:bg-green-500 text-white font-semibold text-sm sm:text-base transition-colors shadow-lg hover:shadow-green-500/30">Tiếp tục xem</button>
-                <button onClick={handleResumeStartOver} className="px-5 py-2.5 rounded-lg bg-yellow-600 hover:bg-yellow-500 text-white font-semibold text-sm sm:text-base transition-colors shadow-lg hover:shadow-yellow-500/30">Xem lại từ đầu</button>
+                <button onClick={handleResumeContinue} className="px-5 py-2.5 rounded-lg bg-green-600 hover:bg-green-500 text-white font-semibold text-sm sm:text-base transition-colors shadow-lg hover:shadow-green-500/30">Resume watching</button>
+                <button onClick={handleResumeStartOver} className="px-5 py-2.5 rounded-lg bg-yellow-600 hover:bg-yellow-500 text-white font-semibold text-sm sm:text-base transition-colors shadow-lg hover:shadow-yellow-500/30">Watch from beginning</button>
               </div>
             </div>
           </div>
@@ -837,13 +837,13 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
           <div className="absolute inset-0 flex items-center justify-center z-50 bg-black/70" data-no-toggle>
             <div className="flex flex-col items-center gap-4">
               <div className="animate-spin rounded-full h-12 w-12 sm:h-14 sm:w-14 border-4 border-white border-t-transparent" />
-              <p className="text-sm text-gray-300">Đang tải tới vị trí đã xem...</p>
+              <p className="text-sm text-gray-300">Loading to last watched position...</p>
               {showResumeSkip && (
                 <button
                   onClick={(e) => { e.stopPropagation(); handleResumeSkip(); }}
                   className="px-4 py-2 rounded-lg bg-yellow-600 hover:bg-yellow-500 text-white text-sm font-semibold transition-colors shadow-lg"
                 >
-                  Bỏ qua, xem từ đầu
+                  Skip, watch from beginning
                 </button>
               )}
             </div>
