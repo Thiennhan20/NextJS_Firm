@@ -26,6 +26,7 @@ import { useWatchlistStore } from '@/store/store'
 import useAuthHydrated from '@/store/useAuthHydrated'
 import Link from 'next/link'
 import api from '@/lib/axios'
+import UserComments from '@/components/UserComments'
 import { toast } from 'react-hot-toast'
 import imageCompression from 'browser-image-compression'
 
@@ -641,6 +642,9 @@ export default function ProfilePage() {
                 </div>
               </div>
             </motion.div>
+
+            {/* User Comments Component */}
+            <UserComments />
           </div>
         </section>
       </div>
