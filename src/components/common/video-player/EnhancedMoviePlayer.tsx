@@ -132,6 +132,18 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
     // Resume popup
     const [resumePopup, setResumePopup] = useState<{ show: boolean; savedTime: number }>({ show: false, savedTime: 0 });
     const [controlsReady, setControlsReady] = useState(!movieId || !server || !audio);
+    const [resumeSeekPending, setResumeSeekPending] = useState(false);
+    const [showResumeSkip, setShowResumeSkip] = useState(false);
+    const resumeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const resumeSkipTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+    // Cleanup resume timeouts on unmount
+    useEffect(() => {
+      return () => {
+        if (resumeTimeoutRef.current) clearTimeout(resumeTimeoutRef.current);
+        if (resumeSkipTimerRef.current) clearTimeout(resumeSkipTimerRef.current);
+      };
+    }, []);
 
     // Derived state (no useEffect needed)
     const isLoading = isBuffering || isSeeking;
@@ -380,34 +392,67 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
     const handleResumeContinue = useCallback(() => {
       const savedTime = resumePopup.savedTime;
       setResumePopup({ show: false, savedTime: 0 });
+      setResumeSeekPending(true);
+      setShowResumeSkip(false);
+      setControlsReady(true);
 
       const video = getVideo(ref, innerRef);
-      if (!video) { setControlsReady(true); return; }
+      if (!video) { setResumeSeekPending(false); return; }
 
-      // Simply seek within the existing HLS instance — no destroy/recreate needed.
-      // HLS.js will flush old buffers and load the correct .ts segment automatically.
-      const doSeek = () => {
-        const dur = video.duration;
-        if (dur && isFinite(dur) && dur > 0) {
-          const target = Math.min(savedTime, dur - 1);
-          pendingSeekRef.current = target; // Calibrate offset after seek
-          video.currentTime = target;
-          setCurrentTime(target);
-          setDuration(dur);
-        } else {
-          pendingSeekRef.current = savedTime;
-          video.currentTime = savedTime;
-          setCurrentTime(savedTime);
-        }
-        setControlsReady(true);
+      let finished = false;
+
+      const finish = () => {
+        if (finished) return;
+        finished = true;
+        video.removeEventListener('seeked', onSeeked);
+        video.removeEventListener('canplay', onCanPlayAfterSeek);
+        if (resumeTimeoutRef.current) { clearTimeout(resumeTimeoutRef.current); resumeTimeoutRef.current = null; }
+        if (resumeSkipTimerRef.current) { clearTimeout(resumeSkipTimerRef.current); resumeSkipTimerRef.current = null; }
+        setResumeSeekPending(false);
+        setShowResumeSkip(false);
         video.play().catch(() => { });
       };
 
-      // If metadata is already loaded (duration available), seek immediately
+      const onCanPlayAfterSeek = () => {
+        video.removeEventListener('canplay', onCanPlayAfterSeek);
+        finish();
+      };
+
+      const onSeeked = () => {
+        video.removeEventListener('seeked', onSeeked);
+        if (video.readyState >= 3) { finish(); return; }
+        video.addEventListener('canplay', onCanPlayAfterSeek);
+      };
+
+      video.addEventListener('seeked', onSeeked);
+
+      // Show "skip" option after 5s
+      resumeSkipTimerRef.current = setTimeout(() => setShowResumeSkip(true), 5000);
+      // Hard timeout 15s — play from wherever we are
+      resumeTimeoutRef.current = setTimeout(() => finish(), 15000);
+
+      const doSeek = () => {
+        const dur = video.duration;
+        let target = savedTime;
+        if (dur && isFinite(dur) && dur > 0) {
+          if (savedTime >= dur * 0.98) {
+            finished = true;
+            if (resumeTimeoutRef.current) { clearTimeout(resumeTimeoutRef.current); resumeTimeoutRef.current = null; }
+            if (resumeSkipTimerRef.current) { clearTimeout(resumeSkipTimerRef.current); resumeSkipTimerRef.current = null; }
+            setResumeSeekPending(false);
+            return;
+          }
+          target = Math.min(savedTime, dur - 1);
+          setDuration(dur);
+        }
+        pendingSeekRef.current = target;
+        video.currentTime = target;
+        setCurrentTime(target);
+      };
+
       if (video.duration && isFinite(video.duration) && video.duration > 0) {
         doSeek();
       } else {
-        // Otherwise wait for metadata to load first
         const onMeta = () => {
           video.removeEventListener('loadedmetadata', onMeta);
           doSeek();
@@ -420,6 +465,15 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
       setResumePopup({ show: false, savedTime: 0 });
       setControlsReady(true);
     }, []);
+
+    const handleResumeSkip = useCallback(() => {
+      setResumeSeekPending(false);
+      setShowResumeSkip(false);
+      if (resumeTimeoutRef.current) { clearTimeout(resumeTimeoutRef.current); resumeTimeoutRef.current = null; }
+      if (resumeSkipTimerRef.current) { clearTimeout(resumeSkipTimerRef.current); resumeSkipTimerRef.current = null; }
+      const video = getVideo(ref, innerRef);
+      if (video) { pendingSeekRef.current = 0; video.currentTime = 0; setCurrentTime(0); }
+    }, [ref]);
 
     // ─── Save progress (5 triggers: interval 10s, pause, seek single, seek debounce, beforeunload) ──
     const lastSavedTimeRef = useRef(0);
@@ -666,7 +720,7 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
     useEffect(() => {
       const handler = (e: KeyboardEvent) => {
         if (!innerContainerRef.current) return;
-        if (!controlsReady) return; // Block keyboard when resume popup is showing
+        if (!controlsReady || resumeSeekPending) return; // Block keyboard when resume popup or seek pending
         const target = e.target as HTMLElement;
         if (target?.tagName === "INPUT" || target?.tagName === "TEXTAREA" || target?.isContentEditable) return;
         switch (e.key.toLowerCase()) {
@@ -684,7 +738,7 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
       };
       window.addEventListener("keydown", handler);
       return () => window.removeEventListener("keydown", handler);
-    }, [togglePlay, toggleFullscreen, toggleMute, ref, viewerMode, controlsReady, duration]);
+    }, [togglePlay, toggleFullscreen, toggleMute, ref, viewerMode, controlsReady, resumeSeekPending, duration]);
 
     // ─── Seek helper (guard duration) ───────────────────────
     const seekTo = useCallback((pct: number) => {
@@ -709,7 +763,7 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
           const target = e.target as HTMLElement;
           if (target.closest('button') || target.closest('input') || target.closest('[data-no-toggle]')) return;
           if (viewerMode) return;
-          if (!controlsReady) return; // Block click when resume popup is showing
+          if (!controlsReady || resumeSeekPending) return; // Block click when resume popup or seek pending
           togglePlay();
         }}
         onMouseLeave={handleMouseLeave}
@@ -751,7 +805,7 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
         )}
 
         {/* Loading */}
-        {isLoading && controlsReady && (
+        {isLoading && controlsReady && !resumeSeekPending && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div className="pointer-events-auto flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-black/50 text-white">
               <div className="animate-spin rounded-full h-8 w-8 sm:h-10 sm:w-10 border-b-2 border-white" />
@@ -778,8 +832,26 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
           </div>
         )}
 
+        {/* Resume Seek Loading */}
+        {resumeSeekPending && (
+          <div className="absolute inset-0 flex items-center justify-center z-50 bg-black/70" data-no-toggle>
+            <div className="flex flex-col items-center gap-4">
+              <div className="animate-spin rounded-full h-12 w-12 sm:h-14 sm:w-14 border-4 border-white border-t-transparent" />
+              <p className="text-sm text-gray-300">Đang tải tới vị trí đã xem...</p>
+              {showResumeSkip && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleResumeSkip(); }}
+                  className="px-4 py-2 rounded-lg bg-yellow-600 hover:bg-yellow-500 text-white text-sm font-semibold transition-colors shadow-lg"
+                >
+                  Bỏ qua, xem từ đầu
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Center Play/Pause — hidden during resume popup */}
-        <div className={`absolute inset-0 flex items-center justify-center pointer-events-none ${!controlsReady ? 'hidden' : ''}`}>
+        <div className={`absolute inset-0 flex items-center justify-center pointer-events-none ${!controlsReady || resumeSeekPending ? 'hidden' : ''}`}>
           {!isPlaying ? (
             <div className="pointer-events-auto flex items-center gap-4">
               {!isEnded && (
