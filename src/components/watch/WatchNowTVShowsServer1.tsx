@@ -151,7 +151,30 @@ export default function WatchNowTVShowsServer1({
         }
         let slug = null;
 
+        // Helper to detect season number from text (declared outside if block for wider scope)
+        const detectSeasonInText = (text: string): number | null => {
+            const patterns = [
+              /ph[aầ]n[-\s]*(\d+)/i,
+              /season[-\s]*(\d+)/i,
+              /m[uù]a[-\s]*(\d+)/i,
+              /part[-\s]*(\d+)/i,
+              /\bs(\d{1,2})\b/i,
+            ];
+            for (const p of patterns) {
+              const m = text.match(p);
+              if (m) return parseInt(m[1], 10);
+            }
+            // Check trailing number in slug-like text: "abc-2"
+            const trailing = text.match(/-(\d+)$|\s(\d+)$/);
+            if (trailing) {
+              const num = parseInt(trailing[1] || trailing[2], 10);
+              if (num < 100) return num;
+            }
+            return null;
+          };
+
         // OPTIMIZED: Sequential search with early exit on high-confidence match
+        let tmdbDerivedBaseNames: string[] = []; // Store base names from TMDB for search fallback
 
         if (tvShow?.name) {
           const originNameWithSeason = `${tvShow.name} (Season ${selectedSeason})`;
@@ -165,6 +188,15 @@ export default function WatchNowTVShowsServer1({
             slug?: string;
           }): number => {
             let score = 0;
+
+            // Detect what season this item belongs to
+            const itemText = `${item.name || ''} ${item.origin_name || ''} ${item.slug || ''}`.toLowerCase();
+            const itemSeason = detectSeasonInText(itemText);
+
+            // CRITICAL: If item clearly belongs to a DIFFERENT season, heavily penalize
+            if (itemSeason !== null && itemSeason !== selectedSeason) {
+              score -= 200;
+            }
 
             if (item.tmdb?.id && String(item.tmdb.id) === String(id)) score += 100;
             if (item.origin_name && item.origin_name.toLowerCase() === originNameWithSeason.toLowerCase()) score += 90;
@@ -271,6 +303,53 @@ export default function WatchNowTVShowsServer1({
                 } else if (!detectedSeason && selectedSeason === 1) {
                   slug = apiSlug;
                 } else {
+                  
+                  // Strategy A: Try to construct the correct slug by replacing the season number
+                  if (detectedSeason) {
+                    // Replace season patterns in slug: "phan-1" → "phan-6", "-season-1" → "-season-6"
+                    const slugVariants = [
+                      apiSlug.replace(`phan-${detectedSeason}`, `phan-${selectedSeason}`),
+                      apiSlug.replace(`season-${detectedSeason}`, `season-${selectedSeason}`),
+                      apiSlug.replace(`mua-${detectedSeason}`, `mua-${selectedSeason}`),
+                      apiSlug.replace(new RegExp(`-${detectedSeason}$`), `-${selectedSeason}`),
+                    ].filter(s => s !== apiSlug); // Filter out unchanged slugs
+                    
+                    for (const trySlug of slugVariants) {
+                      try {
+                        const tryRes = await fetch(`${apiUrl}/server1/detail/${trySlug}`);
+                        const tryData = await tryRes.json();
+                        if (tryData?.episodes && Array.isArray(tryData.episodes) && tryData.episodes.length > 0) {
+                          // Verify this detail data belongs to the correct season
+                          const tryText = `${tryData.movie?.name || ''} ${tryData.movie?.origin_name || ''} ${trySlug}`.toLowerCase();
+                          const trySeason = detectSeasonInText(tryText);
+                          if (trySeason === selectedSeason || (trySeason === null && selectedSeason === 1)) {
+                            slug = trySlug;
+                            break;
+                          }
+                        }
+                      } catch {
+                        // Slug doesn't exist, try next
+                      }
+                    }
+                  }
+                  
+                  // Strategy B: Extract base names from TMDB result for search fallback
+                  // "Quanzhi Fashi (Season 1)" → "Quanzhi Fashi"
+                  // "Toàn Chức Pháp Sư (Phần 1)" → "Toàn Chức Pháp Sư"
+                  if (!slug) {
+                    const stripSeason = (name: string): string => {
+                      return name
+                        .replace(/\s*\(?\s*(?:season|phần|part|mùa)\s*\d+\s*\)?\s*$/i, '')
+                        .replace(/\s+\d+\s*$/, '')
+                        .trim();
+                    };
+                    const tmdbOriginBase = stripSeason(apiOriginName);
+                    const tmdbViBase = stripSeason(apiName);
+                    
+                    if (tmdbOriginBase || tmdbViBase) {
+                      tmdbDerivedBaseNames = [tmdbOriginBase, tmdbViBase].filter(Boolean);
+                    }
+                  }
                 }
               } else {
               }
@@ -279,11 +358,27 @@ export default function WatchNowTVShowsServer1({
 
             // Step 2: If TMDB lookup failed, fall back to text search strategies
             if (!slug) {
-              const searchPriorities = [
+              
+              // Build search priorities — include base names from TMDB if available
+              const searchPriorities: Array<{ keyword: string; name: string; minScore: number }> = [
                 { keyword: originNameWithSeason, name: 'Origin name', minScore: 80 },
                 { keyword: `${normalizedName} phần ${selectedSeason}`, name: 'Vietnamese', minScore: 60 },
-                { keyword: tvShow.name, name: 'Show name', minScore: 40 }
               ];
+              
+              // Add TMDB-derived base names with season
+              if (tmdbDerivedBaseNames.length > 0) {
+                for (const baseName of tmdbDerivedBaseNames) {
+                  searchPriorities.push(
+                    { keyword: `${baseName} (Season ${selectedSeason})`, name: `TMDB base: ${baseName} + season`, minScore: 60 },
+                    { keyword: `${baseName} phần ${selectedSeason}`, name: `TMDB base VN: ${baseName} + phần`, minScore: 60 },
+                    { keyword: baseName, name: `TMDB base: ${baseName}`, minScore: 50 },
+                  );
+                }
+              }
+              
+              searchPriorities.push(
+                { keyword: tvShow.name, name: 'Show name', minScore: 40 }
+              );
 
               let bestResult = null;
               let bestScore = 0;
@@ -304,9 +399,10 @@ export default function WatchNowTVShowsServer1({
                 }
               }
 
-              // If no early exit, use best result found
-              if (!slug && bestResult) {
+              // If no early exit, use best result found — but ONLY if score is positive (not season-mismatched)
+              if (!slug && bestResult && bestResult.score > 0) {
                 slug = bestResult.slug;
+              } else if (!slug && bestResult && bestResult.score <= 0) {
               }
             } // end if (!slug)
           } catch {
@@ -326,14 +422,27 @@ export default function WatchNowTVShowsServer1({
         let finalDetailData = detailData;
 
         if (detailData.episodes && Array.isArray(detailData.episodes)) {
-          // Tìm episode có số thứ tự tương ứng với episode đang được chọn
-          const targetEpisode = detailData.episodes.find((ep: { episode_number: number; name?: string }) =>
-            ep.episode_number === selectedEpisode ||
-            ep.name?.toLowerCase().includes(`tập ${selectedEpisode}`) ||
-            ep.name?.toLowerCase().includes(`episode ${selectedEpisode}`)
-          );
+          // FIRST: Verify the detail data actually belongs to the correct season
+          // by checking the movie name/slug for season indicators
+          const detailMovieName = detailData.movie?.name || '';
+          const detailOriginName = detailData.movie?.origin_name || '';
+          const detailSlug = detailData.movie?.slug || slug || '';
+          const detailText = `${detailMovieName} ${detailOriginName} ${detailSlug}`.toLowerCase();
+          const detailSeason = detectSeasonInText(detailText);
 
-          hasSeasonEpisodes = !!targetEpisode;
+          // If the detail data clearly belongs to a different season, skip it
+          if (detailSeason !== null && detailSeason !== selectedSeason) {
+            hasSeasonEpisodes = false;
+          } else {
+            // Season matches or no season detected — check for episode
+            const targetEpisode = detailData.episodes.find((ep: { episode_number: number; name?: string }) =>
+              ep.episode_number === selectedEpisode ||
+              ep.name?.toLowerCase().includes(`tập ${selectedEpisode}`) ||
+              ep.name?.toLowerCase().includes(`episode ${selectedEpisode}`)
+            );
+
+            hasSeasonEpisodes = !!targetEpisode;
+          }
         }
 
         // Nếu không có episodes của season này, tìm kiếm lại với từ khóa khác
@@ -356,24 +465,55 @@ export default function WatchNowTVShowsServer1({
               const altData = await altRes.json();
 
               if (altData.status === 'success' && altData.data?.items?.length > 0) {
-                const altItem = altData.data.items[0];
+                // Score all items using season detection to pick correct season
+                let bestAltItem = null;
+                let bestAltScore = -Infinity;
+                for (const item of altData.data.items) {
+                  const itemText = `${item.name || ''} ${item.origin_name || ''} ${item.slug || ''}`.toLowerCase();
+                  const itemSeason = detectSeasonInText(itemText);
+                  let s = 0;
+                  // Penalize wrong season
+                  if (itemSeason !== null && itemSeason !== selectedSeason) {
+                    s -= 200;
+                  } else if (itemSeason === selectedSeason) {
+                    s += 100; // Exact season match bonus
+                  }
+                  // Name similarity
+                  if (item.origin_name?.toLowerCase().includes(tvShow?.name?.toLowerCase() || '')) s += 25;
+                  if (item.slug?.toLowerCase().includes(tvShow?.name?.toLowerCase().replace(/[^\\w\\s]/g, '').replace(/\\s+/g, '-').trim() || '')) s += 15;
+                  if (s > bestAltScore) {
+                    bestAltScore = s;
+                    bestAltItem = item;
+                  }
+                }
 
-                // Kiểm tra lại với phim mới
-                const altDetailRes = await fetch(`${apiUrl}/server1/detail/${altItem.slug}`);
-                const altDetailData = await altDetailRes.json();
+                // Only use if score is positive (correct season)
+                if (bestAltItem && bestAltScore > 0) {
+                  // Kiểm tra lại với phim mới
+                  const altDetailRes = await fetch(`${apiUrl}/server1/detail/${bestAltItem.slug}`);
+                  const altDetailData = await altDetailRes.json();
 
-                if (altDetailData.episodes && Array.isArray(altDetailData.episodes)) {
-                  const altTargetEpisode = altDetailData.episodes.find((ep: { episode_number: number; name?: string }) =>
-                    ep.episode_number === selectedEpisode ||
-                    ep.name?.toLowerCase().includes(`tập ${selectedEpisode}`) ||
-                    ep.name?.toLowerCase().includes(`episode ${selectedEpisode}`)
-                  );
+                  if (altDetailData.episodes && Array.isArray(altDetailData.episodes)) {
+                    // Verify season from detail data
+                    const altDetailText = `${altDetailData.movie?.name || ''} ${altDetailData.movie?.origin_name || ''} ${altDetailData.movie?.slug || bestAltItem.slug}`.toLowerCase();
+                    const altDetailSeason = detectSeasonInText(altDetailText);
 
-                  if (altTargetEpisode) {
-                    slug = altItem.slug;
-                    finalDetailData = altDetailData;
-                    hasSeasonEpisodes = true;
-                    break;
+                    if (altDetailSeason !== null && altDetailSeason !== selectedSeason) {
+                      continue; // Skip this wrong-season result
+                    }
+
+                    const altTargetEpisode = altDetailData.episodes.find((ep: { episode_number: number; name?: string }) =>
+                      ep.episode_number === selectedEpisode ||
+                      ep.name?.toLowerCase().includes(`tập ${selectedEpisode}`) ||
+                      ep.name?.toLowerCase().includes(`episode ${selectedEpisode}`)
+                    );
+
+                    if (altTargetEpisode) {
+                      slug = bestAltItem.slug;
+                      finalDetailData = altDetailData;
+                      hasSeasonEpisodes = true;
+                      break;
+                    }
                   }
                 }
               }
@@ -465,7 +605,6 @@ export default function WatchNowTVShowsServer1({
         });
 
       } catch {
-        // Error handling
       } finally {
         clearTimeout(timeoutId);
         onLoadingChange(false);

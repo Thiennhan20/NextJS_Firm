@@ -214,10 +214,18 @@ export default function WatchNowTVShows({
         tvShow={tvShow}
         selectedSeason={selectedSeason}
         selectedEpisode={selectedEpisode}
-        onLinksChange={(links) => setTVShowLinks(prev => ({ ...prev, ...links }))}
-        onLoadingChange={setTVShowLinksLoading}
-        onSearchComplete={setApiSearchCompleted}
-        onDataReadyChange={setDataReady}
+        onLinksChange={(links) => {
+          setTVShowLinks(prev => ({ ...prev, ...links }))
+        }}
+        onLoadingChange={(loading) => {
+          setTVShowLinksLoading(loading)
+        }}
+        onSearchComplete={(completed) => {
+          setApiSearchCompleted(completed)
+        }}
+        onDataReadyChange={(ready) => {
+          setDataReady(ready)
+        }}
       />
 
       {/* Server 2 Component */}
@@ -234,9 +242,15 @@ export default function WatchNowTVShows({
         selectedSeason={selectedSeason}
         selectedEpisode={selectedEpisode}
         server1Ready={apiSearchCompleted}
-        onLinksChange={setServer3Links}
-        onLoadingChange={setServer3Loading}
-        onSearchComplete={setServer3SearchCompleted}
+        onLinksChange={(links) => {
+          setServer3Links(links)
+        }}
+        onLoadingChange={(loading) => {
+          setServer3Loading(loading)
+        }}
+        onSearchComplete={(completed) => {
+          setServer3SearchCompleted(completed)
+        }}
       />
 
       <div className="mb-4">
@@ -453,7 +467,6 @@ export default function WatchNowTVShows({
               videoSrc = tvShowLinks.m3u8;
               effectiveAudio = null;
             }
-
             return videoSrc ? (
               <EnhancedMoviePlayer
                 key={`${selectedSeason}-${selectedEpisode}-${videoSrc}`}
