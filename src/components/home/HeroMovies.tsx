@@ -248,12 +248,12 @@ export default function HeroMovies() {
       }
     };
 
-    // Check on mount and resize
+    // Check on mount and resize (increased debounce to reduce layout thrashing)
     checkContentOverflow();
-    const debouncedCheck = debounce(checkContentOverflow, 50);
+    const debouncedCheck = debounce(checkContentOverflow, 200);
     
     window.addEventListener('resize', debouncedCheck);
-    window.addEventListener('scroll', debouncedCheck);
+    window.addEventListener('scroll', debouncedCheck, { passive: true } as AddEventListenerOptions);
 
     return () => {
       window.removeEventListener('resize', debouncedCheck);
@@ -422,8 +422,7 @@ export default function HeroMovies() {
   if (loading) {
     return (
       <section 
-        className="relative min-h-[calc(100vh-4rem)] flex items-center justify-center overflow-hidden bg-gradient-to-br from-gray-900 via-black to-gray-800"
-        style={{ minHeight: 'calc(100vh - 4rem)' }}
+        className="relative min-h-[60vh] md:min-h-[calc(100vh-4rem)] flex items-center justify-center overflow-hidden bg-gradient-to-br from-gray-900 via-black to-gray-800"
       >
         <motion.div
           className="flex flex-col items-center space-y-4"
@@ -453,8 +452,7 @@ export default function HeroMovies() {
   if (!heroItems.length) {
     return (
       <section 
-        className="relative min-h-[calc(100vh-4rem)] flex items-center justify-center overflow-hidden bg-gradient-to-br from-gray-900 via-black to-gray-800"
-        style={{ minHeight: 'calc(100vh - 4rem)' }}
+        className="relative min-h-[60vh] md:min-h-[calc(100vh-4rem)] flex items-center justify-center overflow-hidden bg-gradient-to-br from-gray-900 via-black to-gray-800"
       >
         <div className="text-center">
           <h2 className="text-2xl text-gray-300 mb-4">No content available</h2>
@@ -478,11 +476,7 @@ export default function HeroMovies() {
         </Head>
       ) : null}
     <section 
-      className="relative w-full min-h-[calc(100vh-4rem)] max-h-[calc(100vh-4rem)] overflow-hidden flex items-center justify-center"
-      style={{ 
-        minHeight: 'calc(100vh - 4rem)', 
-        maxHeight: 'calc(100vh - 4rem)' 
-      }}
+      className="relative w-full min-h-[60vh] max-h-[60vh] md:min-h-[calc(100vh-4rem)] md:max-h-[calc(100vh-4rem)] overflow-hidden flex items-center justify-center"
       onMouseEnter={stopAutoPlay}
       onMouseLeave={startAutoPlay}
     >
@@ -541,11 +535,10 @@ export default function HeroMovies() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
                 transition={{ duration: 0.6 }}
-                className="space-y-3"
+                className="space-y-2"
               >
-                {/* Mobile Title */}
                 <motion.h1
-                  className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold uppercase tracking-tight leading-tight px-4 min-h-[3.5rem] sm:min-h-[4rem] md:min-h-[5rem] flex items-center justify-center"
+                  className="text-lg sm:text-xl md:text-2xl font-bold uppercase tracking-tight leading-tight px-4 min-h-[2.5rem] sm:min-h-[3rem] flex items-center justify-center"
                   style={{
                     background: 'linear-gradient(135deg, #fff 0%, #f0f0f0 50%, #ddd 100%)',
                     WebkitBackgroundClip: 'text',
@@ -560,7 +553,7 @@ export default function HeroMovies() {
                 </motion.h1>
 
                 {/* Mobile Meta */}
-                <div className="flex items-center justify-center gap-2 text-xs sm:text-sm flex-wrap mt-2">
+                <div className="flex items-center justify-center gap-2 text-[11px] sm:text-xs flex-wrap mt-1">
                   <span className="text-gray-300 text-center">
                     {formatDate(currentItem.release_date || currentItem.first_air_date || '')}
                   </span>
@@ -578,14 +571,14 @@ export default function HeroMovies() {
                 <AnimatePresence mode="wait">
                   <motion.div
                     key={currentIndex}
-                    className="relative group flex justify-center my-6"
+                    className="relative group flex justify-center my-3"
                     initial={{ opacity: 0, scale: 0.8 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.8 }}
                     transition={{ duration: 0.6 }}
                   >
                     <div 
-                      className="w-48 h-64 sm:w-56 sm:h-72 md:w-64 md:h-80 rounded-2xl overflow-hidden shadow-2xl relative cursor-pointer transition-transform duration-300 hover:scale-105"
+                      className="w-36 h-52 sm:w-44 sm:h-60 md:w-56 md:h-72 rounded-2xl overflow-hidden shadow-2xl relative cursor-pointer transition-transform duration-300 hover:scale-105"
                       onClick={() => handleTrailerClick(currentItem)}
                     >
                       <Image
@@ -593,7 +586,7 @@ export default function HeroMovies() {
                         alt={getTitle(currentItem)}
                         fill
                         className="object-cover"
-                        sizes="(max-width: 640px) 192px, (max-width: 768px) 224px, 256px"
+                        sizes="(max-width: 640px) 144px, (max-width: 768px) 176px, 224px"
                         priority={isFirstSlide}
                         loading={isFirstSlide ? 'eager' : 'lazy'}
                       />
@@ -604,16 +597,15 @@ export default function HeroMovies() {
                   </motion.div>
                 </AnimatePresence>
 
-                {/* Mobile Action Buttons */}
                 <motion.div
-                  className="flex items-center justify-center gap-3 px-4 pt-2"
+                  className="flex items-center justify-center gap-2.5 px-4 pt-1"
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.8, delay: 0.4 }}
                 >
                   <Link href={getRoute(currentItem)} className="w-auto">
                     <motion.button
-                      className="flex items-center justify-center gap-2 px-4 py-2.5 bg-yellow-500 hover:bg-yellow-600 rounded-full font-bold text-black shadow-lg transition-all duration-300"
+                      className="flex items-center justify-center gap-1.5 px-3.5 py-2 bg-yellow-500 hover:bg-yellow-600 rounded-full font-bold text-black text-sm shadow-lg transition-all duration-300"
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
                     >
@@ -624,7 +616,7 @@ export default function HeroMovies() {
                   
                   <motion.button
                     onClick={() => handleToggleWatchlist(currentItem)}
-                    className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-full font-semibold text-sm transition-all duration-300 ${
+                    className={`flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-full font-semibold text-sm transition-all duration-300 ${
                       isInWatchlist(currentItem.id)
                         ? 'bg-amber-700 text-white hover:bg-amber-800'
                         : 'bg-gray-700 hover:bg-gray-600 text-white'
@@ -642,11 +634,11 @@ export default function HeroMovies() {
                 </motion.div>
 
                 {/* Mobile Thumbnails */}
-                <div className="flex items-center justify-center gap-2 px-4 pt-2 overflow-x-auto pb-2 scrollbar-hide">
+                <div className="flex items-center justify-center gap-1.5 px-4 pt-1.5 overflow-x-auto pb-1 scrollbar-hide">
                   {visibleItems.map((item, index) => (
                     <motion.button
                       key={item.id}
-                      className={`relative flex-shrink-0 w-12 h-16 sm:w-14 sm:h-18 rounded-lg overflow-hidden border-2 transition-all duration-300 ${
+                      className={`relative flex-shrink-0 w-10 h-14 sm:w-12 sm:h-16 rounded-lg overflow-hidden border-2 transition-all duration-300 ${
                         index === currentIndex 
                           ? 'border-red-500 shadow-lg shadow-red-500/30' 
                           : 'border-white/20'
@@ -659,7 +651,7 @@ export default function HeroMovies() {
                         alt={getTitle(item)}
                         fill
                         className="object-cover"
-                        sizes="56px"
+                        sizes="48px"
                         loading="lazy"
                       />
                       {index === currentIndex && (

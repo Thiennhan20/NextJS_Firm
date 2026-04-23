@@ -1,3 +1,4 @@
+export { default as ActiveStreamingRooms } from './ActiveStreamingRooms';
 export { default as ComingSoonMovies } from './ComingSoonMovies';
 export { default as EntertainmentFrames } from './EntertainmentFrames';
 export { default as HeroMovies } from './HeroMovies';

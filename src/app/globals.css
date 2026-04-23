@@ -61,10 +61,32 @@
   }
 }
 
-/* Optimize all animated elements */
-[data-framer-motion] {
-  will-change: transform, opacity;
-  transform: translateZ(0);
+/* CSS 3D poster animation - lightweight replacement for Three.js */
+@keyframes posterFloat {
+  0%, 100% { transform: rotateY(-12deg) rotateX(4deg); }
+  50% { transform: rotateY(12deg) rotateX(-4deg); }
+}
+
+/* Home page CTA animations - CSS instead of Framer Motion */
+@keyframes ctaBgRotate {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes ctaGradientShift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+@keyframes ctaPulseOpacity {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}
+
+@keyframes ctaIconRotate {
+  0% { transform: rotate(0deg) scale(1); }
+  50% { transform: rotate(180deg) scale(1.2); }
+  100% { transform: rotate(360deg) scale(1); }
 }
 
 /* Reduce motion for users who prefer it */

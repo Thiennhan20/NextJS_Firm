@@ -2,9 +2,6 @@
 
 import { useEffect, useState, useRef } from 'react'
 import { motion, useScroll, useTransform, AnimatePresence } from 'framer-motion'
-import { Canvas } from '@react-three/fiber'
-import { OrbitControls, PerspectiveCamera, Html } from '@react-three/drei'
-import * as THREE from 'three'
 import Image from 'next/image'
 import { ClockIcon, CalendarIcon, PlayIcon } from '@heroicons/react/24/solid'
 import { BookmarkIcon } from '@heroicons/react/24/outline'
@@ -68,6 +65,7 @@ export default function MovieDetail() {
   const isBookmarked = movie ? isInWatchlist(movie.id) : false;
   const [isCastExpanded, setIsCastExpanded] = useState(false);
   const [isDescExpanded, setIsDescExpanded] = useState(false);
+  const [posterLoaded, setPosterLoaded] = useState(false);
 
   const handleToggleWatchlist = async () => {
     if (!movie) return;
@@ -162,7 +160,7 @@ export default function MovieDetail() {
           cast: credits.cast?.slice(0, 10).map((person: { name: string }) => person.name) || [],
           genre: data.genres ? data.genres.map((g: { name: string }) => g.name).join(', ') : '',
           description: data.overview,
-          poster: data.poster_path ? `https://image.tmdb.org/t/p/w500${data.poster_path}` : '',
+          poster: data.poster_path ? `https://image.tmdb.org/t/p/w342${data.poster_path}` : '',
           backdrop: data.backdrop_path ? `https://image.tmdb.org/t/p/original${data.backdrop_path}` : '',
           trailer,
           movieUrl: '',
@@ -203,12 +201,12 @@ export default function MovieDetail() {
 
   const { title, backdrop, poster, duration, year, genre, director, cast, description, scenes, trailer, releaseDate } = movie;
   const heroHeightClass = poster
-    ? 'h-[40vh] md:h-[50vh] lg:h-[60vh]'
-    : 'h-[28vh] sm:h-[24vh] md:h-[28vh] lg:h-[32vh]';
+    ? 'h-[30vh] sm:h-[35vh] md:h-[50vh] lg:h-[60vh]'
+    : 'h-[20vh] sm:h-[24vh] md:h-[28vh] lg:h-[32vh]';
 
   return (
     <div ref={containerRef} className="min-h-screen bg-gradient-to-b from-gray-900 to-black">
-      <div className="relative w-full overflow-hidden py-16 lg:py-0 min-h-screen flex items-center">
+      <div className="relative w-full overflow-hidden py-10 sm:py-14 lg:py-0 min-h-[60vh] md:min-h-screen flex items-center">
         <div className="absolute inset-0">
           <Image
             src={backdrop}
@@ -224,22 +222,35 @@ export default function MovieDetail() {
           style={{ y, opacity }}
           className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 lg:grid lg:grid-cols-2 lg:gap-8 lg:items-center"
         >
-          <div className={`relative ${heroHeightClass} w-full flex items-center justify-center mb-8 lg:mb-0`}>
+          <div className={`relative ${heroHeightClass} w-full flex items-center justify-center mb-4 sm:mb-6 lg:mb-0`}>
             {poster ? (
-              <Canvas className="w-full h-full">
-                <PerspectiveCamera makeDefault position={[0, 0, 5]} />
-                <OrbitControls
-                  enableZoom={false}
-                  minAzimuthAngle={-0.35}
-                  maxAzimuthAngle={0.35}
-                  minPolarAngle={Math.PI / 2 - 0.175}
-                  maxPolarAngle={Math.PI / 2 + 0.175}
-                  rotateSpeed={0.5}
-                />
-                <ambientLight intensity={0.5} />
-                <spotLight position={[10, 10, 10]} angle={0.15} penumbra={1} />
-                <MoviePoster3D posterUrl={`/api/cache-image?id=${id}&url=${encodeURIComponent(poster ?? '')}`} />
-              </Canvas>
+              <div className="flex items-center justify-center w-full h-full" style={{ perspective: '1000px' }}>
+                <div
+                  className="relative w-[140px] h-[210px] sm:w-[150px] sm:h-[225px] md:w-[170px] md:h-[255px] lg:w-[190px] lg:h-[285px] rounded-xl overflow-hidden shadow-2xl"
+                  style={{
+                    transformStyle: 'preserve-3d',
+                    animation: 'posterFloat 6s ease-in-out infinite',
+                  }}
+                >
+                  {/* Loading skeleton */}
+                  {!posterLoaded && (
+                    <div className="absolute inset-0 bg-gray-700 animate-pulse rounded-xl flex items-center justify-center">
+                      <div className="w-8 h-8 border-3 border-red-500 border-t-transparent rounded-full animate-spin" />
+                    </div>
+                  )}
+                  <Image
+                    src={`/api/cache-image?id=${id}&url=${encodeURIComponent(poster ?? '')}`}
+                    alt={title}
+                    fill
+                    className={`object-cover transition-opacity duration-300 ${posterLoaded ? 'opacity-100' : 'opacity-0'}`}
+                    sizes="(max-width: 640px) 160px, (max-width: 768px) 200px, 280px"
+                    priority
+                    unoptimized
+                    onLoad={() => setPosterLoaded(true)}
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
+                </div>
+              </div>
             ) : (
               <div className="bg-gray-700/70 rounded-lg flex items-center justify-center shadow-inner border border-gray-600 w-[96px] h-[144px] sm:w-[128px] sm:h-[192px] md:w-[160px] md:h-[240px] lg:w-[192px] lg:h-[288px]">
                 <span className="text-2xl sm:text-3xl">🎬</span>
@@ -247,32 +258,32 @@ export default function MovieDetail() {
             )}
           </div>
 
-          <div className="text-white space-y-6">
+          <div className="text-white space-y-3 sm:space-y-4 lg:space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
               <motion.h1
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold leading-tight"
+                className="text-xl sm:text-2xl md:text-3xl lg:text-5xl font-bold leading-tight"
               >
                 {title}
               </motion.h1>
 
             </div>
 
-            <div className="flex flex-wrap gap-4">
+            <div className="flex flex-wrap gap-3">
 
-              <div className="flex items-center space-x-2">
-                <ClockIcon className="h-6 w-6 text-gray-400" />
-                <span className="text-gray-400">{duration}</span>
+              <div className="flex items-center space-x-1.5">
+                <ClockIcon className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 text-gray-400" />
+                <span className="text-gray-400 text-sm sm:text-base">{duration}</span>
               </div>
-              <div className="flex items-center space-x-2">
-                <CalendarIcon className="h-6 w-6 text-gray-400" />
-                <span className="text-gray-400">{releaseDate ? formatDate(releaseDate) : year}</span>
+              <div className="flex items-center space-x-1.5">
+                <CalendarIcon className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 text-gray-400" />
+                <span className="text-gray-400 text-sm sm:text-base">{releaseDate ? formatDate(releaseDate) : year}</span>
               </div>
             </div>
 
             <div className="space-y-2">
-              <p className="text-gray-300">{genre}</p>
+              <p className="text-gray-300 text-sm sm:text-base">{genre}</p>
               {director && (
                 <p className="text-gray-300">Director: {director}</p>
               )}
@@ -754,127 +765,5 @@ export default function MovieDetail() {
         )}
       </AnimatePresence>
     </div>
-  )
-}
-
-function MoviePoster3D({ posterUrl }: { posterUrl: string }) {
-  const meshRef = useRef<THREE.Mesh>(null)
-  const [texture, setTexture] = useState<THREE.Texture | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-
-  useEffect(() => {
-    const loader = new THREE.TextureLoader()
-    let loadedTexture: THREE.Texture | null = null
-    let cancelled = false
-
-    setIsLoading(true)
-
-    loader.load(
-      posterUrl,
-      (tex) => {
-        if (!cancelled) {
-          // Set texture properties
-          tex.flipY = true // Để ảnh hiển thị đúng hướng
-          tex.generateMipmaps = true
-
-          loadedTexture = tex
-          setTexture(tex)
-          setIsLoading(false)
-        }
-      },
-      undefined, // onProgress
-      (error) => {
-        // onError
-        if (!cancelled) {
-          console.error('Texture loading error:', error)
-          setIsLoading(false)
-        }
-      }
-    )
-
-    return () => {
-      cancelled = true
-      if (loadedTexture) {
-        loadedTexture.dispose()
-      }
-    }
-  }, [posterUrl])
-
-  // Debug texture loading
-  useEffect(() => {
-    if (texture) {
-      console.log('Texture loaded successfully:', {
-        uuid: texture.uuid,
-        image: texture.image,
-        width: texture.image?.width,
-        height: texture.image?.height,
-        isLoaded: texture.image?.complete
-      })
-    }
-  }, [texture])
-
-  useEffect(() => {
-    let frameId: number;
-    const start = Date.now();
-    const maxY = 0.35;
-    const maxX = 0.1;
-
-    const animate = () => {
-      if (meshRef.current) {
-        const t = (Date.now() - start) / 1000;
-        meshRef.current.rotation.y = Math.sin(t) * maxY;
-        meshRef.current.rotation.x = Math.sin(t * 0.7) * maxX;
-      }
-      frameId = requestAnimationFrame(animate);
-    };
-    animate();
-    return () => cancelAnimationFrame(frameId);
-  }, []);
-
-  if (isLoading) {
-    return (
-      <mesh>
-        <planeGeometry args={[2, 3]} />
-        <meshBasicMaterial color="#374151" />
-        <Html center>
-          <div className="flex flex-col items-center justify-center text-white">
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ repeat: Infinity, duration: 1.5, ease: 'linear' }}
-              className="w-8 h-8 border-4 border-red-500 border-t-transparent rounded-full"
-            />
-            <span className="text-xs mt-2 text-gray-300">Loading...</span>
-          </div>
-        </Html>
-      </mesh>
-    )
-  }
-
-  if (!texture) {
-    return (
-      <mesh>
-        <planeGeometry args={[2, 3]} />
-        <meshBasicMaterial color="#6B7280" />
-        <Html center>
-          <div className="flex flex-col items-center justify-center text-white">
-            <span className="text-xs text-gray-300">No Image</span>
-          </div>
-        </Html>
-      </mesh>
-    )
-  }
-
-  return (
-    <mesh ref={meshRef} castShadow>
-      <planeGeometry args={[2, 3]} />
-      <meshBasicMaterial
-        key={texture.uuid} // Force re-render when texture changes
-        map={texture}
-        toneMapped={false}
-        transparent={false}
-        opacity={1}
-        side={THREE.DoubleSide}
-      />
-    </mesh>
   )
 }

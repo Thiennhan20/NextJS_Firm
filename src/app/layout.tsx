@@ -11,7 +11,7 @@ import { HeaderProvider } from '@/contexts/HeaderContext';
 import ContentWrapper from '@/components/ContentWrapper';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import WatchlistSyncer from "@/components/WatchlistSyncer";
-import FloatingChatbox from "@/components/FloatingChatbox";
+import FloatingChatboxWrapper from "@/components/FloatingChatboxWrapper";
 import ProgressCleanup from '@/components/ProgressCleanup';
 import VersionChecker from '@/components/VersionChecker';
 
@@ -64,7 +64,7 @@ export default function RootLayout({
             {children}
           </ContentWrapper>
           <Footer />
-          <FloatingChatbox />
+          <FloatingChatboxWrapper />
           <CustomToaster />
           <VersionChecker />
           <SpeedInsights />

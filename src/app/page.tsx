@@ -1,6 +1,7 @@
 'use client'
 
-import { motion } from 'framer-motion'
+
+
 import { useEffect, useState, lazy, Suspense } from 'react'
 import { 
   SparklesIcon,
@@ -15,6 +16,7 @@ import HeroMovies from '@/components/home/HeroMovies'
 
 // Lazy load all other components with React.lazy (true code splitting)
 const RecentlyWatchedMovies = lazy(() => import('@/components/home').then(m => ({ default: m.RecentlyWatched })))
+const ActiveStreamingRooms = lazy(() => import('@/components/home').then(m => ({ default: m.ActiveStreamingRooms })))
 const EntertainmentFrames = lazy(() => import('@/components/home').then(m => ({ default: m.EntertainmentFrames })))
 const TrendingMovies = lazy(() => import('@/components/home').then(m => ({ default: m.TrendingMovies })))
 const ComingSoonMovies = lazy(() => import('@/components/home').then(m => ({ default: m.ComingSoonMovies })))
@@ -113,6 +115,13 @@ export default function Home() {
         </Suspense>
       </LazySection>
 
+      {/* Active Streaming Rooms Section - Lazy load */}
+      <LazySection rootMargin="400px" minHeight="200px">
+        <Suspense fallback={<SectionSkeleton />}>
+          <ActiveStreamingRooms />
+        </Suspense>
+      </LazySection>
+
       {/* Entertainment Frames Section - Lazy load */}
       <LazySection rootMargin="400px" minHeight="500px">
         <Suspense fallback={<SectionSkeleton />}>
@@ -145,36 +154,30 @@ export default function Home() {
 
       {/* Call to Action Section */}
       <section className="py-20 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
-        <motion.div
+        <div
             className="absolute inset-0"
-            animate={{ rotate: [0, 360] }}
-            transition={{ duration: 40, repeat: Infinity, repeatType: "mirror" }}
-            style={{ backgroundImage: "radial-gradient(circle at 30% 20%, rgba(139, 92, 246, 0.2) 0%, transparent 50%), radial-gradient(circle at 70% 80%, rgba(239, 68, 68, 0.2) 0%, transparent 50%)"}}
+            style={{
+              backgroundImage: "radial-gradient(circle at 30% 20%, rgba(139, 92, 246, 0.2) 0%, transparent 50%), radial-gradient(circle at 70% 80%, rgba(239, 68, 68, 0.2) 0%, transparent 50%)",
+              animation: 'ctaBgRotate 40s linear infinite alternate',
+            }}
         />
         <div className="max-w-5xl mx-auto text-center relative z-10 px-4">
-            <motion.div
-              whileHover={{ scale: 1.02 }}
-              transition={{ type: "spring", stiffness: 200, damping: 20 }}
-              className="bg-black/40 backdrop-blur-xl rounded-3xl p-8 sm:p-12 border border-white/10"
+            <div
+              className="bg-black/40 backdrop-blur-xl rounded-3xl p-8 sm:p-12 border border-white/10 hover:scale-[1.02] transition-transform duration-300"
             >
-              <motion.h2 
-                animate={{
-                  backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"],
-                }}
-                transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-purple-400 via-pink-400 to-red-400 bg-300% text-transparent bg-clip-text leading-tight"
-                style={{ backgroundSize: "300% 300%" }}
+              <h2
+                className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-purple-400 via-pink-400 to-red-400 text-transparent bg-clip-text leading-tight"
+                style={{ backgroundSize: "300% 300%", animation: 'ctaGradientShift 4s ease-in-out infinite' }}
               >
                 Coming Soon
-              </motion.h2>
+              </h2>
               
-              <motion.p 
-                animate={{ opacity: [0.7, 1, 0.7] }}
-                transition={{ duration: 3, repeat: Infinity }}
+              <p
                 className="text-lg text-gray-300 mb-8"
+                style={{ animation: 'ctaPulseOpacity 3s ease-in-out infinite' }}
               >
                 Something extraordinary is brewing in our galaxy...
-              </motion.p>
+              </p>
 
               {/* Simple Feature Icons */}
               <div className="flex justify-center gap-8 mb-8">
@@ -184,24 +187,17 @@ export default function Home() {
                   { icon: <HeartIcon className="w-8 h-8" />, color: "text-red-400" },
                   { icon: <EyeIcon className="w-8 h-8" />, color: "text-blue-400" }
                 ].map((item, index) => (
-                  <motion.div
+                  <div
                     key={index}
-                    animate={{ 
-                      rotate: [0, 360],
-                      scale: [1, 1.2, 1]
-                    }}
-                    transition={{ 
-                      rotate: { duration: 6, repeat: Infinity, ease: "linear" },
-                      scale: { duration: 2, delay: index * 0.5, repeat: Infinity, repeatType: "mirror" }
-                    }}
                     className={item.color}
+                    style={{ animation: `ctaIconRotate 6s linear infinite`, animationDelay: `${index * 0.5}s` }}
                   >
                     {item.icon}
-                  </motion.div>
+                  </div>
                 ))}
               </div>
 
-            </motion.div>
+            </div>
         </div>
       </section>
       

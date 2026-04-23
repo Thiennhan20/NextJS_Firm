@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';
-import { Plus, Hash, ArrowRight, Radio, Copy, Check, LogIn, Film, Tv, Clock, Users, Trash2, RefreshCw, AlertTriangle } from 'lucide-react';
+import { Plus, Hash, ArrowRight, Radio, Copy, Check, LogIn, Film, Tv, Clock, Users, Trash2, RefreshCw, AlertTriangle, X } from 'lucide-react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
@@ -38,6 +38,8 @@ function StreamingLobbyContent() {
   const [error, setError] = useState('');
   const [particles, setParticles] = useState<Particle[]>([]);
   const [copied, setCopied] = useState(false);
+  const [showAuthPopup, setShowAuthPopup] = useState(false);
+  const [deleteConfirmRoomId, setDeleteConfirmRoomId] = useState<string | null>(null);
   const [createdRoom, setCreatedRoom] = useState<{
     roomId: string;
     title: string;
@@ -80,12 +82,20 @@ function StreamingLobbyContent() {
     setParticles(newParticles);
   }, []);
 
-  // Fetch active rooms
+  // Auth check helper — shows popup if not authenticated, returns false
+  const requireAuth = (): boolean => {
+    if (!isAuthenticated) {
+      setShowAuthPopup(true);
+      return false;
+    }
+    return true;
+  };
+
+  // Fetch active rooms (public API — no auth needed)
   const fetchRooms = async () => {
-    if (!isAuthenticated) return;
     setLoadingRooms(true);
     try {
-      const res = await api.get('/rooms');
+      const res = await api.get('/rooms/public');
       setActiveRooms(res.data.rooms || []);
       if (res.data.max_rooms) setMaxRooms(res.data.max_rooms);
     } catch {
@@ -99,18 +109,20 @@ function StreamingLobbyContent() {
     fetchRooms();
     const interval = setInterval(fetchRooms, 30000); // Refresh every 30s
     return () => clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthenticated]);
+  }, []);
 
-  const handleDeleteRoom = async (roomId: string) => {
-    if (!confirm('Are you sure you want to delete this room?')) return;
+  const handleDeleteRoom = async () => {
+    const roomId = deleteConfirmRoomId;
+    if (!roomId) return;
+    setDeleteConfirmRoomId(null);
     setDeletingRoomId(roomId);
     try {
       await api.delete(`/rooms/${roomId}`);
       setActiveRooms(prev => prev.filter(r => r.room_id !== roomId));
       if (createdRoom?.roomId === roomId) setCreatedRoom(null);
     } catch {
-      alert('Failed to delete room.');
+      setError('Failed to delete room. Please try again.');
+      setTimeout(() => setError(''), 4000);
     } finally {
       setDeletingRoomId(null);
     }
@@ -141,7 +153,7 @@ function StreamingLobbyContent() {
   };
 
   const handleCreateRoom = async () => {
-    if (!isAuthenticated) return;
+    if (!requireAuth()) return;
     if (!streamUrlFromParams) return;
 
     setLoading(true);
@@ -171,6 +183,7 @@ function StreamingLobbyContent() {
   };
 
   const handleJoinById = () => {
+    if (!requireAuth()) return;
     if (joinRoomId.trim()) {
       router.push(`/streaming-room?room=${joinRoomId.trim()}`);
     }
@@ -197,49 +210,7 @@ function StreamingLobbyContent() {
     }
   };
 
-  // Auth gate
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 text-white flex items-center justify-center px-4 py-6 relative overflow-hidden">
-        {/* Background */}
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute -top-20 -right-20 w-40 h-40 bg-yellow-500/10 rounded-full blur-3xl animate-pulse" />
-          <div className="absolute -bottom-20 -left-20 w-40 h-40 bg-purple-500/10 rounded-full blur-3xl animate-pulse delay-1000" />
-        </div>
 
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.5 }}
-          className="relative z-10 text-center max-w-md"
-        >
-          <div className="mb-6 mx-auto w-20 h-20 rounded-full bg-gradient-to-br from-yellow-500/20 to-amber-500/20 border border-yellow-500/30 flex items-center justify-center">
-            <LogIn className="h-9 w-9 text-yellow-400" />
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-bold mb-3 bg-gradient-to-r from-yellow-400 to-amber-400 bg-clip-text text-transparent">
-            Sign In Required
-          </h1>
-          <p className="text-gray-400 mb-8 text-sm sm:text-base">
-            You need to sign in to create or join a streaming room.
-          </p>
-          <div className="flex gap-3 justify-center">
-            <button
-              onClick={() => router.push('/login')}
-              className="px-6 py-2.5 bg-gradient-to-r from-yellow-500 to-amber-500 text-black font-semibold rounded-lg hover:from-yellow-400 hover:to-amber-400 transition-all duration-300 shadow-lg shadow-yellow-500/20 text-sm"
-            >
-              Sign In
-            </button>
-            <button
-              onClick={() => router.back()}
-              className="px-6 py-2.5 bg-gray-800 text-gray-300 font-semibold rounded-lg hover:bg-gray-700 transition-all duration-300 border border-gray-700 text-sm"
-            >
-              Go Back
-            </button>
-          </div>
-        </motion.div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 text-white flex justify-center px-4 py-6 relative overflow-y-auto">
@@ -609,7 +580,7 @@ function StreamingLobbyContent() {
                     <div className="flex items-center gap-1.5 shrink-0">
                       {userId === room.host_id && (
                         <button
-                          onClick={() => handleDeleteRoom(room.room_id)}
+                          onClick={() => setDeleteConfirmRoomId(room.room_id)}
                           disabled={deletingRoomId === room.room_id}
                           className="p-1.5 text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all text-xs"
                           title="Delete room"
@@ -618,7 +589,10 @@ function StreamingLobbyContent() {
                         </button>
                       )}
                       <button
-                        onClick={() => router.push(`/streaming-room?room=${room.room_id}`)}
+                        onClick={() => {
+                          if (!requireAuth()) return;
+                          router.push(`/streaming-room?room=${room.room_id}`);
+                        }}
                         disabled={room.member_count >= room.max_users && userId !== room.host_id}
                         className="px-3 py-1.5 bg-gradient-to-r from-yellow-500 to-amber-500 text-black text-xs font-semibold rounded-lg hover:from-yellow-400 hover:to-amber-400 disabled:from-gray-600 disabled:to-gray-700 disabled:text-gray-400 transition-all shadow-sm"
                       >
@@ -632,6 +606,108 @@ function StreamingLobbyContent() {
           )}
         </motion.div>
       </div>
+      {/* Auth Required Popup */}
+      <AnimatePresence>
+        {showAuthPopup && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4"
+            onClick={() => setShowAuthPopup(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+              className="relative bg-gray-800/95 backdrop-blur-xl rounded-2xl p-6 border border-gray-700/60 shadow-2xl max-w-sm w-full text-center"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                onClick={() => setShowAuthPopup(false)}
+                className="absolute top-3 right-3 p-1 text-gray-500 hover:text-white transition-colors rounded-lg hover:bg-gray-700/50"
+              >
+                <X className="h-4 w-4" />
+              </button>
+              <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-gradient-to-br from-yellow-500/20 to-amber-500/20 border border-yellow-500/30 flex items-center justify-center">
+                <LogIn className="h-7 w-7 text-yellow-400" />
+              </div>
+              <h3 className="text-lg font-bold text-white mb-1">Sign In Required</h3>
+              <p className="text-sm text-gray-400 mb-5">
+                Please sign in to join or create a streaming room.
+              </p>
+              <div className="flex gap-2.5 justify-center">
+                <button
+                  onClick={() => router.push('/login')}
+                  className="px-5 py-2 bg-gradient-to-r from-yellow-500 to-amber-500 text-black font-semibold rounded-lg hover:from-yellow-400 hover:to-amber-400 transition-all text-sm shadow-lg shadow-yellow-500/20"
+                >
+                  Sign In
+                </button>
+                <button
+                  onClick={() => setShowAuthPopup(false)}
+                  className="px-5 py-2 bg-gray-700 text-gray-300 font-semibold rounded-lg hover:bg-gray-600 transition-all text-sm border border-gray-600"
+                >
+                  Cancel
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Delete Room Confirm Popup */}
+      <AnimatePresence>
+        {deleteConfirmRoomId && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4"
+            onClick={() => setDeleteConfirmRoomId(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+              className="relative bg-gray-800/95 backdrop-blur-xl rounded-2xl p-6 border border-gray-700/60 shadow-2xl max-w-sm w-full text-center"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                onClick={() => setDeleteConfirmRoomId(null)}
+                className="absolute top-3 right-3 p-1 text-gray-500 hover:text-white transition-colors rounded-lg hover:bg-gray-700/50"
+              >
+                <X className="h-4 w-4" />
+              </button>
+              <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-gradient-to-br from-red-500/20 to-rose-500/20 border border-red-500/30 flex items-center justify-center">
+                <Trash2 className="h-7 w-7 text-red-400" />
+              </div>
+              <h3 className="text-lg font-bold text-white mb-1">Delete Room?</h3>
+              <p className="text-sm text-gray-400 mb-2">
+                This will close the room and disconnect all viewers.
+              </p>
+              <p className="text-xs font-mono text-yellow-300/70 mb-5">
+                #{deleteConfirmRoomId}
+              </p>
+              <div className="flex gap-2.5 justify-center">
+                <button
+                  onClick={handleDeleteRoom}
+                  className="px-5 py-2 bg-gradient-to-r from-red-500 to-rose-600 text-white font-semibold rounded-lg hover:from-red-400 hover:to-rose-500 transition-all text-sm shadow-lg shadow-red-500/20"
+                >
+                  Delete
+                </button>
+                <button
+                  onClick={() => setDeleteConfirmRoomId(null)}
+                  className="px-5 py-2 bg-gray-700 text-gray-300 font-semibold rounded-lg hover:bg-gray-600 transition-all text-sm border border-gray-600"
+                >
+                  Cancel
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

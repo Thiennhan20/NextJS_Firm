@@ -80,57 +80,64 @@ export default function Navigation() {
     setNavDropdownOpen(isOpen || isMoreDropdownActive || isProfileDropdownActive);
   }, [isOpen, isMoreDropdownActive, isProfileDropdownActive, setNavDropdownOpen]);
 
-  // Simplified adaptive navigation logic
+  // Simplified adaptive navigation logic (debounced)
   useEffect(() => {
+    let resizeTimer: NodeJS.Timeout;
     const handleResize = () => {
-      const width = window.innerWidth;
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        const width = window.innerWidth;
 
-      // Adaptive steps based on width
-      let step = 0;
-      const visible = [...mainNavItems];
-      const hidden: typeof mainNavItems = [];
-      let searchBar = true;
+        // Adaptive steps based on width
+        let step = 0;
+        const visible = [...mainNavItems];
+        const hidden: typeof mainNavItems = [];
+        let searchBar = true;
 
-      if (width < 1200) {
-        // Step 1: Hide TV Shows
-        step = 1;
-        const tvIndex = visible.findIndex(item => item.name === 'TV Shows');
-        if (tvIndex !== -1) {
-          hidden.push(visible[tvIndex]);
-          visible.splice(tvIndex, 1);
+        if (width < 1200) {
+          // Step 1: Hide TV Shows
+          step = 1;
+          const tvIndex = visible.findIndex(item => item.name === 'TV Shows');
+          if (tvIndex !== -1) {
+            hidden.push(visible[tvIndex]);
+            visible.splice(tvIndex, 1);
+          }
         }
-      }
 
-      if (width < 1050) {
-        // Step 2: Search bar → icon
-        step = 2;
-        searchBar = false;
-      }
-
-      if (width < 900) {
-        // Step 3: Hide Movies
-        step = 3;
-        const moviesIndex = visible.findIndex(item => item.name === 'Movies');
-        if (moviesIndex !== -1) {
-          hidden.push(visible[moviesIndex]);
-          visible.splice(moviesIndex, 1);
+        if (width < 1050) {
+          // Step 2: Search bar → icon
+          step = 2;
+          searchBar = false;
         }
-      }
 
-      if (width < 700) {
-        // Step 4: Mobile menu
-        step = 4;
-      }
+        if (width < 900) {
+          // Step 3: Hide Movies
+          step = 3;
+          const moviesIndex = visible.findIndex(item => item.name === 'Movies');
+          if (moviesIndex !== -1) {
+            hidden.push(visible[moviesIndex]);
+            visible.splice(moviesIndex, 1);
+          }
+        }
 
-      setAdaptiveStep(step);
-      setVisibleNavItems(visible);
-      setHiddenNavItems(hidden);
-      setShowSearchBar(searchBar);
+        if (width < 700) {
+          // Step 4: Mobile menu
+          step = 4;
+        }
+
+        setAdaptiveStep(step);
+        setVisibleNavItems(visible);
+        setHiddenNavItems(hidden);
+        setShowSearchBar(searchBar);
+      }, 150);
     };
 
-    handleResize();
+    handleResize(); // Initial call (no debounce needed)
     window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    return () => {
+      clearTimeout(resizeTimer);
+      window.removeEventListener('resize', handleResize);
+    };
   }, []);
 
   useEffect(() => {

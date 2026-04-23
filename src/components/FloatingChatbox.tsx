@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence, useDragControls, PanInfo } from 'framer-motion'
 import { ChatBubbleLeftIcon, XMarkIcon } from '@heroicons/react/24/outline'
 import { ChevronUpIcon } from '@heroicons/react/24/solid'
-import { marked } from 'marked'
+// marked is dynamically imported when needed to reduce bundle size
 
 export default function FloatingChatbox() {
   const [isOpen, setIsOpen] = useState(false)
@@ -19,8 +19,9 @@ export default function FloatingChatbox() {
   const [position, setPosition] = useState({ x: 0, y: 0 })
   const [currentPosition, setCurrentPosition] = useState<'bottomRight' | 'middleRight' | 'topRight' | 'bottomLeft' | 'middleLeft' | 'topLeft'>('bottomRight')
   const [viewportHeight, setViewportHeight] = useState(0)
-  const [scrollPosition, setScrollPosition] = useState(0)
+  const scrollPositionRef = useRef(0)
   const [documentHeight, setDocumentHeight] = useState(0)
+  const [markedModule, setMarkedModule] = useState<{ parse: (s: string) => string } | null>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
   const [messages, setMessages] = useState<{ role: 'user' | 'assistant', content: string }[]>(() => {
     if (typeof window !== 'undefined') {
@@ -69,43 +70,51 @@ export default function FloatingChatbox() {
     return () => window.removeEventListener('resize', updateDimensions)
   }, [])
 
-  // Track scroll position and show/hide scroll-to-top arrow
+  // Track scroll position and show/hide scroll-to-top arrow (throttled with rAF)
   useEffect(() => {
+    let ticking = false
     const handleScroll = () => {
-      setScrollPosition(window.scrollY)
-      setShowScrollTop(window.scrollY > 20)
+      if (!ticking) {
+        requestAnimationFrame(() => {
+          scrollPositionRef.current = window.scrollY
+          setShowScrollTop(window.scrollY > 20)
+          ticking = false
+        })
+        ticking = true
+      }
     }
 
-    window.addEventListener('scroll', handleScroll)
+    window.addEventListener('scroll', handleScroll, { passive: true })
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
-  // Calculate button position based on scroll and current position
-  const calculateButtonPosition = () => {
-    // If button is in bottom position, keep it fixed
-    if (currentPosition === 'bottomRight' || currentPosition === 'bottomLeft') {
-      return position
-    }
-
+  // Snap to bottom when scroll reaches end (moved out of render to avoid setState during render)
+  useEffect(() => {
+    if (currentPosition === 'bottomRight' || currentPosition === 'bottomLeft') return
     const maxScroll = documentHeight - viewportHeight
-    const scrollProgress = Math.min(scrollPosition / maxScroll, 1)
-    
-    // Calculate the maximum y offset based on viewport height
-    const maxYOffset = viewportHeight - 100 // 100px is the button height + padding
-    
-    // Calculate the current y position based on scroll progress
-    const currentY = position.y + (scrollProgress * maxYOffset)
-    
-    // If we've scrolled enough to reach bottom position, update currentPosition
+    if (maxScroll <= 0) return
+    const scrollProgress = Math.min(scrollPositionRef.current / maxScroll, 1)
     if (scrollProgress >= 0.95) {
       setCurrentPosition(currentPosition.includes('Right') ? 'bottomRight' : 'bottomLeft')
     }
-    
-    return {
-      x: position.x,
-      y: currentY
+  }, [showScrollTop, currentPosition, documentHeight, viewportHeight])
+
+  // Calculate button position based on scroll and current position (pure function, no setState)
+  const calculateButtonPosition = () => {
+    if (currentPosition === 'bottomRight' || currentPosition === 'bottomLeft') {
+      return position
     }
+    return position
   }
+
+  // Load marked module when chat opens
+  useEffect(() => {
+    if (isOpen && !markedModule) {
+      import('marked').then(mod => {
+        setMarkedModule({ parse: (s: string) => mod.marked.parse(s) as string })
+      })
+    }
+  }, [isOpen, markedModule])
 
   // Save messages to sessionStorage whenever they change
   useEffect(() => {
@@ -327,7 +336,7 @@ export default function FloatingChatbox() {
                       } break-words`}
                     >
                       {msg.role === 'assistant' ? (
-                        <div className="ai-response-content prose prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: marked.parse(msg.content) }} />
+                        <div className="ai-response-content prose prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: markedModule ? markedModule.parse(msg.content) : msg.content }} />
                       ) : (
                         msg.content
                       )}
