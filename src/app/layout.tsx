@@ -42,7 +42,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <meta charSet="utf-8" />
         <link rel="icon" type="image/png" sizes="16x16" href="/favicon.ico" />
@@ -50,6 +50,9 @@ export default function RootLayout({
         {/* Preconnect to TMDB for faster image loading */}
         <link rel="preconnect" href="https://image.tmdb.org" />
         <link rel="dns-prefetch" href="https://image.tmdb.org" />
+        {/* Blocking script: hide splash on reload before paint */}
+        <script dangerouslySetInnerHTML={{ __html: `try{if(sessionStorage.getItem('splashShown'))document.documentElement.setAttribute('data-splash-done','1')}catch(e){}` }} />
+        <style dangerouslySetInnerHTML={{ __html: `html[data-splash-done="1"] [data-splash]{display:none!important}` }} />
       </head>
       <body className={`${inter.className} bg-black text-white min-h-screen flex flex-col`}>
         <HeaderProvider>

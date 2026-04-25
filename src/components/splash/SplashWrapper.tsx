@@ -1,38 +1,36 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useLayoutEffect, useCallback } from 'react';
 import SplashScreen from './SplashScreen';
 
 export default function SplashWrapper() {
-  // Only show splash once per session
-  const [showSplash, setShowSplash] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return !sessionStorage.getItem('splashShown');
-    }
-    return true;
-  });
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  // Always start true → matches server render → NO hydration mismatch
+  const [showSplash, setShowSplash] = useState(true);
 
+  // Stable callback
+  const handleComplete = useCallback(() => {
+    setShowSplash(false);
+    sessionStorage.setItem('splashShown', '1');
+    document.body.style.overflow = '';
+    document.documentElement.style.overflow = '';
+  }, []);
+
+  // useLayoutEffect runs synchronously BEFORE browser paints.
+  // If session already saw splash → hide it before user ever sees a frame.
+  useLayoutEffect(() => {
+    if (sessionStorage.getItem('splashShown')) {
+      setShowSplash(false);
+    }
+  }, []);
+
+  // Lock scroll while splash is active
   useEffect(() => {
     if (!showSplash) return;
 
-    // Prevent scrolling during splash
     document.body.style.overflow = 'hidden';
     document.documentElement.style.overflow = 'hidden';
 
-    // Auto hide after 1.2s (reduced from 2s)
-    timerRef.current = setTimeout(() => {
-      setShowSplash(false);
-      sessionStorage.setItem('splashShown', '1');
-      
-      // Restore scroll immediately after hiding
-      document.body.style.overflow = '';
-      document.documentElement.style.overflow = '';
-    }, 1200);
-
     return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-      // Always restore scroll on cleanup
       document.body.style.overflow = '';
       document.documentElement.style.overflow = '';
     };
@@ -40,5 +38,5 @@ export default function SplashWrapper() {
 
   if (!showSplash) return null;
 
-  return <SplashScreen onComplete={() => { setShowSplash(false); sessionStorage.setItem('splashShown', '1'); }} />;
+  return <SplashScreen onComplete={handleComplete} />;
 }

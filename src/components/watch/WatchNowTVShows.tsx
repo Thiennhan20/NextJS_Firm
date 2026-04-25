@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useRef, useMemo } from 'react'
+import { useEffect, useState, useRef, useMemo, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import { useSearchParams, useRouter } from 'next/navigation'
 import EnhancedMoviePlayer from '@/components/common/video-player/EnhancedMoviePlayer'
@@ -9,7 +9,7 @@ import { proxyHlsUrl } from '@/lib/hlsProxy'
 import WatchNowTVShowsServer1 from './WatchNowTVShowsServer1'
 import WatchNowTVShowsServer2 from './WatchNowTVShowsServer2'
 import WatchNowTVShowsServer3 from './WatchNowTVShowsServer3'
-import { Radio } from 'lucide-react'
+import { Radio, SkipForward } from 'lucide-react'
 
 // Định nghĩa kiểu TVShow
 interface TVShow {
@@ -79,6 +79,12 @@ export default function WatchNowTVShows({
   const [server3Links, setServer3Links] = useState({ vietsub: '', dubbed: '', m3u8: '' });
   const [server3Loading, setServer3Loading] = useState(false);
   const [server3SearchCompleted, setServer3SearchCompleted] = useState(false);
+
+  // ── Auto Next Episode states ──
+  const [autoNextEnabled, setAutoNextEnabled] = useState(false);
+  const [showNextEpisodePopup, setShowNextEpisodePopup] = useState(false);
+  const [nextEpisodeCountdown, setNextEpisodeCountdown] = useState(5);
+  const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // ✅ Di chuyển tvShowLinks lên đây để useEffect có thể dùng
   const [tvShowLinks, setTVShowLinks] = useState({
@@ -184,6 +190,73 @@ export default function WatchNowTVShows({
     if (tvShowLinks.dubbed) return tvShowLinks.dubbed;
     return tvShowLinks.m3u8;
   }, [selectedServer, apiSearchCompleted, tvShowLinksLoading, dataReady, selectedAudio, tvShowLinks.vietsub, tvShowLinks.dubbed, tvShowLinks.m3u8]);
+
+  // ── Auto Next Episode Logic ──
+  const hasNextEpisode = useMemo(() => {
+    if (!_episodes || _episodes.length === 0) return false;
+    const maxEp = Math.max(..._episodes.map(ep => ep.episode_number));
+    return selectedEpisode < maxEp;
+  }, [_episodes, selectedEpisode]);
+
+  const goToNextEpisode = useCallback(() => {
+    if (!hasNextEpisode) return;
+    const nextEp = selectedEpisode + 1;
+    setShowNextEpisodePopup(false);
+    setNextEpisodeCountdown(5);
+    if (countdownIntervalRef.current) { clearInterval(countdownIntervalRef.current); countdownIntervalRef.current = null; }
+    // Navigate via URL params
+    const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
+    params.set('season', String(selectedSeason));
+    params.set('episode', String(nextEp));
+    if (typeof window !== 'undefined') {
+      window.history.pushState({}, '', `${window.location.pathname}?${params.toString()}`);
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    }
+  }, [hasNextEpisode, selectedEpisode, selectedSeason]);
+
+  const handleVideoEnded = useCallback(() => {
+    if (selectedServer !== 'server1') return;
+    if (!hasNextEpisode) return;
+    setShowNextEpisodePopup(true);
+    setNextEpisodeCountdown(5);
+    if (autoNextEnabled) {
+      countdownIntervalRef.current = setInterval(() => {
+        setNextEpisodeCountdown(prev => {
+          if (prev <= 1) {
+            if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+  }, [selectedServer, hasNextEpisode, autoNextEnabled]);
+
+  // Auto-navigate when countdown reaches 0
+  useEffect(() => {
+    if (autoNextEnabled && nextEpisodeCountdown === 0 && showNextEpisodePopup) {
+      goToNextEpisode();
+    }
+  }, [autoNextEnabled, nextEpisodeCountdown, showNextEpisodePopup, goToNextEpisode]);
+
+  // Cleanup countdown on unmount or episode change
+  useEffect(() => {
+    return () => {
+      if (countdownIntervalRef.current) { clearInterval(countdownIntervalRef.current); countdownIntervalRef.current = null; }
+    };
+  }, [selectedEpisode]);
+
+  // Hide popup when episode changes
+  useEffect(() => {
+    setShowNextEpisodePopup(false);
+    setNextEpisodeCountdown(5);
+  }, [selectedEpisode]);
+
+  const handleDismissPopup = useCallback(() => {
+    setShowNextEpisodePopup(false);
+    setNextEpisodeCountdown(5);
+    if (countdownIntervalRef.current) { clearInterval(countdownIntervalRef.current); countdownIntervalRef.current = null; }
+  }, []);
 
   // Handler cho nút Stream
   const handleStreamClick = () => {
@@ -369,36 +442,57 @@ export default function WatchNowTVShows({
               )}
           </div>
 
-          {/* Stream Button — chỉ hiện khi Server 1 đã load xong m3u8 */}
-          {selectedServer === 'server1' && effectiveStreamUrl && (
-            <div className="relative">
-              <button
-                onClick={handleStreamClick}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-yellow-500 to-amber-500 text-black text-xs sm:text-sm font-semibold hover:from-yellow-400 hover:to-amber-400 transition-all duration-300 shadow-lg shadow-yellow-500/20 hover:shadow-yellow-500/40 whitespace-nowrap"
-                title="Start Watch Party"
-              >
-                <Radio className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                <span className="hidden sm:inline">Stream</span>
-              </button>
+          {/* Auto Next + Stream Buttons — Server 1 only */}
+          {selectedServer === 'server1' && (
+            <div className="flex items-center gap-2">
+              {/* Auto Next Toggle */}
+              {hasNextEpisode && (
+                <button
+                  onClick={() => setAutoNextEnabled(prev => !prev)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all duration-300 whitespace-nowrap ${
+                    autoNextEnabled
+                      ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/40'
+                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                  }`}
+                  title={autoNextEnabled ? 'Auto next episode is ON' : 'Auto next episode is OFF'}
+                >
+                  <SkipForward className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  <span className="hidden sm:inline">Auto Next</span>
+                </button>
+              )}
 
-              {/* Auth notification dropdown */}
-              {streamAuthMessage && (
-                <div className="absolute top-full right-0 mt-2 p-3 bg-gray-900/95 backdrop-blur-sm border border-yellow-500/30 rounded-xl shadow-2xl z-50 w-64">
-                  <p className="text-sm text-white mb-2.5">You need to sign in to use this feature.</p>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => router.push('/login')}
-                      className="flex-1 px-3 py-1.5 bg-yellow-500 text-black text-xs font-semibold rounded-lg hover:bg-yellow-400 transition-colors"
-                    >
-                      Sign In
-                    </button>
-                    <button
-                      onClick={() => { setStreamAuthMessage(false); }}
-                      className="px-3 py-1.5 bg-gray-700 text-white text-xs font-semibold rounded-lg hover:bg-gray-600 transition-colors"
-                    >
-                      ✕
-                    </button>
-                  </div>
+              {/* Stream Button */}
+              {effectiveStreamUrl && (
+                <div className="relative">
+                  <button
+                    onClick={handleStreamClick}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-yellow-500 to-amber-500 text-black text-xs sm:text-sm font-semibold hover:from-yellow-400 hover:to-amber-400 transition-all duration-300 shadow-lg shadow-yellow-500/20 hover:shadow-yellow-500/40 whitespace-nowrap"
+                    title="Start Watch Party"
+                  >
+                    <Radio className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                    <span className="hidden sm:inline">Stream</span>
+                  </button>
+
+                  {/* Auth notification dropdown */}
+                  {streamAuthMessage && (
+                    <div className="absolute top-full right-0 mt-2 p-3 bg-gray-900/95 backdrop-blur-sm border border-yellow-500/30 rounded-xl shadow-2xl z-50 w-64">
+                      <p className="text-sm text-white mb-2.5">You need to sign in to use this feature.</p>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => router.push('/login')}
+                          className="flex-1 px-3 py-1.5 bg-yellow-500 text-black text-xs font-semibold rounded-lg hover:bg-yellow-400 transition-colors"
+                        >
+                          Sign In
+                        </button>
+                        <button
+                          onClick={() => { setStreamAuthMessage(false); }}
+                          className="px-3 py-1.5 bg-gray-700 text-white text-xs font-semibold rounded-lg hover:bg-gray-600 transition-colors"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -481,6 +575,78 @@ export default function WatchNowTVShows({
                 episode={selectedEpisode}
                 isTVShow={true}
                 userId={typeof userId === 'string' ? userId : undefined}
+                onVideoEnded={handleVideoEnded}
+                endOverlay={showNextEpisodePopup && hasNextEpisode ? (
+                  <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      className="bg-gray-900/95 border border-gray-600 rounded-2xl px-6 py-5 sm:px-8 sm:py-6 flex flex-col items-center gap-4 shadow-2xl max-w-sm mx-4"
+                    >
+                      <SkipForward className="w-8 h-8 text-emerald-400" />
+                      <h3 className="text-white text-base sm:text-lg font-bold text-center">
+                        Next: Episode {selectedEpisode + 1}
+                      </h3>
+
+                      {autoNextEnabled ? (
+                        <>
+                          <p className="text-gray-300 text-sm text-center">
+                            Playing next in
+                          </p>
+                          <div className="relative w-16 h-16 flex items-center justify-center">
+                            <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 64 64">
+                              <circle cx="32" cy="32" r="28" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="4" />
+                              <circle
+                                cx="32" cy="32" r="28" fill="none" stroke="url(#countdownGradient)" strokeWidth="4"
+                                strokeLinecap="round"
+                                strokeDasharray={`${2 * Math.PI * 28}`}
+                                strokeDashoffset={`${2 * Math.PI * 28 * (1 - nextEpisodeCountdown / 5)}`}
+                                style={{ transition: 'stroke-dashoffset 1s linear' }}
+                              />
+                              <defs>
+                                <linearGradient id="countdownGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                  <stop offset="0%" stopColor="#10b981" />
+                                  <stop offset="100%" stopColor="#14b8a6" />
+                                </linearGradient>
+                              </defs>
+                            </svg>
+                            <span className="text-2xl font-bold text-white">{nextEpisodeCountdown}</span>
+                          </div>
+                          <div className="flex gap-3">
+                            <button
+                              onClick={goToNextEpisode}
+                              className="px-5 py-2.5 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-semibold text-sm transition-all shadow-lg hover:shadow-emerald-500/30"
+                            >
+                              Play Now
+                            </button>
+                            <button
+                              onClick={handleDismissPopup}
+                              className="px-5 py-2.5 rounded-lg bg-gray-700 hover:bg-gray-600 text-white font-semibold text-sm transition-colors"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="flex gap-3">
+                          <button
+                            onClick={goToNextEpisode}
+                            className="px-5 py-2.5 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-semibold text-sm transition-all shadow-lg hover:shadow-emerald-500/30 flex items-center gap-2"
+                          >
+                            <SkipForward className="w-4 h-4" />
+                            Next Episode
+                          </button>
+                          <button
+                            onClick={handleDismissPopup}
+                            className="px-5 py-2.5 rounded-lg bg-gray-700 hover:bg-gray-600 text-white font-semibold text-sm transition-colors"
+                          >
+                            Dismiss
+                          </button>
+                        </div>
+                      )}
+                    </motion.div>
+                  </div>
+                ) : undefined}
               />
             ) : (
               <div className="flex items-center justify-center h-full text-white text-lg font-semibold">

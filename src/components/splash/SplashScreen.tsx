@@ -10,6 +10,10 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
   const [isVisible, setIsVisible] = useState(true);
   const [charIndex, setCharIndex] = useState(0);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const fadeTimerRef = useRef<NodeJS.Timeout | null>(null);
+  // Stable ref for onComplete — prevents effect re-runs when parent re-renders
+  const onCompleteRef = useRef(onComplete);
+  onCompleteRef.current = onComplete;
 
   const text = "Welcome to E&G";
 
@@ -28,23 +32,20 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
     // Auto hide after 2s
     timerRef.current = setTimeout(() => {
       setIsVisible(false);
-      setTimeout(onComplete, 600); // Wait for fade out
+      fadeTimerRef.current = setTimeout(() => {
+        onCompleteRef.current(); // Use ref — no dependency issues
+      }, 600); // Wait for fade out
     }, 2000);
 
     return () => {
       clearInterval(textInterval);
       if (timerRef.current) clearTimeout(timerRef.current);
+      if (fadeTimerRef.current) clearTimeout(fadeTimerRef.current);
     };
-  }, [onComplete]);
-
-  if (!isVisible) {
-    return (
-      <div className="splash-fade-out fixed inset-0 z-[9999] bg-gradient-to-br from-gray-900 to-blue-900 pointer-events-none" />
-    );
-  }
+  }, []); // ← Empty deps: run ONCE on mount, never re-run
 
   return (
-    <div className="fixed inset-0 z-[9999] bg-gradient-to-br from-gray-900 to-blue-900 flex items-center justify-center overflow-hidden">
+    <div data-splash className={`fixed inset-0 z-[9999] bg-gradient-to-br from-gray-900 to-blue-900 flex items-center justify-center overflow-hidden${!isVisible ? ' splash-fade-out pointer-events-none' : ''}`}>
       {/* Simplified Background - CSS only */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="splash-gradient absolute inset-0 opacity-20" />

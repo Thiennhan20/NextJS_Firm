@@ -36,6 +36,10 @@ export interface EnhancedMoviePlayerProps {
   chatUnreadCount?: number;
   /** When true, shows loading spinner on play button (viewer waiting for host sync) */
   waitingForHost?: boolean;
+  /** Callback fired when video playback ends (used for auto-next-episode) */
+  onVideoEnded?: () => void;
+  /** Custom overlay rendered inside the player container (visible in fullscreen) */
+  endOverlay?: React.ReactNode;
 }
 
 // ─── Constants ────────────────────────────────────────────────────
@@ -98,7 +102,7 @@ function parseQualities(levels: Level[]): Array<{ index: number; label: string }
 
 // ─── Component ────────────────────────────────────────────────────
 const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProps>(
-  ({ src, poster, autoPlay = false, onError, movieId, server, audio, title, season, episode, isTVShow = false, userId, viewerMode = false, onToggleChat, isStreamingRoom = false, fullscreenTarget, hostHasPlayed = false, chatUnreadCount = 0, waitingForHost = false }, ref) => {
+  ({ src, poster, autoPlay = false, onError, movieId, server, audio, title, season, episode, isTVShow = false, userId, viewerMode = false, onToggleChat, isStreamingRoom = false, fullscreenTarget, hostHasPlayed = false, chatUnreadCount = 0, waitingForHost = false, onVideoEnded, endOverlay }, ref) => {
     const innerRef = useRef<HTMLVideoElement>(null);
     const hlsRef = useRef<Hls | null>(null);
     const innerContainerRef = useRef<HTMLDivElement>(null);
@@ -147,6 +151,7 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
 
     // Derived state (no useEffect needed)
     const isLoading = isBuffering || isSeeking;
+    const hasEndOverlay = !!endOverlay;
 
     // ─── Auto-hide controls ─────────────────────────────────
     useEffect(() => {
@@ -306,7 +311,7 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
       };
       const onPlay = () => { setIsPlaying(true); setIsEnded(false); };
       const onPause = () => { setIsPlaying(false); setIsBuffering(false); setIsSeeking(false); };
-      const onEnded = () => { setIsPlaying(false); setIsEnded(true); };
+      const onEnded = () => { setIsPlaying(false); setIsEnded(true); onVideoEnded?.(); };
 
       video.addEventListener("loadedmetadata", onLoadedMetadata);
       video.addEventListener("timeupdate", onTimeUpdate);
@@ -723,6 +728,14 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
         if (!controlsReady || resumeSeekPending) return; // Block keyboard when resume popup or seek pending
         const target = e.target as HTMLElement;
         if (target?.tagName === "INPUT" || target?.tagName === "TEXTAREA" || target?.isContentEditable) return;
+        // When end overlay is showing, only allow fullscreen toggle and escape
+        if (hasEndOverlay) {
+          switch (e.key.toLowerCase()) {
+            case "f": toggleFullscreen(); break;
+            case "escape": setShowSettings(false); break;
+          }
+          return;
+        }
         switch (e.key.toLowerCase()) {
           case " ": case "k": e.preventDefault(); togglePlay(); break;
           case "arrowright":
@@ -738,7 +751,7 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
       };
       window.addEventListener("keydown", handler);
       return () => window.removeEventListener("keydown", handler);
-    }, [togglePlay, toggleFullscreen, toggleMute, ref, viewerMode, controlsReady, resumeSeekPending, duration]);
+    }, [togglePlay, toggleFullscreen, toggleMute, ref, viewerMode, controlsReady, resumeSeekPending, duration, hasEndOverlay]);
 
     // ─── Seek helper (guard duration) ───────────────────────
     const seekTo = useCallback((pct: number) => {
@@ -763,7 +776,8 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
           const target = e.target as HTMLElement;
           if (target.closest('button') || target.closest('input') || target.closest('[data-no-toggle]')) return;
           if (viewerMode) return;
-          if (!controlsReady || resumeSeekPending) return; // Block click when resume popup or seek pending
+          if (!controlsReady || resumeSeekPending) return;
+          if (hasEndOverlay) return; // Block click-to-play when end overlay is showing
           togglePlay();
         }}
         onMouseLeave={handleMouseLeave}
@@ -850,8 +864,8 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
           </div>
         )}
 
-        {/* Center Play/Pause — hidden during resume popup */}
-        <div className={`absolute inset-0 flex items-center justify-center pointer-events-none ${!controlsReady || resumeSeekPending ? 'hidden' : ''}`}>
+        {/* Center Play/Pause — hidden during resume popup or end overlay */}
+        <div className={`absolute inset-0 flex items-center justify-center pointer-events-none ${!controlsReady || resumeSeekPending || hasEndOverlay ? 'hidden' : ''}`}>
           {!isPlaying ? (
             <div className="pointer-events-auto flex items-center gap-4">
               {!isEnded && (
@@ -938,7 +952,7 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
         </div>
 
         {/* Controls bar */}
-        <div className={`absolute inset-x-0 bottom-0 p-2 sm:p-3 flex flex-col gap-1.5 sm:gap-2 transition-all duration-500 ease-in-out transform ${!controlsReady ? 'translate-y-full opacity-0 pointer-events-none' : showControls ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0'}`}>
+        <div className={`absolute inset-x-0 bottom-0 p-2 sm:p-3 flex flex-col gap-1.5 sm:gap-2 transition-all duration-500 ease-in-out transform ${!controlsReady || hasEndOverlay ? 'translate-y-full opacity-0 pointer-events-none' : showControls ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0'}`}>
           {/* Progress bar */}
           <div
             className={`relative w-full h-5 flex items-center group ${viewerMode ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
@@ -1059,6 +1073,9 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
             </div>
           </div>
         </div>
+
+        {/* Custom end overlay (e.g. next-episode popup) — inside container so it works in fullscreen */}
+        {endOverlay}
       </div>
     );
   }
