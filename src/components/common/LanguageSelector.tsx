@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
-import { useRouter, usePathname, useSearchParams } from 'next/navigation'
+import { usePathname, useSearchParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronDownIcon, GlobeAltIcon } from '@heroicons/react/24/outline'
 
@@ -27,7 +27,6 @@ export default function LanguageSelector({ isScrolled = false, className = '' }:
   const [isOpen, setIsOpen] = useState(false)
   const locale = useLocale()
   const t = useTranslations('Navigation')
-  const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const selectedLanguage = languages.find(l => l.code === locale) || languages[0]
@@ -51,10 +50,8 @@ export default function LanguageSelector({ isScrolled = false, className = '' }:
     const query = params.toString()
     const newUrl = query ? `${pathname}?${query}` : pathname
 
-    // Use router.push for client-side navigation, then reload to apply server-side translations
-    router.push(newUrl)
-    // Reload to re-render with new locale from server
-    setTimeout(() => window.location.reload(), 50)
+    // Use window.location.href for a hard navigation to avoid race conditions with Next.js router
+    window.location.href = newUrl
   }
 
   return (
