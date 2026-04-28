@@ -1,0 +1,21 @@
+{
+  "Search": {
+    "title": "Search",
+    "placeholder": "Search",
+    "button": "Search",
+    "listening": "Listening...",
+    "stop": "Stop",
+    "searching": "Searching...",
+    "minChars": "Enter at least {count} characters",
+    "resultsFound": "{count} results found",
+    "noResults": "No results found.",
+    "recentSearches": "Recent Searches",
+    "clearAll": "Clear All",
+    "pageOf": "Page {current} of {total}",
+    "error": "Failed to load results. Please try again.",
+    "goToPage": "Go to Page",
+    "page": "Page",
+    "go": "Go",
+    "tba": "TBA"
+  }
+}

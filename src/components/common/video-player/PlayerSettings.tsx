@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef } from "react";
 import { Cog6ToothIcon } from "@heroicons/react/24/solid";
+import { useTranslations } from 'next-intl';
 
 type AvailableSpeed = 0.5 | 0.75 | 1 | 1.25 | 1.5 | 1.75 | 2;
 
@@ -26,6 +27,7 @@ const PlayerSettings: React.FC<PlayerSettingsProps> = ({
 }) => {
   const speedRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const qualityRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const t = useTranslations('Watch');
 
   // Scroll to active item when panel opens or tab changes
   useEffect(() => {
@@ -46,8 +48,8 @@ const PlayerSettings: React.FC<PlayerSettingsProps> = ({
       <button
         onClick={disabled ? undefined : onToggle}
         className={`p-1.5 sm:p-2 rounded bg-white/10 hover:bg-white/20 text-white ${disabled ? 'opacity-40 cursor-not-allowed' : ''}`}
-        aria-label="Settings"
-        title={disabled ? "Settings disabled during watch party" : "Settings"}
+        aria-label={t('settings')}
+        title={disabled ? t('settingsDisabled') : t('settings')}
       >
         <Cog6ToothIcon className="w-4 h-4 sm:w-5 sm:h-5" />
       </button>
@@ -60,14 +62,14 @@ const PlayerSettings: React.FC<PlayerSettingsProps> = ({
               onClick={() => onTabChange('speed')}
               className={`flex-1 px-2 py-1 text-[10px] sm:text-xs rounded-t transition-colors ${activeTab === 'speed' ? 'text-blue-400 bg-blue-400/20' : 'text-gray-300 hover:text-white'}`}
             >
-              Speed
+              {t('speed')}
             </button>
             {qualities.length > 0 && (
               <button
                 onClick={() => onTabChange('quality')}
                 className={`flex-1 px-2 py-1 text-[10px] sm:text-xs rounded-t transition-colors ${activeTab === 'quality' ? 'text-blue-400 bg-blue-400/20' : 'text-gray-300 hover:text-white'}`}
               >
-                Quality
+                {t('quality')}
               </button>
             )}
           </div>
@@ -82,7 +84,7 @@ const PlayerSettings: React.FC<PlayerSettingsProps> = ({
                   onClick={() => onSpeedChange(s)}
                   className={`w-full text-left px-2 py-1 text-[10px] sm:text-xs rounded hover:bg-white/10 transition-colors ${speed === s ? 'text-blue-400 bg-blue-400/20' : 'text-white'}`}
                 >
-                  {s === 1 ? 'Normal' : `${s}x`}
+                  {s === 1 ? t('normal') : `${s}x`}
                 </button>
               ))}
             </div>

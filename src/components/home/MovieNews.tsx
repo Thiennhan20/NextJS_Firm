@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion'
 import Image from 'next/image'
 import { useEffect, useState } from 'react'
+import { useTranslations } from 'next-intl'
 import axios from 'axios'
 
 interface News {
@@ -25,6 +26,7 @@ interface TMDBMovie {
 export default function MovieNews() {
   const [news, setNews] = useState<News[]>([]);
   const [loading, setLoading] = useState(true);
+  const t = useTranslations('HomePage');
 
   useEffect(() => {
     const fetchNews = async () => {
@@ -53,12 +55,11 @@ export default function MovieNews() {
   return (
     <section className="py-8 sm:py-16 px-1 sm:px-4 bg-gradient-to-b from-black to-gray-900">
       <div className="max-w-7xl mx-auto">
-        <h2 className="text-xl sm:text-4xl font-bold mb-4 sm:mb-8 bg-gradient-to-r from-blue-400 to-pink-500 text-transparent bg-clip-text text-center">
-          Movie News
+        <h2 className="text-xl sm:text-4xl font-bold mb-4 sm:mb-8 bg-gradient-to-r from-blue-400 to-pink-500 text-transparent bg-clip-text text-center">{t('movieNewsTitle')}
         </h2>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-6">
           {loading ? (
-            <div className="text-gray-400 text-center py-8">Loading...</div>
+            <div className="text-gray-400 text-center py-8">{t('movieNewsLoading')}</div>
           ) : (
             news.map((item) => (
               <motion.div

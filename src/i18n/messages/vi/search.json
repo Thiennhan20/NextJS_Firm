@@ -1,0 +1,21 @@
+{
+  "Search": {
+    "title": "Tìm kiếm",
+    "placeholder": "Tìm kiếm",
+    "button": "Tìm kiếm",
+    "listening": "Đang nghe...",
+    "stop": "Dừng",
+    "searching": "Đang tìm kiếm...",
+    "minChars": "Nhập ít nhất {count} ký tự",
+    "resultsFound": "Tìm thấy {count} kết quả",
+    "noResults": "Không tìm thấy kết quả.",
+    "recentSearches": "Tìm kiếm gần đây",
+    "clearAll": "Xóa tất cả",
+    "pageOf": "Trang {current} / {total}",
+    "error": "Lỗi khi tải kết quả. Vui lòng thử lại.",
+    "goToPage": "Đến trang",
+    "page": "Trang",
+    "go": "Đi",
+    "tba": "Chưa rõ"
+  }
+}

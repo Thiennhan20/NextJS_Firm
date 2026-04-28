@@ -9,6 +9,7 @@ import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 import { GoogleLogin, CredentialResponse } from '@react-oauth/google';
 import axios from 'axios';
 import { useWatchlistStore } from '@/store/store';
+import { useTranslations } from 'next-intl';
 
 const LoadingSpinner = () => (
   <div className="flex items-center justify-center">
@@ -29,6 +30,7 @@ const GoogleRegisterButton = () => {
   const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID as string | undefined;
   const googleButtonRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(false);
+  const t = useTranslations('RegisterForm');
 
   const handleGoogleSuccess = async (credentialResponse: CredentialResponse) => {
     setLoading(true);
@@ -44,18 +46,18 @@ const GoogleRegisterButton = () => {
       useAuthStore.setState({ user, token, isAuthenticated: true });
 
       if (token) await fetchWatchlistFromServer(token);
-      toast.success('Google registration successful');
+      toast.success(t('googleSuccess'));
       setLoading(false);
       router.push('/');
     } catch (err: unknown) {
-      const errorMessage = (err as { response?: { data?: { message?: string } }; message?: string }).response?.data?.message || (err as { response?: { data?: { message?: string } }; message?: string }).message;
-      toast.error(`Google registration failed: ${errorMessage}`);
+      const errorMessage = (err as { response?: { data?: { message?: string } }; message?: string }).response?.data?.message || (err as { response?: { data?: { message?: string } }; message?: string }).message || 'Unknown error';
+      toast.error(t('googleFailed', { message: errorMessage }));
       setLoading(false);
     }
   };
 
   const handleGoogleError = () => {
-    toast.error('Google registration failed');
+    toast.error(t('googleFailed', { message: 'Unknown error' }));
     // loading only starts on success; nothing to stop here
   };
 
@@ -66,7 +68,7 @@ const GoogleRegisterButton = () => {
         className="flex items-center justify-center w-full py-3 px-4 bg-gray-700 text-white font-semibold rounded-lg opacity-60 cursor-not-allowed"
         disabled
       >
-        Google (missing client id)
+        {t('googleMissingId')}
       </motion.button>
     );
   }
@@ -101,7 +103,7 @@ const GoogleRegisterButton = () => {
         {loading ? (
           <div className="flex items-center justify-center space-x-2">
             <LoadingSpinner />
-            <span>Signing up...</span>
+            <span>{t('googleSignUp')}</span>
           </div>
         ) : (
           <>
@@ -123,6 +125,7 @@ const GoogleRegisterButton = () => {
 export default function RegisterForm() {
   const router = useRouter();
   const { register, isLoading, registerError, clearError } = useAuthStore();
+  const t = useTranslations('RegisterForm');
   const [formData, setFormData] = useState<RegisterCredentials>({
     name: '',
     email: '',
@@ -140,13 +143,13 @@ export default function RegisterForm() {
     e.preventDefault();
     try {
       await register(formData);
-      toast.success('Please check your email to verify your account!');
+      toast.success(t('registerSuccess'));
       router.push(`/verify-email-info?email=${encodeURIComponent(formData.email)}`);
     } catch (error: unknown) {
       if (axios.isAxiosError(error)) {
-        toast.error(error.response?.data?.message || 'Registration failed!');
+        toast.error(error.response?.data?.message || t('registerFailed'));
       } else {
-        toast.error('An unexpected error occurred during registration.');
+        toast.error(t('unexpectedError'));
       }
     }
   };
@@ -166,7 +169,7 @@ export default function RegisterForm() {
       <form onSubmit={handleSubmit} className="space-y-6">
         <div>
           <label htmlFor="name" className="block text-sm font-medium text-yellow-200 mb-1">
-            Username
+            {t('usernameLabel')}
           </label>
           <motion.input
             type="text"
@@ -175,7 +178,7 @@ export default function RegisterForm() {
             value={formData.name}
             onChange={handleChange}
             className="mt-1 block w-full px-4 py-3 bg-black/40 border border-yellow-700 rounded-lg text-white placeholder-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 transition-all duration-200 appearance-none"
-            placeholder="Enter your name"
+            placeholder={t('usernamePlaceholder')}
             required
             disabled={isLoading}
             variants={inputVariants}
@@ -185,7 +188,7 @@ export default function RegisterForm() {
         </div>
         <div>
           <label htmlFor="email" className="block text-sm font-medium text-yellow-200 mb-1">
-            Email
+            {t('emailLabel')}
           </label>
           <motion.input
             type="email"
@@ -194,7 +197,7 @@ export default function RegisterForm() {
             value={formData.email}
             onChange={handleChange}
             className="mt-1 block w-full px-4 py-3 bg-black/40 border border-yellow-700 rounded-lg text-white placeholder-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 transition-all duration-200 appearance-none"
-            placeholder="Enter your email"
+            placeholder={t('emailPlaceholder')}
             required
             disabled={isLoading}
             variants={inputVariants}
@@ -204,7 +207,7 @@ export default function RegisterForm() {
         </div>
         <div>
           <label htmlFor="password" className="block text-sm font-medium text-yellow-200 mb-1">
-            Password
+            {t('passwordLabel')}
           </label>
           <div className="relative">
             <motion.input
@@ -214,7 +217,7 @@ export default function RegisterForm() {
               value={formData.password}
               onChange={handleChange}
               className="mt-1 block w-full px-4 py-3 bg-black/40 border border-yellow-700 rounded-lg text-white placeholder-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 transition-all duration-200 pr-10 appearance-none"
-              placeholder="Enter your password"
+              placeholder={t('passwordPlaceholder')}
               required
               disabled={isLoading}
               variants={inputVariants}
@@ -249,10 +252,10 @@ export default function RegisterForm() {
           {isLoading ? (
             <div className="flex items-center justify-center space-x-2">
               <LoadingSpinner />
-              <span>Registering...</span>
+              <span>{t('registering')}</span>
             </div>
           ) : (
-            'Register'
+            t('registerButton')
           )}
         </motion.button>
         <div className="relative flex items-center justify-center">
@@ -260,7 +263,7 @@ export default function RegisterForm() {
             <span className="w-full border-t border-yellow-700"></span>
           </div>
           <div className="relative flex justify-center text-sm font-medium leading-6">
-            <span className="bg-gradient-to-br from-red-900/80 to-black/80 px-4 text-yellow-200">Or continue with</span>
+            <span className="bg-gradient-to-br from-red-900/80 to-black/80 px-4 text-yellow-200">{t('orContinueWith')}</span>
           </div>
         </div>
         <div className="flex items-center justify-center w-full">

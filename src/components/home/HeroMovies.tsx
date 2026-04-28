@@ -13,6 +13,7 @@ import useAuthStore from '@/store/useAuthStore'
 import { toast } from 'react-hot-toast'
 import api from '@/lib/axios'
 import { ChevronDownIcon } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 
 interface Movie {
   id: number;
@@ -125,7 +126,9 @@ const debounce = (func: (...args: unknown[]) => void, delay: number) => {
 };
 
 // Component cho mũi tên và hướng dẫn trên Mobile
-const MobileTrailerHint = () => (
+const MobileTrailerHint = () => {
+  const t = useTranslations('HomePage');
+  return (
   <motion.div
     className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex items-center gap-1 bg-black/60 backdrop-blur-sm px-2 py-1 rounded-full"
     initial={{ opacity: 0, x: 10 }}
@@ -133,12 +136,15 @@ const MobileTrailerHint = () => (
     transition={{ duration: 0.5, delay: 0.3 }}
   >
     <ArrowUpRightIcon className="w-4 h-4 text-white/80" />
-    <span className="text-xs text-white/80 font-light">Tap for trailer</span>
+    <span className="text-xs text-white/80 font-light">{t('tapTrailer')}</span>
   </motion.div>
 );
+};
 
 // Component cho mũi tên và hướng dẫn trên Desktop
-const DesktopTrailerHint = () => (
+const DesktopTrailerHint = () => {
+  const t = useTranslations('HomePage');
+  return (
   <motion.div
     className="absolute left-full ml-4 top-1/2 -translate-y-1/2 flex items-center gap-2"
     initial={{ opacity: 0, x: 10 }}
@@ -146,9 +152,10 @@ const DesktopTrailerHint = () => (
     transition={{ duration: 0.5, delay: 0.3 }}
   >
     <ArrowUpRightIcon className="w-5 h-5 text-white/80" />
-    <span className="text-sm text-white/80 font-light">Click for trailer</span>
+    <span className="text-sm text-white/80 font-light">{t('clickTrailer')}</span>
   </motion.div>
 );
+};
 
 export default function HeroMovies() {
   const [heroItems, setHeroItems] = useState<HeroItem[]>([]);
@@ -163,9 +170,9 @@ export default function HeroMovies() {
   const [contentScale, setContentScale] = useState(1);
   const contentRef = useRef<HTMLDivElement>(null);
 
-  // Watchlist functionality
   const { addToWatchlist, removeFromWatchlist, isInWatchlist, fetchWatchlistFromServer } = useWatchlistStore();
   const { isAuthenticated, token } = useAuthStore();
+  const t = useTranslations('HomePage');
 
   // Enhanced slider functions with smooth transitions
   const nextSlide = useCallback(() => {
@@ -346,7 +353,7 @@ export default function HeroMovies() {
   // Handle toggle watchlist
   const handleToggleWatchlist = async (item: HeroItem) => {
     if (!isAuthenticated) {
-      toast.error('You need to log in to save movies');
+      toast.error(t('needLogin'));
       return;
     }
 
@@ -363,20 +370,20 @@ export default function HeroMovies() {
           data: { id: item.id },
         });
         removeFromWatchlist(item.id);
-        toast.success('Removed from watchlist');
+        toast.success(t('removedWatchlist'));
       } else {
         await api.post('/auth/watchlist', movieData);
         addToWatchlist(movieData);
-        toast.success('Added to watchlist');
+        toast.success(t('addedWatchlist'));
       }
       
       // Đồng bộ lại watchlist từ server
       if (token) await fetchWatchlistFromServer(token);
     } catch (err: unknown) {
       if (err && typeof err === 'object' && 'response' in err) {
-        toast.error((err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'An error occurred');
+        toast.error((err as { response?: { data?: { message?: string } } })?.response?.data?.message || t('errorOccurred'));
       } else {
-        toast.error('An error occurred');
+        toast.error(t('errorOccurred'));
       }
     }
   };
@@ -402,11 +409,11 @@ export default function HeroMovies() {
         setCurrentTrailer(trailerUrl);
         setShowTrailer(true);
       } else {
-        toast.error('No trailer available for this content');
+        toast.error(t('noTrailer'));
       }
     } catch (error) {
       console.error('Error fetching trailer:', error);
-      toast.error('Failed to load trailer');
+      toast.error(t('failedTrailer'));
     }
   };
 
@@ -442,7 +449,7 @@ export default function HeroMovies() {
             animate={{ opacity: [0.5, 1, 0.5] }}
             transition={{ duration: 2, repeat: Infinity }}
           >
-            Loading amazing content...
+            {t('loadingContent')}
           </motion.p>
         </motion.div>
       </section>
@@ -455,8 +462,8 @@ export default function HeroMovies() {
         className="relative min-h-[60vh] md:min-h-[calc(100vh-4rem)] flex items-center justify-center overflow-hidden bg-gradient-to-br from-gray-900 via-black to-gray-800"
       >
         <div className="text-center">
-          <h2 className="text-2xl text-gray-300 mb-4">No content available</h2>
-          <p className="text-gray-500">Please check your API configuration</p>
+          <h2 className="text-2xl text-gray-300 mb-4">{t('noContent')}</h2>
+          <p className="text-gray-500">{t('checkApi')}</p>
         </div>
       </section>
     );
@@ -563,7 +570,7 @@ export default function HeroMovies() {
                   </span>
                   <span className="text-gray-300">•</span>
                   <span className="text-gray-300 text-center">
-                    {currentItem.type === 'movie' ? '🎬 Movie' : '📺 TV Show'}
+                    {currentItem.type === 'movie' ? `🎬 ${t('movie')}` : `📺 ${t('tvShow')}`}
                   </span>
                 </div>
 
@@ -610,7 +617,7 @@ export default function HeroMovies() {
                       whileTap={{ scale: 0.98 }}
                     >
                       <PlayIcon className="w-4 h-4" />
-                      Watch
+                      {t('watch')}
                     </motion.button>
                   </Link>
                   
@@ -629,7 +636,7 @@ export default function HeroMovies() {
                     ) : (
                       <BookmarkIcon className="w-4 h-4" />
                     )}
-                    {isInWatchlist(currentItem.id) ? 'Added' : 'Save'}
+                    {isInWatchlist(currentItem.id) ? t('added') : t('save')}
                   </motion.button>
                 </motion.div>
 
@@ -714,7 +721,7 @@ export default function HeroMovies() {
                   </span>
                   <span className="text-gray-300">•</span>
                   <span className="text-gray-300">
-                    {currentItem.type === 'movie' ? '🎬 Movie' : '📺 TV Show'}
+                    {currentItem.type === 'movie' ? `🎬 ${t('movie')}` : `📺 ${t('tvShow')}`}
                   </span>
                 </div>
 
@@ -733,7 +740,7 @@ export default function HeroMovies() {
                       whileTap={{ scale: 0.95 }}
                     >
                       <PlayIcon className="w-5 h-5" />
-                      Watch Now
+                      {t('watchNow')}
                     </motion.button>
                   </Link>
                   
@@ -752,7 +759,7 @@ export default function HeroMovies() {
                     ) : (
                       <BookmarkIcon className="w-5 h-5" />
                     )}
-                    {isInWatchlist(currentItem.id) ? 'Added to list' : 'Save to list'}
+                    {isInWatchlist(currentItem.id) ? t('addedToList') : t('saveToList')}
                   </motion.button>
                 </motion.div>
               </motion.div>
@@ -852,7 +859,7 @@ export default function HeroMovies() {
             animate={{ opacity: [0.4, 0.8, 0.4] }}
             transition={{ duration: 2, repeat: Infinity }}
           >
-            Scroll to explore
+            {t('scrollExplore')}
           </motion.p>
           <motion.div
             className="flex flex-col items-center -space-y-1.5"

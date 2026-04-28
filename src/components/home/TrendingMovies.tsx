@@ -9,6 +9,7 @@ import { useRouter } from 'next/navigation'
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline'
 import { useApiCache } from '@/hooks/useApiCache'
 import CardWithHover from '@/components/common/CardWithHover'
+import { useTranslations } from 'next-intl'
 
 interface Movie {
   id: number;
@@ -97,6 +98,7 @@ export default function TrendingMovies() {
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const t = useTranslations('Trending');
 
   // Optimized API call with caching
   const fetchTrendingData = useCallback(async () => {
@@ -199,7 +201,7 @@ export default function TrendingMovies() {
     <section className="py-6 sm:py-8 md:py-10 px-2 sm:px-3 bg-gradient-to-b from-gray-900 to-black">
       <div className="max-w-7xl mx-auto">
         <h2 className="text-lg sm:text-xl md:text-2xl lg:text-3xl xl:text-4xl font-bold mb-3 sm:mb-5 md:mb-6 bg-gradient-to-r from-yellow-400 to-pink-500 text-transparent bg-clip-text text-center leading-tight px-3">
-          Trending Now
+          {t('title')}
         </h2>
         <div className="relative">
           
@@ -234,7 +236,7 @@ export default function TrendingMovies() {
               <svg className="w-3 h-3 sm:w-4 sm:h-4 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
-              <span className="text-xs sm:text-sm font-medium">Swipe or click &lt; &gt;</span>
+              <span className="text-xs sm:text-sm font-medium">{t('swipeHint')}</span>
               <svg className="w-3 h-3 sm:w-4 sm:h-4 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
@@ -252,9 +254,9 @@ export default function TrendingMovies() {
             }}
           >
             {loading ? (
-              <div className="text-gray-400 text-center py-8">Loading...</div>
+              <div className="text-gray-400 text-center py-8">{t('loading')}</div>
             ) : error ? (
-              <div className="text-red-400 text-center py-8">Error loading content</div>
+              <div className="text-red-400 text-center py-8">{t('error')}</div>
             ) : (
               trending?.map((item) => (
                 <div key={item.id} className="min-w-[150px] sm:min-w-[190px] md:min-w-[220px] max-w-[220px]">

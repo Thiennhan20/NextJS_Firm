@@ -7,6 +7,7 @@ import Image from 'next/image'
 import { Play, Clock, Trash2, ChevronDown, AlertCircle } from 'lucide-react'
 import useAuthStore from '@/store/useAuthStore'
 import api from '@/lib/axios'
+import { useTranslations } from 'next-intl'
 
 interface RecentlyWatchedItem {
   id: string
@@ -185,6 +186,7 @@ export default function RecentlyWatched({ className = '' }: RecentlyWatchedProps
   const router = useRouter()
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const shouldReduceMotion = useReducedMotion()
+  const t = useTranslations('RecentlyWatched')
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const userId = useAuthStore((s) => (s.user as any)?.id || (s.user as any)?._id)
 
@@ -438,18 +440,18 @@ export default function RecentlyWatched({ className = '' }: RecentlyWatchedProps
         >
           <div className="flex items-center gap-2 mb-4">
             <h2 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-red-500 to-pink-500 text-transparent bg-clip-text">
-              Continue Watching
+              {t('title')}
             </h2>
             {userId ? (
-              <span className="ml-3 text-xs px-2 py-0.5 rounded bg-emerald-600/20 text-emerald-300 border border-emerald-600/40">Saved Forever</span>
+              <span className="ml-3 text-xs px-2 py-0.5 rounded bg-emerald-600/20 text-emerald-300 border border-emerald-600/40">{t('savedForever')}</span>
             ) : (
-              <span className="ml-3 text-xs px-2 py-0.5 rounded bg-yellow-600/20 text-yellow-300 border border-yellow-600/40">24h Storage</span>
+              <span className="ml-3 text-xs px-2 py-0.5 rounded bg-yellow-600/20 text-yellow-300 border border-yellow-600/40">{t('storage24h')}</span>
             )}
           </div>
           {!userId && (
             <div className="flex items-center gap-2 ml-8 -mt-2 mb-2 text-yellow-300">
               <AlertCircle className="w-4 h-4" />
-              <span className="text-xs sm:text-sm">Sign in to save longer</span>
+              <span className="text-xs sm:text-sm">{t('signInSave')}</span>
             </div>
           )}
         </motion.div>
@@ -495,7 +497,7 @@ export default function RecentlyWatched({ className = '' }: RecentlyWatchedProps
                       transition={{ delay: shouldReduceMotion ? 0 : 0.1 }}
                       className="text-xl font-semibold text-white mb-4"
                     >
-                      No movies watched yet
+                      {t('noMovies')}
                     </motion.h3>
 
                     <div className="flex justify-center mb-4">
@@ -541,7 +543,7 @@ export default function RecentlyWatched({ className = '' }: RecentlyWatchedProps
                       transition={{ delay: shouldReduceMotion ? 0 : 0.3 }}
                       className="text-gray-400 text-sm"
                     >
-                      Click to explore trending movies
+                      {t('exploreButton')}
                     </motion.p>
                   </div>
                 </motion.div>
@@ -595,7 +597,7 @@ export default function RecentlyWatched({ className = '' }: RecentlyWatchedProps
               onClick={() => router.push('/profile')}
               className="bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700 text-white px-6 py-2 rounded-lg text-sm font-medium transition-all duration-300 shadow-lg hover:shadow-xl"
             >
-              View All History
+              {t('viewHistory')}
             </motion.button>
           </motion.div>
         )}

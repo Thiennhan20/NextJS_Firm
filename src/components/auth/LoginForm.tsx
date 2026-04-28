@@ -10,6 +10,7 @@ import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 import { GoogleLogin, CredentialResponse } from '@react-oauth/google';
 import axios from 'axios';
 import { useWatchlistStore } from '@/store/store';
+import { useTranslations } from 'next-intl';
 
 const LoadingSpinner = () => (
   <div className="flex items-center justify-center">
@@ -26,6 +27,7 @@ const GoogleLoginButton = () => {
   const router = useRouter();
   const { fetchWatchlistFromServer } = useWatchlistStore();
   const [loading, setLoading] = useState(false);
+  const t = useTranslations('LoginForm');
 
   // Memoize Google Client ID
   const googleClientId = useMemo(() =>
@@ -49,20 +51,20 @@ const GoogleLoginButton = () => {
       useAuthStore.setState({ user, token, isAuthenticated: true });
 
       if (token) await fetchWatchlistFromServer(token);
-      toast.success('Google login successful');
+      toast.success(t('googleSuccess'));
       setLoading(false);
       router.push('/');
     } catch (err: unknown) {
-      const errorMessage = (err as { response?: { data?: { message?: string } }; message?: string }).response?.data?.message || (err as { response?: { data?: { message?: string } }; message?: string }).message;
-      toast.error(`Google login failed: ${errorMessage}`);
+      const errorMessage = (err as { response?: { data?: { message?: string } }; message?: string }).response?.data?.message || (err as { response?: { data?: { message?: string } }; message?: string }).message || 'Unknown error';
+      toast.error(t('googleFailed', { message: errorMessage }));
       setLoading(false);
     }
-  }, [router, fetchWatchlistFromServer]);
+  }, [router, fetchWatchlistFromServer, t]);
 
   const handleGoogleError = useCallback(() => {
-    toast.error('Google login failed');
+    toast.error(t('googleFailed', { message: 'Unknown error' }));
     // loading only starts on success; nothing to stop here
-  }, []);
+  }, [t]);
 
   if (!googleClientId) {
     return (
@@ -71,7 +73,7 @@ const GoogleLoginButton = () => {
         className="flex items-center justify-center w-full py-3 px-4 bg-gray-700 text-white font-semibold rounded-lg opacity-60 cursor-not-allowed"
         disabled
       >
-        Google (missing client id)
+        {t('googleMissingId')}
       </motion.button>
     );
   }
@@ -102,7 +104,7 @@ const GoogleLoginButton = () => {
         {loading ? (
           <div className="flex items-center justify-center space-x-2">
             <LoadingSpinner />
-            <span>Signing in...</span>
+            <span>{t('googleSignIn')}</span>
           </div>
         ) : (
           <>
@@ -124,6 +126,7 @@ export default function LoginForm() {
   const router = useRouter();
   const { login, isLoading, loginError, clearError, token } = useAuthStore();
   const { fetchWatchlistFromServer } = useWatchlistStore();
+  const t = useTranslations('LoginForm');
 
   // Memoize Google Client ID (unused but kept for consistency)
   // const googleClientId = useMemo(() => 
@@ -150,16 +153,16 @@ export default function LoginForm() {
       if (token) {
         await fetchWatchlistFromServer(token);
       }
-      toast.success('Login successful!');
+      toast.success(t('loginSuccess'));
       router.push('/');
     } catch (error: unknown) {
       if (axios.isAxiosError(error)) {
-        toast.error(error.response?.data?.message || 'Login failed!');
+        toast.error(error.response?.data?.message || t('loginFailed'));
       } else {
-        toast.error('An unexpected error occurred during login.');
+        toast.error(t('unexpectedError'));
       }
     }
-  }, [formData, login, token, fetchWatchlistFromServer, router]);
+  }, [formData, login, token, fetchWatchlistFromServer, router, t]);
 
   // Memoize animation variants
   const inputVariants = useMemo(() => ({
@@ -177,7 +180,7 @@ export default function LoginForm() {
       <form onSubmit={handleSubmit} className="space-y-6">
         <div>
           <label htmlFor="email" className="block text-sm font-medium text-yellow-200 mb-1">
-            Email
+            {t('emailLabel')}
           </label>
           <motion.input
             type="email"
@@ -186,7 +189,7 @@ export default function LoginForm() {
             value={formData.email}
             onChange={handleChange}
             className="mt-1 block w-full px-4 py-3 bg-black/40 border border-yellow-700 rounded-lg text-white placeholder-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 transition-all duration-200 appearance-none"
-            placeholder="Enter your email"
+            placeholder={t('emailPlaceholder')}
             required
             disabled={isLoading}
             variants={inputVariants}
@@ -196,7 +199,7 @@ export default function LoginForm() {
         </div>
         <div>
           <label htmlFor="password" className="block text-sm font-medium text-yellow-200 mb-1">
-            Password
+            {t('passwordLabel')}
           </label>
           <div className="relative">
             <motion.input
@@ -206,7 +209,7 @@ export default function LoginForm() {
               value={formData.password}
               onChange={handleChange}
               className="mt-1 block w-full px-4 py-3 bg-black/40 border border-yellow-700 rounded-lg text-white placeholder-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 transition-all duration-200 pr-10 appearance-none"
-              placeholder="Enter your password"
+              placeholder={t('passwordPlaceholder')}
               required
               disabled={isLoading}
               variants={inputVariants}
@@ -229,7 +232,7 @@ export default function LoginForm() {
           </div>
           <div className="text-right text-sm">
             <Link href="/forgot-password" className="font-medium text-yellow-300 hover:text-yellow-100 transition-colors duration-200">
-              Forgot password?
+              {t('forgotPassword')}
             </Link>
           </div>
         </div>
@@ -246,10 +249,10 @@ export default function LoginForm() {
           {isLoading ? (
             <div className="flex items-center justify-center space-x-2">
               <LoadingSpinner />
-              <span>Logging in...</span>
+              <span>{t('loggingIn')}</span>
             </div>
           ) : (
-            'Log in'
+            t('loginButton')
           )}
         </motion.button>
         <div className="relative flex items-center justify-center">
@@ -257,7 +260,7 @@ export default function LoginForm() {
             <span className="w-full border-t border-yellow-700"></span>
           </div>
           <div className="relative flex justify-center text-sm font-medium leading-6">
-            <span className="bg-gradient-to-br from-red-900/80 to-black/80 px-4 text-yellow-200">Or continue with</span>
+            <span className="bg-gradient-to-br from-red-900/80 to-black/80 px-4 text-yellow-200">{t('orContinueWith')}</span>
           </div>
         </div>
         <div className="flex items-center justify-center w-full">

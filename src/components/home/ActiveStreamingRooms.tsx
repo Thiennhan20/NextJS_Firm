@@ -6,6 +6,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import api from '@/lib/axios'
 import { Radio, Users, Clock, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 
 interface ActiveRoom {
   room_id: string
@@ -44,9 +45,9 @@ const formatTimeLeft = (ttlSeconds: number) => {
 }
 
 const statusConfig = {
-  PLAYING: { color: 'bg-green-400', badge: 'bg-green-500/20 text-green-400', label: 'Playing' },
-  PAUSED: { color: 'bg-yellow-400', badge: 'bg-yellow-500/20 text-yellow-400', label: 'Paused' },
-  WAITING: { color: 'bg-blue-400', badge: 'bg-blue-500/20 text-blue-400', label: 'Waiting' },
+  PLAYING: { color: 'bg-green-400', badge: 'bg-green-500/20 text-green-400', labelKey: 'playing' },
+  PAUSED: { color: 'bg-yellow-400', badge: 'bg-yellow-500/20 text-yellow-400', labelKey: 'paused' },
+  WAITING: { color: 'bg-blue-400', badge: 'bg-blue-500/20 text-blue-400', labelKey: 'waiting' },
 } as const
 
 export default function ActiveStreamingRooms() {
@@ -55,6 +56,7 @@ export default function ActiveStreamingRooms() {
   const scrollRef = useRef<HTMLDivElement>(null)
   const [canScrollLeft, setCanScrollLeft] = useState(false)
   const [canScrollRight, setCanScrollRight] = useState(false)
+  const t = useTranslations('StreamingRooms')
 
   const fetchRooms = useCallback(async () => {
     try {
@@ -118,7 +120,7 @@ export default function ActiveStreamingRooms() {
               )}
             </div>
             <h2 className="text-base sm:text-lg lg:text-xl font-bold text-white">
-              Live Watch Parties
+              {t('title')}
             </h2>
             {rooms.length > 0 && (
               <span className="text-[10px] sm:text-xs px-1.5 py-0.5 rounded-full bg-red-500/15 text-red-400 font-semibold tabular-nums">
@@ -130,7 +132,7 @@ export default function ActiveStreamingRooms() {
             href="/streaming-lobby"
             className="flex items-center gap-1 text-xs sm:text-sm text-yellow-400/80 hover:text-yellow-300 transition-colors font-medium"
           >
-            <span className="hidden sm:inline">View All</span>
+            <span className="hidden sm:inline">{t('viewAll')}</span>
             <ArrowRight className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
           </Link>
         </div>
@@ -224,7 +226,7 @@ export default function ActiveStreamingRooms() {
                           {/* Title & Host */}
                           <div className="min-w-0 flex-1">
                             <p className="text-sm text-white font-semibold truncate leading-tight" title={room.title}>
-                              {room.title || 'Untitled'}
+                              {room.title || t('untitled')}
                             </p>
                             <p className="text-[11px] text-gray-500 truncate">{room.host_name}</p>
                           </div>
@@ -234,7 +236,7 @@ export default function ActiveStreamingRooms() {
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2 text-[10px] text-gray-500">
                             <span className={`px-1.5 py-0.5 font-bold rounded-full ${s.badge}`}>
-                              {s.label}
+                              {t(s.labelKey)}
                             </span>
                             <span className="flex items-center gap-0.5">
                               <Users className="h-2.5 w-2.5" />
@@ -250,7 +252,7 @@ export default function ActiveStreamingRooms() {
                               ? 'bg-gray-700/60 text-gray-500'
                               : 'bg-yellow-500/15 text-yellow-400 group-hover:bg-yellow-500/25'
                           }`}>
-                            {room.member_count >= room.max_users ? 'Full' : 'Join'}
+                            {room.member_count >= room.max_users ? t('full') : t('join')}
                           </span>
                         </div>
                       </Link>

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { MagnifyingGlassIcon, SparklesIcon, MicrophoneIcon, ClockIcon, XMarkIcon as XMarkMiniIcon } from '@heroicons/react/24/outline';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSearchHistory } from '@/hooks/useSearchHistory';
+import { useTranslations } from 'next-intl';
 
 // Type definitions for Web Speech API
 interface SpeechRecognitionEvent extends Event {
@@ -118,6 +119,7 @@ export default function AutocompleteSearch({
   const [loading, setLoading] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const [cache, setCache] = useState<{ [key: string]: CacheEntry }>({});
+  const t = useTranslations('Search');
   
   // Voice search states
   const [isListening, setIsListening] = useState(false);
@@ -627,7 +629,7 @@ export default function AutocompleteSearch({
           ref={inputRef}
           type="text"
           className={inputClassNames}
-          placeholder={menu ? "Search" : "Search"}
+          placeholder={t('placeholder')}
           value={isListening ? query + interimTranscript : query}
           onChange={e => setQuery(e.target.value)}
           onKeyDown={handleKeyDown}
@@ -740,7 +742,7 @@ export default function AutocompleteSearch({
                 ))}
               </div>
               <div className="flex-1">
-                <p className="text-sm text-red-600 font-medium">Đang nghe...</p>
+                <p className="text-sm text-red-600 font-medium">{t('listening')}</p>
                 {interimTranscript && (
                   <p className="text-xs text-gray-600 mt-1 italic">&quot;{interimTranscript}&quot;</p>
                 )}
@@ -749,7 +751,7 @@ export default function AutocompleteSearch({
                 onClick={stopVoiceSearch}
                 className="px-3 py-1 text-xs bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
               >
-                Dừng
+                {t('stop')}
               </button>
             </div>
           </motion.div>
@@ -788,7 +790,7 @@ export default function AutocompleteSearch({
                   >
                     <MagnifyingGlassIcon className="h-5 w-5 mx-auto mb-2" />
                   </motion.div>
-                  <p className="text-sm">Searching...</p>
+                  <p className="text-sm">{t('searching')}</p>
                 </motion.div>
               ) : query.length < MIN_QUERY_LENGTH ? (
                 <motion.div
@@ -827,7 +829,7 @@ export default function AutocompleteSearch({
                     </motion.div>
                     <div className="space-y-1">
                       <p className="text-gray-500 text-xs">
-                        Enter at least {MIN_QUERY_LENGTH} characters
+                        {t('minChars', { count: MIN_QUERY_LENGTH })}
                       </p>
                     </div>
                     <motion.div 
@@ -854,7 +856,7 @@ export default function AutocompleteSearch({
                   exit={{ opacity: 0 }}
                   className="p-4 text-center text-gray-400"
                 >
-                  <p className="text-sm">No results found.</p>
+                  <p className="text-sm">{t('noResults')}</p>
                 </motion.div>
               ) : (
                 <motion.div
@@ -931,7 +933,7 @@ export default function AutocompleteSearch({
             <div className="flex items-center justify-between px-4 pt-3 pb-2">
               <div className="flex items-center gap-2 text-gray-500">
                 <ClockIcon className="h-4 w-4" />
-                <span className="text-xs font-medium uppercase tracking-wide">Recent Searches</span>
+                <span className="text-xs font-medium uppercase tracking-wide">{t('recentSearches')}</span>
               </div>
               <button
                 onMouseDown={(e) => {
@@ -940,7 +942,7 @@ export default function AutocompleteSearch({
                 }}
                 className="text-xs text-gray-400 hover:text-red-500 transition-colors font-medium"
               >
-                Clear All
+                {t('clearAll')}
               </button>
             </div>
             {/* History Items — show 10 visible, scroll for 15 total */}

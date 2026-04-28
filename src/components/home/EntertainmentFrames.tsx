@@ -9,6 +9,7 @@ import {
   ChevronRightIcon
 } from '@heroicons/react/24/outline'
 import Link from 'next/link'
+import { useTranslations } from 'next-intl'
 
 // New morphing effect for 2-column layout
 const TwoColumnMorphingItem = ({ children, isLeft, scrollProgress }: { children: ReactNode, isLeft: boolean, scrollProgress: MotionValue<number> }) => {
@@ -37,6 +38,7 @@ export default function EntertainmentFrames() {
   const [currentNav, setCurrentNav] = useState<'movies' | 'tvshows'>('movies');
   const featuresRef = useRef<HTMLElement>(null);
   const autoPlayRef = useRef<NodeJS.Timeout | null>(null);
+  const t = useTranslations('Entertainment');
 
   const { scrollYProgress: featuresScrollProgress } = useScroll({ 
     target: featuresRef, 
@@ -153,12 +155,12 @@ export default function EntertainmentFrames() {
                       {currentNav === 'movies' ? (
                         <>
                           <FilmIcon className="w-4 h-4 sm:w-5 sm:h-5 text-purple-400" />
-                          <span className="text-sm sm:text-base text-purple-300 font-medium">Movies</span>
+                          <span className="text-sm sm:text-base text-purple-300 font-medium">{t('movies')}</span>
                         </>
                       ) : (
                         <>
                           <TvIcon className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400" />
-                          <span className="text-sm sm:text-base text-amber-300 font-medium">TV Shows</span>
+                          <span className="text-sm sm:text-base text-amber-300 font-medium">{t('tvShows')}</span>
                         </>
                       )}
                     </motion.div>
@@ -209,7 +211,7 @@ export default function EntertainmentFrames() {
                               ? 'text-purple-300 hover:text-purple-200' 
                               : 'text-amber-300 hover:text-amber-200'
                           }`}>
-                            Click to see more
+                            {t('clickSeeMore')}
                           </span>
                         </motion.div>
                       </div>
@@ -271,7 +273,7 @@ export default function EntertainmentFrames() {
                   className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 text-transparent bg-clip-text relative z-10"
                 >
                   AI
-                  <span className="text-sm sm:text-base text-white font-medium">Coming Soon</span>
+                  <span className="text-sm sm:text-base text-white font-medium">{t('comingSoon')}</span>
                 </motion.div>
               </motion.div>
             </div>
@@ -325,7 +327,7 @@ export default function EntertainmentFrames() {
                   className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl 2xl:text-8xl font-bold bg-gradient-to-r from-red-400 via-orange-400 to-yellow-400 text-transparent bg-clip-text"
                 >
                   Game
-                  <span className="text-sm sm:text-base text-white font-medium">Coming Soon</span>
+                  <span className="text-sm sm:text-base text-white font-medium">{t('comingSoon')}</span>
                 </motion.div>
               </motion.div>
             </motion.div>

@@ -16,6 +16,7 @@ import {
 import Link from 'next/link'
 import Image from 'next/image'
 import { useTopComments, useRecentComments } from '@/hooks/useCommentsOptimized'
+import { useTranslations } from 'next-intl'
 
 interface RankingItem {
   id: number
@@ -60,6 +61,7 @@ export default function TopComments() {
   // Use optimized hooks with SWR caching and batch fetching
   const { comments: topComments, isLoading: loading, isError: error } = useTopComments(9)
   const { comments: newComments, isLoading: newCommentsLoading } = useRecentComments(4)
+  const t = useTranslations('Comments')
 
   // Fetch trending and top rated movies from TMDB
   useEffect(() => {
@@ -213,7 +215,7 @@ export default function TopComments() {
                 <TrophyIcon className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h2 className="text-xl sm:text-2xl font-bold text-white">TOP COMMENTS</h2>
+                <h2 className="text-xl sm:text-2xl font-bold text-white">{t('topComments')}</h2>
               </div>
             </div>
 
@@ -274,15 +276,15 @@ export default function TopComments() {
                   onClick={() => window.location.reload()}
                   className="text-sm text-blue-400 hover:text-blue-300 underline"
                 >
-                  Retry
+                  {t('retry')}
                 </button>
               </div>
             ) : topComments.length === 0 ? (
               // Empty state
               <div className="col-span-full flex flex-col items-center justify-center py-12">
                 <ChatBubbleLeftIcon className="w-16 h-16 text-gray-600 mb-4" />
-                <p className="text-gray-400 text-lg">No comments yet</p>
-                <p className="text-gray-500 text-sm">Be the first to share your thoughts!</p>
+                <p className="text-gray-400 text-lg">{t('noComments')}</p>
+                <p className="text-gray-500 text-sm">{t('beFirst')}</p>
               </div>
             ) : (
               getCurrentComments().map((comment, index) => (
@@ -370,7 +372,7 @@ export default function TopComments() {
                         whileHover={{ scale: 1.05 }}
                         className="text-xs text-blue-400 hover:text-blue-300 transition-colors font-medium bg-blue-400/10 hover:bg-blue-400/20 px-3 py-1 rounded-full"
                       >
-                        Reply
+                        {t('reply')}
                       </motion.button>
                     </div>
                   </motion.div>
@@ -395,13 +397,13 @@ export default function TopComments() {
                 <FireIcon className="w-5 h-5 text-white" />
               </div>
               <div>
-                <h3 className="text-lg sm:text-xl font-bold text-white">TRENDING NOW</h3>
+                <h3 className="text-lg sm:text-xl font-bold text-white">{t('trendingNow')}</h3>
               </div>
             </div>
             <div className="space-y-4">
               {trendingMovies.length === 0 ? (
                 <div className="text-center py-4">
-                  <p className="text-gray-500 text-sm">Loading trending...</p>
+                  <p className="text-gray-500 text-sm">{t('loadingTrending')}</p>
                 </div>
               ) : (
                 trendingMovies.map((movie, index) => (
@@ -438,7 +440,7 @@ export default function TopComments() {
                           <span className={`text-xs font-semibold ${movie.trend === 'up' ? 'text-green-400' : movie.trend === 'down' ? 'text-red-400' : 'text-gray-400'}`}>
                             {movie.trend === 'up' ? '+' : ''}{movie.change}%
                           </span>
-                          <span className="text-gray-500 text-xs">this week</span>
+                          <span className="text-gray-500 text-xs">{t('thisWeek')}</span>
                         </div>
                       </div>
                     </motion.div>
@@ -461,13 +463,13 @@ export default function TopComments() {
                 <HeartIcon className="w-5 h-5 text-white" />
               </div>
               <div>
-                <h3 className="text-lg sm:text-xl font-bold text-white">MOST LIKED</h3>
+                <h3 className="text-lg sm:text-xl font-bold text-white">{t('mostLiked')}</h3>
               </div>
             </div>
             <div className="space-y-4">
               {mostLikedMovies.length === 0 ? (
                 <div className="text-center py-4">
-                  <p className="text-gray-500 text-sm">Loading top rated...</p>
+                  <p className="text-gray-500 text-sm">{t('loadingTopRated')}</p>
                 </div>
               ) : (
                 mostLikedMovies.map((movie, index) => (
@@ -505,7 +507,7 @@ export default function TopComments() {
                           <span className={`text-xs font-semibold ${getRatingColor(movie.rating || 0)}`}>
                             {movie.rating}
                           </span>
-                          <span className="text-gray-500 text-xs">rating</span>
+                          <span className="text-gray-500 text-xs">{t('rating')}</span>
                         </div>
                       </div>
                     </motion.div>
@@ -528,7 +530,7 @@ export default function TopComments() {
                 <SparklesIcon className="w-5 h-5 text-white" />
               </div>
               <div>
-                <h3 className="text-lg sm:text-xl font-bold text-white">NEW COMMENTS</h3>
+                <h3 className="text-lg sm:text-xl font-bold text-white">{t('newComments')}</h3>
               </div>
             </div>
             <div className="space-y-4">
@@ -548,7 +550,7 @@ export default function TopComments() {
                 ))
               ) : newComments.length === 0 ? (
                 <div className="text-center py-4">
-                  <p className="text-gray-500 text-sm">No recent comments</p>
+                  <p className="text-gray-500 text-sm">{t('noRecentComments')}</p>
                 </div>
               ) : (
                 newComments.map((comment) => (

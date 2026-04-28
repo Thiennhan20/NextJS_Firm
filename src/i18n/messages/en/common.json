@@ -1,0 +1,63 @@
+{
+  "Navigation": {
+    "selectLanguage": "Select language",
+    "more": "More",
+    "profile": "Profile",
+    "watchlist": "Watchlist",
+    "settings": "Settings",
+    "logout": "Logout",
+    "loggedOut": "Logged out!",
+    "login": "Login",
+    "items": {
+      "home": "Home",
+      "movies": "Movies",
+      "tvShows": "TV Shows",
+      "news": "News",
+      "about": "About",
+      "faq": "FAQ",
+      "contact": "Contact",
+      "streaming": "Streaming"
+    }
+  },
+  "Footer": {
+    "description": "Your ultimate destination for discovering and experiencing movies in new dimensions.",
+    "quickLinks": "Quick Links",
+    "contactUs": "Contact Us",
+    "newsletter": "Newsletter",
+    "newsletterDesc": "Stay updated with our latest news and offers.",
+    "emailPlaceholder": "Enter your email",
+    "subscribe": "Subscribe",
+    "address": "123 Movie Street, Hollywood, CA 90028"
+  },
+  "Watchlist": {
+    "loginRequired": "You need to log in to save movies",
+    "removed": "Removed from watchlist",
+    "added": "Added to watchlist",
+    "error": "An error occurred",
+    "watchNow": "Watch Now",
+    "removeFromWatchlist": "Remove from watchlist",
+    "addToWatchlist": "Add to watchlist",
+    "unlike": "Unlike",
+    "like": "Like",
+    "noImage": "No Image"
+  },
+  "Filter": {
+    "filters": "Filters",
+    "filterOptions": "Filter Options",
+    "refineSearch": "Refine your search",
+    "contentType": "Content Type",
+    "sortBy": "Sort By",
+    "year": "Year",
+    "category": "Category",
+    "country": "Country",
+    "all": "All",
+    "movies": "Movies",
+    "tvShows": "TV Shows",
+    "relevance": "Relevance",
+    "popularity": "Popularity",
+    "rating": "Rating",
+    "date": "Date",
+    "allFiltersActive": "All filters active",
+    "resetAll": "Reset All"
+  }
+}

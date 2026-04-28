@@ -1,0 +1,90 @@
+{
+  "HomePage": {
+    "comingSoon": "Sắp Ra Mắt",
+    "comingSoonSubtitle": "Điều gì đó phi thường đang được ấp ủ trong thiên hà của chúng tôi...",
+    "loadingContent": "Đang tải nội dung tuyệt vời...",
+    "noContent": "Không có nội dung",
+    "checkApi": "Vui lòng kiểm tra cấu hình API",
+    "tapTrailer": "Nhấn để xem trailer",
+    "clickTrailer": "Nhấn để xem trailer",
+    "watch": "Xem",
+    "watchNow": "Xem Ngay",
+    "save": "Lưu",
+    "added": "Đã Lưu",
+    "saveToList": "Lưu vào danh sách",
+    "addedToList": "Đã lưu vào danh sách",
+    "movie": "Phim",
+    "tvShow": "Phim Bộ",
+    "noTrailer": "Không có trailer cho nội dung này",
+    "failedTrailer": "Không thể tải trailer",
+    "needLogin": "Bạn cần đăng nhập để lưu phim",
+    "removedWatchlist": "Đã xóa khỏi danh sách",
+    "addedWatchlist": "Đã thêm vào danh sách",
+    "errorOccurred": "Đã xảy ra lỗi",
+    "scrollExplore": "Cuộn để khám phá",
+    "movieNewsTitle": "Tin tức Điện ảnh",
+    "movieNewsLoading": "Đang tải...",
+    "subscribeTitle": "Đăng ký Nhận thông báo",
+    "subscribeDesc": "Nhận thông báo phim mới, trailer hot và nhiều ưu đãi hấp dẫn!",
+    "subscribePlaceholder": "Email của bạn...",
+    "subscribeButton": "Đăng ký",
+    "subscribeSuccess": "Đăng ký thành công!"
+  },
+  "RecentlyWatched": {
+    "title": "Xem Tiếp",
+    "savedForever": "Lưu Vĩnh Viễn",
+    "storage24h": "Lưu 24h",
+    "signInSave": "Đăng nhập để lưu lâu hơn",
+    "noMovies": "Chưa xem phim nào",
+    "exploreButton": "Nhấn để khám phá phim thịnh hành",
+    "viewHistory": "Xem Lịch Sử",
+    "justNow": "Vừa xong",
+    "hoursAgo": "{count} giờ trước",
+    "daysAgo": "{count} ngày trước"
+  },
+  "Trending": {
+    "title": "Đang Thịnh Hành",
+    "loading": "Đang tải...",
+    "error": "Lỗi khi tải nội dung",
+    "swipeHint": "Vuốt hoặc nhấn < >"
+  },
+  "ComingSoonSection": {
+    "title": "Sắp Ra Mắt",
+    "loading": "Đang tải...",
+    "loadingMore": "Đang tải thêm...",
+    "swipeHint": "Vuốt hoặc nhấn < >"
+  },
+  "StreamingRooms": {
+    "title": "Xem Chung Trực Tuyến",
+    "viewAll": "Xem Tất Cả",
+    "playing": "Đang Phát",
+    "paused": "Tạm Dừng",
+    "waiting": "Chờ",
+    "full": "Đầy",
+    "join": "Tham Gia",
+    "untitled": "Chưa đặt tên"
+  },
+  "Entertainment": {
+    "movies": "Phim Lẻ",
+    "tvShows": "Phim Bộ",
+    "clickSeeMore": "Nhấn để xem thêm",
+    "comingSoon": "Sắp Ra Mắt",
+    "ai": "AI",
+    "game": "Game"
+  },
+  "Comments": {
+    "topComments": "BÌNH LUẬN NỔI BẬT",
+    "trendingNow": "ĐANG THỊNH HÀNH",
+    "mostLiked": "ĐƯỢC YÊU THÍCH NHẤT",
+    "newComments": "BÌNH LUẬN MỚI",
+    "noComments": "Chưa có bình luận nào",
+    "beFirst": "Hãy là người đầu tiên chia sẻ suy nghĩ!",
+    "reply": "Trả Lời",
+    "retry": "Thử Lại",
+    "loadingTrending": "Đang tải xu hướng...",
+    "loadingTopRated": "Đang tải đánh giá cao...",
+    "noRecentComments": "Không có bình luận gần đây",
+    "thisWeek": "tuần này",
+    "rating": "đánh giá"
+  }
+}

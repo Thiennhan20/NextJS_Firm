@@ -14,6 +14,8 @@ import WatchlistSyncer from "@/components/WatchlistSyncer";
 import FloatingChatboxWrapper from "@/components/FloatingChatboxWrapper";
 import ProgressCleanup from '@/components/ProgressCleanup';
 import VersionChecker from '@/components/VersionChecker';
+import { NextIntlClientProvider } from 'next-intl';
+import { getLocale, getMessages } from 'next-intl/server';
 
 const inter = Inter({
   subsets: ["latin"],
@@ -36,13 +38,16 @@ export const viewport: Viewport = {
   initialScale: 1.0,
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+  const locale = await getLocale();
+  const messages = await getMessages();
+
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang={locale} suppressHydrationWarning>
       <head>
         <meta charSet="utf-8" />
         <link rel="icon" type="image/png" sizes="16x16" href="/favicon.ico" />
@@ -51,27 +56,35 @@ export default function RootLayout({
         <link rel="preconnect" href="https://image.tmdb.org" />
         <link rel="dns-prefetch" href="https://image.tmdb.org" />
         {/* Blocking script: hide splash on reload before paint */}
-        <script dangerouslySetInnerHTML={{ __html: `try{if(sessionStorage.getItem('splashShown'))document.documentElement.setAttribute('data-splash-done','1')}catch(e){}` }} />
-        <style dangerouslySetInnerHTML={{ __html: `html[data-splash-done="1"] [data-splash]{display:none!important}` }} />
+        <script suppressHydrationWarning dangerouslySetInnerHTML={{ __html: `try{if(sessionStorage.getItem('splashShown'))document.documentElement.setAttribute('data-splash-done','1')}catch(e){}` }} />
+        <style suppressHydrationWarning dangerouslySetInnerHTML={{ __html: `html[data-splash-done="1"] [data-splash]{display:none!important}` }} />
       </head>
-      <body className={`${inter.className} bg-black text-white min-h-screen flex flex-col`}>
-        <HeaderProvider>
-          {/* Splash Screen */}
-          <SplashWrapper />
+      <body suppressHydrationWarning className={`${inter.className} bg-black text-white min-h-screen flex flex-col`}>
+        <NextIntlClientProvider messages={{
+          Navigation: messages.Navigation,
+          Search: messages.Search,
+          Footer: messages.Footer,
+          Watchlist: messages.Watchlist,
+          Filter: messages.Filter
+        }}>
+          <HeaderProvider>
+            {/* Splash Screen */}
+            <SplashWrapper />
 
-          <AuthChecker />
-          <ProgressCleanup />
-          <Navigation />
-          <WatchlistSyncer />
-          <ContentWrapper>
-            {children}
-          </ContentWrapper>
-          <Footer />
-          <FloatingChatboxWrapper />
-          <CustomToaster />
-          <VersionChecker />
-          <SpeedInsights />
-        </HeaderProvider>
+            <AuthChecker />
+            <ProgressCleanup />
+            <Navigation />
+            <WatchlistSyncer />
+            <ContentWrapper>
+              {children}
+            </ContentWrapper>
+            <Footer />
+            <FloatingChatboxWrapper />
+            <CustomToaster />
+            <VersionChecker />
+            <SpeedInsights />
+          </HeaderProvider>
+        </NextIntlClientProvider>
       </body>
     </html>
   );

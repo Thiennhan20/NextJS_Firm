@@ -1,18 +1,21 @@
 'use client'
 
 import { useState } from 'react'
+import { useLocale, useTranslations } from 'next-intl'
+import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronDownIcon, GlobeAltIcon } from '@heroicons/react/24/outline'
 
 interface Language {
   code: string
+  fullCode: string
   name: string
   flag: string
 }
 
 const languages: Language[] = [
-  { code: 'en', name: 'English', flag: '🇺🇸' },
-  { code: 'vi', name: 'Tiếng Việt', flag: '🇻🇳' },
+  { code: 'en', fullCode: 'en-US', name: 'English', flag: '🇺🇸' },
+  { code: 'vi', fullCode: 'vi-VN', name: 'Tiếng Việt', flag: '🇻🇳' },
 ]
 
 interface LanguageSelectorProps {
@@ -22,13 +25,36 @@ interface LanguageSelectorProps {
 
 export default function LanguageSelector({ isScrolled = false, className = '' }: LanguageSelectorProps) {
   const [isOpen, setIsOpen] = useState(false)
-  const [selectedLanguage, setSelectedLanguage] = useState<Language>(languages[0])
+  const locale = useLocale()
+  const t = useTranslations('Navigation')
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const selectedLanguage = languages.find(l => l.code === locale) || languages[0]
 
   const handleLanguageChange = (language: Language) => {
-    setSelectedLanguage(language)
     setIsOpen(false)
-    // TODO: Implement language change logic
-    console.log('Language changed to:', language.code)
+
+    // Save to cookie for persistence
+    document.cookie = `locale=${language.code};path=/;max-age=31536000;SameSite=Lax`
+
+    // Build new URL with ?lang= param
+    const params = new URLSearchParams(searchParams.toString())
+
+    if (language.code === 'en') {
+      // Default language: remove ?lang= to keep URL clean
+      params.delete('lang')
+    } else {
+      params.set('lang', language.fullCode)
+    }
+
+    const query = params.toString()
+    const newUrl = query ? `${pathname}?${query}` : pathname
+
+    // Use router.push for client-side navigation, then reload to apply server-side translations
+    router.push(newUrl)
+    // Reload to re-render with new locale from server
+    setTimeout(() => window.location.reload(), 50)
   }
 
   return (
@@ -42,7 +68,7 @@ export default function LanguageSelector({ isScrolled = false, className = '' }:
         }`}
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
-        aria-label="Select language"
+        aria-label={t('selectLanguage')}
       >
         <GlobeAltIcon className="h-3.5 w-3.5" />
         <span className="font-medium text-xs">{selectedLanguage.code.toUpperCase()}</span>
@@ -95,4 +121,4 @@ export default function LanguageSelector({ isScrolled = false, className = '' }:
       )}
     </div>
   )
-} 
+}

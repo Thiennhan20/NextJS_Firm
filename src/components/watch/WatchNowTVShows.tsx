@@ -10,6 +10,7 @@ import WatchNowTVShowsServer1 from './WatchNowTVShowsServer1'
 import WatchNowTVShowsServer2 from './WatchNowTVShowsServer2'
 import WatchNowTVShowsServer3 from './WatchNowTVShowsServer3'
 import { Radio, SkipForward } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 
 // Định nghĩa kiểu TVShow
 interface TVShow {
@@ -62,6 +63,7 @@ export default function WatchNowTVShows({
   const episodes = _episodes;
   const searchParams = useSearchParams();
   const router = useRouter();
+  const t = useTranslations('Watch');
 
   const [selectedServer, setSelectedServer] = useState<'server1' | 'server2' | 'server3'>('server1');
   const hasInitialized = useRef(false);
@@ -85,6 +87,18 @@ export default function WatchNowTVShows({
   const [showNextEpisodePopup, setShowNextEpisodePopup] = useState(false);
   const [nextEpisodeCountdown, setNextEpisodeCountdown] = useState(5);
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  const streamBtnRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (streamBtnRef.current && !streamBtnRef.current.contains(event.target as Node)) {
+        setStreamAuthMessage(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // ✅ Di chuyển tvShowLinks lên đây để useEffect có thể dùng
   const [tvShowLinks, setTVShowLinks] = useState({
@@ -261,7 +275,7 @@ export default function WatchNowTVShows({
   // Handler cho nút Stream
   const handleStreamClick = () => {
     if (!isAuthenticated) {
-      setStreamAuthMessage(true);
+      setStreamAuthMessage((prev) => !prev);
       return;
     }
     if (!effectiveStreamUrl) return;
@@ -280,7 +294,7 @@ export default function WatchNowTVShows({
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 text-white">
-      <h2 className="text-3xl font-bold mb-6">Watch Now</h2>
+      <h2 className="text-3xl font-bold mb-6">{t('watchNow')}</h2>
 
       {/* Server 1 Component */}
       <WatchNowTVShowsServer1
@@ -333,21 +347,21 @@ export default function WatchNowTVShows({
             className={`whitespace-nowrap px-4 py-2 rounded-md text-sm font-semibold transition-colors ${selectedServer === 'server1' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-200 hover:bg-gray-600'}`}
             onClick={() => handleServerChange('server1')}
           >
-            Server 1
+            {t('server1')}
           </button>
 
           <button
             className={`whitespace-nowrap px-4 py-2 rounded-md text-sm font-semibold transition-colors ${selectedServer === 'server2' ? 'bg-green-600 text-white' : 'bg-gray-700 text-gray-200 hover:bg-gray-600'}`}
             onClick={() => handleServerChange('server2')}
           >
-            Server 2
+            {t('server2')}
           </button>
 
           <button
             className={`whitespace-nowrap px-4 py-2 rounded-md text-sm font-semibold transition-colors ${selectedServer === 'server3' ? 'bg-amber-700 text-white' : 'bg-gray-700 text-gray-200 hover:bg-gray-600'}`}
             onClick={() => handleServerChange('server3')}
           >
-            Server 3
+            {t('server3')}
           </button>
         </div>
 
@@ -355,7 +369,7 @@ export default function WatchNowTVShows({
         <div className="flex flex-wrap items-center min-h-[32px]">
           {selectedServer === 'server1' && (tvShowLinks.vietsub || tvShowLinks.dubbed) && (
             <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-300">Audio:</span>
+              <span className="text-xs text-gray-300">{t('audio')}</span>
               {tvShowLinks.vietsub && (
                 <button
                   className={`px-3 py-1 rounded text-xs font-semibold transition-colors ${selectedAudio === 'vietsub' ? 'bg-gradient-to-r from-fuchsia-600 to-pink-600 text-white' : 'bg-gray-700 text-gray-200 hover:bg-gray-600'}`}
@@ -366,7 +380,7 @@ export default function WatchNowTVShows({
                     router.push(`${window.location.pathname}?${params.toString()}`, { scroll: false });
                   }}
                 >
-                  Vietsub
+                  {t('vietsub')}
                 </button>
               )}
               {tvShowLinks.dubbed && (
@@ -379,7 +393,7 @@ export default function WatchNowTVShows({
                     router.push(`${window.location.pathname}?${params.toString()}`, { scroll: false });
                   }}
                 >
-                  Dubbed
+                  {t('dubbed')}
                 </button>
               )}
             </div>
@@ -387,13 +401,13 @@ export default function WatchNowTVShows({
 
           {selectedServer === 'server2' && (
             <span className="text-xs text-yellow-300 bg-yellow-900/40 px-2 py-1 rounded">
-              This server may contain ads.
+              {t('adsWarning')}
             </span>
           )}
 
           {selectedServer === 'server3' && (server3Links.vietsub || server3Links.dubbed) && (
             <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-300">Audio:</span>
+              <span className="text-xs text-gray-300">{t('audio')}</span>
               {server3Links.vietsub && (
                 <button
                   className={`px-3 py-1 rounded text-xs font-semibold transition-colors ${selectedAudio === 'vietsub' ? 'bg-gradient-to-r from-fuchsia-600 to-pink-600 text-white' : 'bg-gray-700 text-gray-200 hover:bg-gray-600'}`}
@@ -404,7 +418,7 @@ export default function WatchNowTVShows({
                     router.push(`${window.location.pathname}?${params.toString()}`, { scroll: false });
                   }}
                 >
-                  Vietsub
+                  {t('vietsub')}
                 </button>
               )}
               {server3Links.dubbed && (
@@ -417,7 +431,7 @@ export default function WatchNowTVShows({
                     router.push(`${window.location.pathname}?${params.toString()}`, { scroll: false });
                   }}
                 >
-                  Dubbed
+                  {t('dubbed')}
                 </button>
               )}
             </div>
@@ -435,9 +449,9 @@ export default function WatchNowTVShows({
             {((selectedServer === 'server1' && (tvShowLinks.vietsub || tvShowLinks.dubbed)) ||
               (selectedServer === 'server3' && (server3Links.vietsub || server3Links.dubbed))) && (
                 <span className="px-2 py-0.5 text-[10px] sm:text-xs font-semibold rounded bg-gradient-to-r from-fuchsia-600 to-pink-600 text-white whitespace-nowrap">
-                  {selectedAudio === 'vietsub' ? 'Vietsub' :
-                    selectedAudio === 'dubbed' ? 'Vietnamese Dubbed' :
-                      (selectedServer === 'server1' ? tvShowLinks.vietsub : server3Links.vietsub) ? 'Vietsub' : 'Vietnamese Dubbed'}
+                  {selectedAudio === 'vietsub' ? t('vietsub') :
+                    selectedAudio === 'dubbed' ? t('vietnameseDubbed') :
+                      (selectedServer === 'server1' ? tvShowLinks.vietsub : server3Links.vietsub) ? t('vietsub') : t('vietnameseDubbed')}
                 </span>
               )}
           </div>
@@ -454,35 +468,35 @@ export default function WatchNowTVShows({
                       ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/40'
                       : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                   }`}
-                  title={autoNextEnabled ? 'Auto next episode is ON' : 'Auto next episode is OFF'}
+                  title={autoNextEnabled ? t('autoNextOn') : t('autoNextOff')}
                 >
                   <SkipForward className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                  <span className="hidden sm:inline">Auto Next</span>
+                  <span className="hidden sm:inline">{t('autoNext')}</span>
                 </button>
               )}
 
               {/* Stream Button */}
               {effectiveStreamUrl && (
-                <div className="relative">
+                <div className="relative" ref={streamBtnRef}>
                   <button
                     onClick={handleStreamClick}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-yellow-500 to-amber-500 text-black text-xs sm:text-sm font-semibold hover:from-yellow-400 hover:to-amber-400 transition-all duration-300 shadow-lg shadow-yellow-500/20 hover:shadow-yellow-500/40 whitespace-nowrap"
-                    title="Start Watch Party"
+                    title={t('startWatchParty')}
                   >
                     <Radio className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                    <span className="hidden sm:inline">Stream</span>
+                    <span className="hidden sm:inline">{t('stream')}</span>
                   </button>
 
                   {/* Auth notification dropdown */}
                   {streamAuthMessage && (
                     <div className="absolute top-full right-0 mt-2 p-3 bg-gray-900/95 backdrop-blur-sm border border-yellow-500/30 rounded-xl shadow-2xl z-50 w-64">
-                      <p className="text-sm text-white mb-2.5">You need to sign in to use this feature.</p>
+                      <p className="text-sm text-white mb-2.5">{t('signInRequired')}</p>
                       <div className="flex gap-2">
                         <button
                           onClick={() => router.push('/login')}
                           className="flex-1 px-3 py-1.5 bg-yellow-500 text-black text-xs font-semibold rounded-lg hover:bg-yellow-400 transition-colors"
                         >
-                          Sign In
+                          {t('signIn')}
                         </button>
                         <button
                           onClick={() => { setStreamAuthMessage(false); }}
@@ -507,8 +521,8 @@ export default function WatchNowTVShows({
               <svg className="w-12 h-12 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 4V2a1 1 0 011-1h8a1 1 0 011 1v2h4a1 1 0 110 2h-1v12a2 2 0 01-2 2H6a2 2 0 01-2-2V6H3a1 1 0 110-2h4z" />
               </svg>
-              <p className="text-lg font-semibold">Please select an episode first</p>
-              <p className="text-sm text-gray-400">Choose from the episodes below to start watching</p>
+              <p className="text-lg font-semibold">{t('selectEpisodeFirst')}</p>
+              <p className="text-sm text-gray-400">{t('chooseEpisode')}</p>
             </div>
           </div>
         ) : selectedServer === 'server1' ? (
@@ -522,7 +536,7 @@ export default function WatchNowTVShows({
                       transition={{ repeat: Infinity, duration: 1.5, ease: 'linear' }}
                       className="w-12 h-12 border-4 border-red-500 border-t-transparent rounded-full"
                     />
-                    <p className="text-sm text-gray-400">Please wait a moment</p>
+                    <p className="text-sm text-gray-400">{t('pleaseWait')}</p>
                   </div>
                 </div>
               );
@@ -536,8 +550,8 @@ export default function WatchNowTVShows({
                     <svg className="w-12 h-12 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
-                    <p className="text-lg font-semibold">No video source available</p>
-                    <p className="text-sm text-gray-400">Please try another server</p>
+                    <p className="text-lg font-semibold">{t('noVideoSource')}</p>
+                    <p className="text-sm text-gray-400">{t('tryAnotherServer')}</p>
                   </div>
                 </div>
               );
@@ -577,7 +591,7 @@ export default function WatchNowTVShows({
                 userId={typeof userId === 'string' ? userId : undefined}
                 onVideoEnded={handleVideoEnded}
                 endOverlay={showNextEpisodePopup && hasNextEpisode ? (
-                  <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
+                  <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/80 backdrop-blur-sm">
                     <motion.div
                       initial={{ opacity: 0, scale: 0.9 }}
                       animate={{ opacity: 1, scale: 1 }}
@@ -585,13 +599,13 @@ export default function WatchNowTVShows({
                     >
                       <SkipForward className="w-8 h-8 text-emerald-400" />
                       <h3 className="text-white text-base sm:text-lg font-bold text-center">
-                        Next: Episode {selectedEpisode + 1}
+                        {t('nextEpisode')}: {selectedEpisode + 1}
                       </h3>
 
                       {autoNextEnabled ? (
                         <>
                           <p className="text-gray-300 text-sm text-center">
-                            Playing next in
+                            {t('playingNextIn')}
                           </p>
                           <div className="relative w-16 h-16 flex items-center justify-center">
                             <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 64 64">
@@ -617,13 +631,13 @@ export default function WatchNowTVShows({
                               onClick={goToNextEpisode}
                               className="px-5 py-2.5 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-semibold text-sm transition-all shadow-lg hover:shadow-emerald-500/30"
                             >
-                              Play Now
+                              {t('playNow')}
                             </button>
                             <button
                               onClick={handleDismissPopup}
                               className="px-5 py-2.5 rounded-lg bg-gray-700 hover:bg-gray-600 text-white font-semibold text-sm transition-colors"
                             >
-                              Cancel
+                              {t('cancel')}
                             </button>
                           </div>
                         </>
@@ -634,13 +648,13 @@ export default function WatchNowTVShows({
                             className="px-5 py-2.5 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-semibold text-sm transition-all shadow-lg hover:shadow-emerald-500/30 flex items-center gap-2"
                           >
                             <SkipForward className="w-4 h-4" />
-                            Next Episode
+                            {t('nextEpisode')}
                           </button>
                           <button
                             onClick={handleDismissPopup}
                             className="px-5 py-2.5 rounded-lg bg-gray-700 hover:bg-gray-600 text-white font-semibold text-sm transition-colors"
                           >
-                            Dismiss
+                            {t('dismiss')}
                           </button>
                         </div>
                       )}
@@ -650,7 +664,7 @@ export default function WatchNowTVShows({
               />
             ) : (
               <div className="flex items-center justify-center h-full text-white text-lg font-semibold">
-                No video source available
+                {t('noVideoSource')}
               </div>
             );
           })()
@@ -674,7 +688,7 @@ export default function WatchNowTVShows({
                       transition={{ repeat: Infinity, duration: 1.5, ease: 'linear' }}
                       className="w-12 h-12 border-4 border-red-500 border-t-transparent rounded-full"
                     />
-                    <p className="text-sm text-gray-400">Please wait a moment</p>
+                    <p className="text-sm text-gray-400">{t('pleaseWait')}</p>
                   </div>
                 </div>
               );
@@ -688,8 +702,8 @@ export default function WatchNowTVShows({
                     <svg className="w-12 h-12 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
-                    <p className="text-lg font-semibold">No video source available</p>
-                    <p className="text-sm text-gray-400">Please try another server</p>
+                    <p className="text-lg font-semibold">{t('noVideoSource')}</p>
+                    <p className="text-sm text-gray-400">{t('tryAnotherServer')}</p>
                   </div>
                 </div>
               );
@@ -721,7 +735,7 @@ export default function WatchNowTVShows({
               />
             ) : (
               <div className="flex items-center justify-center h-full text-white text-lg font-semibold">
-                No video source available
+                {t('noVideoSource')}
               </div>
             );
           })()
@@ -733,7 +747,7 @@ export default function WatchNowTVShows({
                 transition={{ repeat: Infinity, duration: 1.5, ease: 'linear' }}
                 className="w-12 h-12 border-4 border-red-500 border-t-transparent rounded-full"
               />
-              <p className="text-sm text-gray-400">Loading...</p>
+              <p className="text-sm text-gray-400">{t('loading')}</p>
             </div>
           </div>
         )}

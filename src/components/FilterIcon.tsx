@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useTranslations } from 'next-intl'
 
 interface FilterIconProps {
   selectedYear: string | number
@@ -41,6 +42,7 @@ export default function FilterIcon({
 }: FilterIconProps) {
   const [isOpen, setIsOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const t = useTranslations('Filter')
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -67,6 +69,21 @@ export default function FilterIcon({
     showContentType && selectedContentType !== 'all' ? 1 : 0,
     showSort && selectedSort !== 'relevance' ? 1 : 0
   ].reduce((a, b) => a + b, 0)
+
+  // Helper to get translated content type label for footer
+  const getContentTypeLabel = (type: string) => {
+    if (type === 'movie') return t('movies')
+    if (type === 'tv') return t('tvShows')
+    return ''
+  }
+
+  // Helper to get translated sort label for footer
+  const getSortLabel = (sort: string) => {
+    if (sort === 'popularity') return t('popularity')
+    if (sort === 'rating') return t('rating')
+    if (sort === 'date') return t('date')
+    return ''
+  }
 
   return (
     <div className="relative" ref={dropdownRef}>
@@ -104,7 +121,7 @@ export default function FilterIcon({
         </div>
         
         {/* Button Text */}
-        <span className="text-sm font-medium">Filters</span>
+        <span className="text-sm font-medium">{t('filters')}</span>
         
         {/* Dropdown Arrow */}
         <motion.svg
@@ -131,8 +148,8 @@ export default function FilterIcon({
           >
             {/* Header */}
             <div className="px-3 py-2.5 bg-gradient-to-r from-gray-800/80 to-gray-700/80 border-b border-gray-700/50">
-              <h3 className="text-white font-semibold text-sm">Filter Options</h3>
-              <p className="text-gray-400 text-xs">Refine your search</p>
+              <h3 className="text-white font-semibold text-sm">{t('filterOptions')}</h3>
+              <p className="text-gray-400 text-xs">{t('refineSearch')}</p>
             </div>
 
             {/* Filter Options */}
@@ -141,7 +158,7 @@ export default function FilterIcon({
               {showContentType && onContentTypeChange && (
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Content Type
+                    {t('contentType')}
                   </label>
                   <div className="grid grid-cols-3 gap-1.5">
                     {(['all', 'movie', 'tv'] as const).map((type) => (
@@ -154,7 +171,7 @@ export default function FilterIcon({
                             : 'bg-gray-800/60 text-gray-300 hover:bg-gray-700/80 hover:text-white border border-gray-700/50 hover:border-gray-600/50'
                         }`}
                       >
-                        {type === 'all' ? 'All' : type === 'movie' ? 'Movies' : 'TV Shows'}
+                        {type === 'all' ? t('all') : type === 'movie' ? t('movies') : t('tvShows')}
                       </button>
                     ))}
                   </div>
@@ -165,7 +182,7 @@ export default function FilterIcon({
               {showSort && onSortChange && (
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Sort By
+                    {t('sortBy')}
                   </label>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
                     {(['relevance', 'popularity', 'rating', 'date'] as const).map((sort) => (
@@ -178,7 +195,7 @@ export default function FilterIcon({
                             : 'bg-gray-800/60 text-gray-300 hover:bg-gray-700/80 hover:text-white border border-gray-700/50 hover:border-gray-600/50'
                         }`}
                       >
-                        {sort === 'relevance' ? 'Relevance' : sort === 'popularity' ? 'Popularity' : sort === 'rating' ? 'Rating' : 'Date'}
+                        {sort === 'relevance' ? t('relevance') : sort === 'popularity' ? t('popularity') : sort === 'rating' ? t('rating') : t('date')}
                       </button>
                     ))}
                   </div>
@@ -188,7 +205,7 @@ export default function FilterIcon({
               {/* Year Filter */}
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Year
+                  {t('year')}
                 </label>
                 <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5">
                   {years.map((year) => (
@@ -201,7 +218,7 @@ export default function FilterIcon({
                           : 'bg-gray-800/60 text-gray-300 hover:bg-gray-700/80 hover:text-white border border-gray-700/50 hover:border-gray-600/50'
                       }`}
                     >
-                      {year === 'All' ? 'All' : year}
+                      {year === 'All' ? t('all') : year}
                     </button>
                   ))}
                 </div>
@@ -210,7 +227,7 @@ export default function FilterIcon({
               {/* Category Filter */}
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Category
+                  {t('category')}
                 </label>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
                   {categories.map((category) => (
@@ -223,7 +240,7 @@ export default function FilterIcon({
                           : 'bg-gray-800/60 text-gray-300 hover:bg-gray-700/80 hover:text-white border border-gray-700/50 hover:border-gray-600/50'
                       }`}
                     >
-                      {category === 'All' ? 'All' : category}
+                      {category === 'All' ? t('all') : category}
                     </button>
                   ))}
                 </div>
@@ -233,7 +250,7 @@ export default function FilterIcon({
               {countries.length > 1 && (
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Country
+                    {t('country')}
                   </label>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
                     {countries.map((country) => (
@@ -246,7 +263,7 @@ export default function FilterIcon({
                             : 'bg-gray-800/60 text-gray-300 hover:bg-gray-700/80 hover:text-white border border-gray-700/50 hover:border-gray-600/50'
                         }`}
                       >
-                        {country === 'All' ? 'All' : country}
+                        {country === 'All' ? t('all') : country}
                       </button>
                     ))}
                   </div>
@@ -260,14 +277,14 @@ export default function FilterIcon({
                 <span className="text-xs text-gray-400">
                   {activeFiltersCount > 0 ? (
                     <>
-                      {showContentType && selectedContentType !== 'all' && `${selectedContentType === 'movie' ? 'Movies' : 'TV'}`}
-                      {showSort && selectedSort !== 'relevance' && `${showContentType && selectedContentType !== 'all' ? ' • ' : ''}${selectedSort === 'popularity' ? 'Popularity' : selectedSort === 'rating' ? 'Rating' : 'Date'}`}
+                      {showContentType && selectedContentType !== 'all' && getContentTypeLabel(selectedContentType!)}
+                      {showSort && selectedSort !== 'relevance' && `${showContentType && selectedContentType !== 'all' ? ' • ' : ''}${getSortLabel(selectedSort!)}`}
                       {selectedYear !== 'All' && `${(showContentType && selectedContentType !== 'all') || (showSort && selectedSort !== 'relevance') ? ' • ' : ''}${selectedYear}`}
                       {selectedCategory !== 'All' && ` • ${selectedCategory}`}
                       {selectedCountry !== 'All' && ` • ${selectedCountry}`}
                     </>
                   ) : (
-                    'All filters active'
+                    t('allFiltersActive')
                   )}
                 </span>
                 <button
@@ -280,7 +297,7 @@ export default function FilterIcon({
                   }}
                   className="text-purple-400 hover:text-purple-300 transition-colors duration-200 px-2.5 py-1 rounded-md hover:bg-gray-800/60 text-xs font-medium"
                 >
-                  Reset All
+                  {t('resetAll')}
                 </button>
               </div>
             </div>

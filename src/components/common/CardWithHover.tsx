@@ -11,6 +11,7 @@ import { useWatchlistStore } from '@/store/store'
 import useAuthStore from '@/store/useAuthStore'
 import { toast } from 'react-hot-toast'
 import api from '@/lib/axios'
+import { useTranslations } from 'next-intl'
 
 // 1. API Response Cache với TTL - Giảm 60% API calls
 interface CacheEntry {
@@ -95,6 +96,7 @@ const HoverCard = memo(function HoverCard({
   const [details, setDetails] = useState<MovieDetails | null>(null)
   const [loading, setLoading] = useState(false)
   const [isPointerActive, setIsPointerActive] = useState(false)
+  const t = useTranslations('Watchlist')
 
   // Enable pointer events after 200ms to allow click-through initially
   useEffect(() => {
@@ -186,7 +188,7 @@ const HoverCard = memo(function HoverCard({
     e.stopPropagation()
     
     if (!isAuthenticated) {
-      toast.error('You need to log in to save movies')
+      toast.error(t('loginRequired'))
       return
     }
 
@@ -203,20 +205,20 @@ const HoverCard = memo(function HoverCard({
           data: { id },
         })
         removeFromWatchlist(id)
-        toast.success('Removed from watchlist')
+        toast.success(t('removed'))
       } else {
         await api.post('/auth/watchlist', movieData)
         addToWatchlist(movieData)
-        toast.success('Added to watchlist')
+        toast.success(t('added'))
       }
       
       // Đồng bộ lại watchlist từ server
       if (token) await fetchWatchlistFromServer(token)
     } catch (err: unknown) {
       if (err && typeof err === 'object' && 'response' in err) {
-        toast.error((err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'An error occurred')
+        toast.error((err as { response?: { data?: { message?: string } } })?.response?.data?.message || t('error'))
       } else {
-        toast.error('An error occurred')
+        toast.error(t('error'))
       }
     }
   }
@@ -276,7 +278,7 @@ const HoverCard = memo(function HoverCard({
                 loading="lazy"
                 quality={75}
               />
-            ) : (
+            ) : posterPath ? (
               <Image
                 src={posterPath}
                 alt={title}
@@ -286,6 +288,10 @@ const HoverCard = memo(function HoverCard({
                 loading="lazy"
                 quality={75}
               />
+            ) : (
+              <div className="w-full h-full bg-gray-800 flex items-center justify-center">
+                <span className="text-gray-500 text-xs">{t('noImage')}</span>
+              </div>
             )}
             <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-gray-900/50 to-transparent" />
           </div>
@@ -303,7 +309,7 @@ const HoverCard = memo(function HoverCard({
                 whileTap={{ scale: 0.98 }}
               >
                 <PlayIcon className="w-4 h-4" />
-                <span className="text-sm">Watch Now</span>
+                <span className="text-sm">{t('watchNow')}</span>
               </motion.button>
 
               <motion.button
@@ -313,7 +319,7 @@ const HoverCard = memo(function HoverCard({
                 }`}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                title={isSaved ? 'Remove from watchlist' : 'Add to watchlist'}
+                title={isSaved ? t('removeFromWatchlist') : t('addToWatchlist')}
               >
                 {isSaved ? (
                   <BookmarkSolidIcon className="w-5 h-5 text-white" />
@@ -330,7 +336,7 @@ const HoverCard = memo(function HoverCard({
                   }`}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  title={isLiked ? 'Unlike' : 'Like'}
+                  title={isLiked ? t('unlike') : t('like')}
                 >
                   {isLiked ? (
                     <HeartSolidIcon className="w-5 h-5 text-white" />

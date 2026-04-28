@@ -15,15 +15,16 @@ import {
 } from '@heroicons/react/24/outline'
 import { FaFacebook, FaInstagram, FaYoutube } from 'react-icons/fa'
 import Logo from '@/components/common/Logo'
+import { useTranslations } from 'next-intl'
 
 const footerNavItems = [
-  { name: 'Home', href: '/', icon: HomeIcon },
-  { name: 'Movies', href: '/movies', icon: FilmIcon },
-  { name: 'TV Shows', href: '/tvshows', icon: PlayCircleIcon },
-  { name: 'News', href: '/news', icon: NewspaperIcon },
-  { name: 'About', href: '/about', icon: UserGroupIcon },
-  { name: 'FAQ', href: '/faq', icon: QuestionMarkCircleIcon },
-  { name: 'Contact', href: '/contact', icon: EnvelopeIcon },
+  { key: 'home', href: '/', icon: HomeIcon },
+  { key: 'movies', href: '/movies', icon: FilmIcon },
+  { key: 'tvShows', href: '/tvshows', icon: PlayCircleIcon },
+  { key: 'news', href: '/news', icon: NewspaperIcon },
+  { key: 'about', href: '/about', icon: UserGroupIcon },
+  { key: 'faq', href: '/faq', icon: QuestionMarkCircleIcon },
+  { key: 'contact', href: '/contact', icon: EnvelopeIcon },
 ]
 
 const socialLinks = [
@@ -33,6 +34,9 @@ const socialLinks = [
 ]
 
 export default function Footer() {
+  const t = useTranslations('Footer')
+  const tNav = useTranslations('Navigation.items')
+
   return (
     <footer className="bg-gradient-to-b from-black to-gray-900 text-gray-300 py-12 md:py-16 sm:landscape:py-2 border-t border-gray-800 relative overflow-hidden">
       <div className="absolute inset-0 pointer-events-none">
@@ -45,7 +49,7 @@ export default function Footer() {
           <div className="space-y-4">
             <Logo variant="footer" />
             <p className="text-sm leading-relaxed">
-              Your ultimate destination for discovering and experiencing movies in new dimensions.
+              {t('description')}
             </p>
             <div className="flex space-x-4">
               {socialLinks.map((link) => (
@@ -72,12 +76,12 @@ export default function Footer() {
           </div>
 
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-white">Quick Links</h3>
+            <h3 className="text-lg font-semibold text-white">{t('quickLinks')}</h3>
             <ul className="space-y-2">
               {footerNavItems.map((item) => (
-                <li key={item.name}>
+                <li key={item.key}>
                   <Link href={item.href} className="text-gray-400 hover:text-red-500 transition-colors">
-                    {item.name}
+                    {tNav(item.key)}
                   </Link>
                 </li>
               ))}
@@ -85,7 +89,7 @@ export default function Footer() {
           </div>
 
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-white">Contact Us</h3>
+            <h3 className="text-lg font-semibold text-white">{t('contactUs')}</h3>
             <div className="space-y-2">
               <div className="flex items-center space-x-2">
                 <EnvelopeIcon className="h-5 w-5 text-red-500" />
@@ -97,18 +101,18 @@ export default function Footer() {
               </div>
               <div className="flex items-start space-x-2">
                 <MapPinIcon className="h-5 w-5 text-gray-400 flex-shrink-0" />
-                <p className="text-gray-400">123 Movie Street, Hollywood, CA 90028</p>
+                <p className="text-gray-400">{t('address')}</p>
               </div>
             </div>
           </div>
           
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-white">Newsletter</h3>
-            <p className="text-sm text-gray-400">Stay updated with our latest news and offers.</p>
+            <h3 className="text-lg font-semibold text-white">{t('newsletter')}</h3>
+            <p className="text-sm text-gray-400">{t('newsletterDesc')}</p>
             <form className="flex flex-col gap-2">
               <input
                 type="email"
-                placeholder="Enter your email"
+                placeholder={t('emailPlaceholder')}
                 className="px-4 py-2 rounded-md bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-red-500"
               />
               <motion.button
@@ -117,7 +121,7 @@ export default function Footer() {
                 whileTap={{ scale: 0.98 }}
                 className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white font-semibold rounded-md transition-colors"
               >
-                Subscribe
+                {t('subscribe')}
               </motion.button>
             </form>
           </div>

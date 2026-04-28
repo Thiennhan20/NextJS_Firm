@@ -1,0 +1,28 @@
+{
+  "Movies": {
+    "loading": "Loading Movies...",
+    "noMovies": "No movies found.",
+    "goToPage": "Go to Page",
+    "page": "Page",
+    "go": "Go",
+    "randomText1": "Bored of old movies?\nTry random! 🎲",
+    "randomText2": "Don't know what\nto watch? 🎯",
+    "randomText3": "Any movie is fine,\ngo random! 🚀",
+    "randomText4": "Out of ideas?\nTry random! 💡",
+    "randomText5": "Test your luck\nwith random! 🍀",
+    "loginRequired": "You need to log in to save movies!",
+    "removedFromWatchlist": "Removed movie from watchlist!",
+    "addedToWatchlist": "Added movie to watchlist!",
+    "errorOccurred": "An error occurred",
+    "director": "Director",
+    "showMore": "Show more",
+    "showLess": "Show less",
+    "readMore": "Read more",
+    "trailer": "Trailer",
+    "added": "Added",
+    "save": "Save",
+    "scenes": "Scenes",
+    "movieScenes": "Movie Scenes",
+    "tba": "TBA"
+  }
+}

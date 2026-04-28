@@ -16,6 +16,7 @@ import api from '@/lib/axios'
 import { useRouter } from 'next/navigation'
 import ConfirmDialog from '@/components/common/ConfirmDialog'
 import Image from 'next/image'
+import { useTranslations } from 'next-intl'
 
 interface Comment {
   _id: string
@@ -67,6 +68,7 @@ export default function Comments({ movieId, type, title }: CommentsProps) {
   const router = useRouter()
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const replyTextareaRef = useRef<HTMLTextAreaElement>(null)
+  const t = useTranslations('Comments')
 
   // Check auth on component mount - REMOVED to prevent infinite loop
   // AuthChecker in layout.tsx already handles this
@@ -107,14 +109,14 @@ export default function Comments({ movieId, type, title }: CommentsProps) {
         }
       } catch (error) {
         console.error('Error fetching comments:', error)
-        toast.error('Failed to load comments')
+        toast.error(t('failedLoad'))
       } finally {
         setIsLoading(false)
       }
     }
 
     fetchComments()
-  }, [movieId, type, sortBy])
+  }, [movieId, type, sortBy, t])
 
   // Load more comments
   const loadMoreComments = async () => {
@@ -132,7 +134,7 @@ export default function Comments({ movieId, type, title }: CommentsProps) {
       }
     } catch (error) {
       console.error('Error loading more comments:', error)
-      toast.error('Failed to load more comments')
+      toast.error(t('failedLoadMore'))
     } finally {
       setIsLoadingMore(false)
     }
@@ -140,12 +142,12 @@ export default function Comments({ movieId, type, title }: CommentsProps) {
 
   const handleSubmitComment = async () => {
     if (!isAuthenticated) {
-      toast.error('Please log in to comment')
+      toast.error(t('loginToComment'))
       return
     }
     
     if (!newComment.trim()) {
-      toast.error('Please enter a comment')
+      toast.error(t('enterComment'))
       return
     }
 
@@ -162,15 +164,15 @@ export default function Comments({ movieId, type, title }: CommentsProps) {
         setComments(prev => [response.data.data, ...prev])
         setTotalComments(prev => prev + 1)
         setNewComment('')
-        toast.success('Comment added successfully!')
+        toast.success(t('commentAdded'))
       }
     } catch (error: unknown) {
       const err = error as { response?: { status?: number; data?: { message?: string } } };
       console.error('Error submitting comment:', error)
       if (err.response?.status === 401) {
-        toast.error('Please log in to comment')
+        toast.error(t('loginToComment'))
       } else {
-        toast.error(err.response?.data?.message || 'Failed to add comment')
+        toast.error(err.response?.data?.message || t('failedAdd'))
       }
     } finally {
       setIsSubmitting(false)
@@ -179,12 +181,12 @@ export default function Comments({ movieId, type, title }: CommentsProps) {
 
   const handleSubmitReply = async (parentId: string) => {
     if (!isAuthenticated) {
-      toast.error('Please log in to reply')
+      toast.error(t('loginToReply'))
       return
     }
     
     if (!replyText.trim()) {
-      toast.error('Please enter a reply')
+      toast.error(t('enterReply'))
       return
     }
 
@@ -209,15 +211,15 @@ export default function Comments({ movieId, type, title }: CommentsProps) {
         
         setReplyText('')
         setReplyingTo(null)
-        toast.success('Reply added successfully!')
+        toast.success(t('replyAdded'))
       }
     } catch (error: unknown) {
       const err = error as { response?: { status?: number; data?: { message?: string } } };
       console.error('Error submitting reply:', error)
       if (err.response?.status === 401) {
-        toast.error('Please log in to reply')
+        toast.error(t('loginToReply'))
       } else {
-        toast.error(err.response?.data?.message || 'Failed to add reply')
+        toast.error(err.response?.data?.message || t('failedAddReply'))
       }
     } finally {
       setIsSubmitting(false)
@@ -226,7 +228,7 @@ export default function Comments({ movieId, type, title }: CommentsProps) {
 
   const handleLike = async (commentId: string, isReply: boolean = false, parentId?: string) => {
     if (!isAuthenticated) {
-      toast.error('Please log in to like comments')
+      toast.error(t('loginToLike'))
       return
     }
 
@@ -273,9 +275,9 @@ export default function Comments({ movieId, type, title }: CommentsProps) {
       const err = error as { response?: { status?: number } };
       console.error('Error liking comment:', error)
       if (err.response?.status === 401) {
-        toast.error('Please log in to like comments')
+        toast.error(t('loginToLike'))
       } else {
-        toast.error('Failed to like comment')
+        toast.error(t('failedLike'))
       }
     }
   }
@@ -298,16 +300,16 @@ export default function Comments({ movieId, type, title }: CommentsProps) {
     const diffInSeconds = Math.floor((now.getTime() - commentTime.getTime()) / 1000)
     
     if (diffInSeconds < 60) {
-      return 'Just now'
+      return t('justNow')
     } else if (diffInSeconds < 3600) {
       const minutes = Math.floor(diffInSeconds / 60)
-      return `${minutes} minute${minutes > 1 ? 's' : ''} ago`
+      return minutes > 1 ? t('minutesAgoPlural', { count: minutes }) : t('minutesAgo', { count: minutes })
     } else if (diffInSeconds < 86400) {
       const hours = Math.floor(diffInSeconds / 3600)
-      return `${hours} hour${hours > 1 ? 's' : ''} ago`
+      return hours > 1 ? t('hoursAgoPlural', { count: hours }) : t('hoursAgo', { count: hours })
     } else if (diffInSeconds < 604800) {
       const days = Math.floor(diffInSeconds / 86400)
-      return `${days} day${days > 1 ? 's' : ''} ago`
+      return days > 1 ? t('daysAgoPlural', { count: days }) : t('daysAgo', { count: days })
     } else {
       return commentTime.toLocaleDateString()
     }
@@ -332,11 +334,11 @@ export default function Comments({ movieId, type, title }: CommentsProps) {
         setEditingId(null)
         setEditText('')
         setActionOpenId(null)
-        toast.success('Updated')
+        toast.success(t('updated'))
       }
     } catch (error: unknown) {
       const err = error as { response?: { data?: { message?: string } } };
-      toast.error(err.response?.data?.message || 'Failed to update')
+      toast.error(err.response?.data?.message || t('failedUpdate'))
     } finally {
       setIsSubmitting(false)
     }
@@ -349,11 +351,11 @@ export default function Comments({ movieId, type, title }: CommentsProps) {
       if (res.data.success) {
         setComments(prev => prev.filter(c => c._id !== id))
         setTotalComments(prev => Math.max(0, prev - 1))
-        toast.success('Deleted')
+        toast.success(t('deleted'))
       }
     } catch (error: unknown) {
       const err = error as { response?: { data?: { message?: string } } };
-      toast.error(err.response?.data?.message || 'Failed to delete')
+      toast.error(err.response?.data?.message || t('failedDelete'))
     } finally {
       setActionOpenId(null)
       setConfirmDeleteId(null)
@@ -362,24 +364,24 @@ export default function Comments({ movieId, type, title }: CommentsProps) {
 
   // Actions: report (placeholder)
   const handleReport = () => {
-    toast.success('Thanks for your report. We will review it.')
+    toast.success(t('reportThanks'))
   }
 
   return (
     <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-8 sm:py-12">
       <ConfirmDialog
         open={!!confirmDeleteId}
-        title="Delete comment"
-        description="This action cannot be undone. Do you want to delete this comment?"
-        confirmText="Delete"
-        cancelText="Cancel"
+        title={t('deleteTitle')}
+        description={t('deleteDesc')}
+        confirmText={t('deleteConfirm')}
+        cancelText={t('cancel')}
         onConfirm={() => confirmDeleteId && handleDelete(confirmDeleteId)}
         onCancel={() => setConfirmDeleteId(null)}
       />
       <div className="mb-6 sm:mb-8">
         <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
           <ChatBubbleLeftRightIcon className="h-6 w-6 sm:h-8 sm:w-8 text-red-500" />
-          <h2 className="text-2xl sm:text-3xl font-bold text-white">Comments</h2>
+          <h2 className="text-2xl sm:text-3xl font-bold text-white">{t('title')}</h2>
           <span className="bg-gray-700 text-gray-300 px-2 py-1 sm:px-3 sm:py-1 rounded-full text-xs sm:text-sm">
             {totalComments}
           </span>
@@ -423,7 +425,7 @@ export default function Comments({ movieId, type, title }: CommentsProps) {
                     }
                   }
                 }}
-                placeholder={isAuthenticated ? `Share your thoughts about ${title}...` : 'Please log in to comment'}
+                placeholder={isAuthenticated ? t('shareThoughts', { title }) : t('loginToComment')}
                 disabled={false}
                 maxLength={500}
                 className="w-full bg-gray-700/50 border border-gray-600 rounded-lg px-3 py-2 sm:px-4 sm:py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none disabled:opacity-50 disabled:cursor-not-allowed text-[16px] sm:text-base scrollbar-hide"
@@ -439,16 +441,16 @@ export default function Comments({ movieId, type, title }: CommentsProps) {
                         ? 'text-yellow-500' 
                         : 'text-gray-400'
                     }`}>
-                      {newComment.length}/500 characters
-                      {newComment.length >= 500 && ' (limit reached)'}
+                      {newComment.length}/500
+                      {newComment.length >= 500 && t('limitReached')}
                     </span>
                   </div>
                   {!isAuthenticated && (
                     <div className="flex items-center gap-2 mt-1">
                       <span className="text-xs text-yellow-400 flex items-center gap-1">
                         <span>⚠️</span>
-                        <span className="hidden sm:inline">Please log in to post comments</span>
-                        <span className="sm:hidden">Login required</span>
+                        <span className="hidden sm:inline">{t('loginToComment')}</span>
+                        <span className="sm:hidden">{t('loginRequired')}</span>
                       </span>
                       <motion.button
                         whileHover={{ scale: 1.05 }}
@@ -457,7 +459,7 @@ export default function Comments({ movieId, type, title }: CommentsProps) {
                         className="inline-flex items-center gap-1 px-3 py-1.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white text-xs font-medium rounded-lg shadow-lg transition-all duration-200"
                       >
                         <UserIcon className="h-3 w-3" />
-                        Login
+                        {t('login')}
                       </motion.button>
                     </div>
                   )}
@@ -478,8 +480,8 @@ export default function Comments({ movieId, type, title }: CommentsProps) {
                   ) : (
                     <ChatBubbleLeftRightIcon className="h-4 w-4" />
                   )}
-                  <span className="hidden sm:inline">{isSubmitting ? 'Posting...' : 'Post Comment'}</span>
-                  <span className="sm:hidden">{isSubmitting ? 'Posting...' : 'Post'}</span>
+                  <span className="hidden sm:inline">{isSubmitting ? t('posting') : t('postComment')}</span>
+                  <span className="sm:hidden">{isSubmitting ? t('posting') : t('post')}</span>
                 </motion.button>
               </div>
             </div>
@@ -488,12 +490,12 @@ export default function Comments({ movieId, type, title }: CommentsProps) {
 
         {/* Sort Options */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mb-4 sm:mb-6">
-          <span className="text-gray-300 text-sm font-medium">Sort by:</span>
+          <span className="text-gray-300 text-sm font-medium">{t('sortBy')}</span>
           <div className="flex gap-1 sm:gap-2 overflow-x-auto pb-2 sm:pb-0">
             {[
-              { value: 'newest', label: 'Newest' },
-              { value: 'oldest', label: 'Oldest' },
-              { value: 'popular', label: 'Most Liked' }
+              { value: 'newest', label: t('newest') },
+              { value: 'oldest', label: t('oldest') },
+              { value: 'popular', label: t('popular') }
             ].map((option) => (
               <button
                 key={option.value}
@@ -555,7 +557,7 @@ export default function Comments({ movieId, type, title }: CommentsProps) {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start sm:items-center justify-between gap-2 mb-2">
                     <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 min-w-0">
-                      <h4 className="font-semibold text-white truncate text-sm sm:text-base">{comment.userId?.name || 'Unknown User'}</h4>
+                      <h4 className="font-semibold text-white truncate text-sm sm:text-base">{comment.userId?.name || t('unknownUser')}</h4>
                       <span className="text-gray-400 text-xs sm:text-sm flex items-center gap-1">
                         <ClockIcon className="h-3 w-3" />
                         {formatTimeAgo(comment.createdAt)}
@@ -577,13 +579,13 @@ export default function Comments({ movieId, type, title }: CommentsProps) {
                                 className="w-full text-left px-3 py-2 text-sm text-gray-200 hover:bg-gray-700 rounded-t-lg"
                                 onClick={() => startEditing(comment)}
                               >
-                                Edit
+                                {t('edit')}
                               </button>
                               <button
                                 className="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-gray-700 rounded-b-lg"
                                 onClick={() => setConfirmDeleteId(comment._id)}
                               >
-                                Delete
+                                {t('delete')}
                               </button>
                             </div>
                           )}
@@ -593,7 +595,7 @@ export default function Comments({ movieId, type, title }: CommentsProps) {
                           className="px-2 py-1 text-xs sm:text-sm text-gray-300 hover:text-white hover:bg-gray-700/60 rounded-md transition-colors"
                           onClick={() => handleReport()}
                         >
-                          Report
+                          {t('report')}
                         </button>
                       )}
                     </div>
@@ -613,13 +615,13 @@ export default function Comments({ movieId, type, title }: CommentsProps) {
                           disabled={!editText.trim() || isSubmitting}
                           className="px-3 py-1.5 bg-red-600 text-white rounded-md text-sm disabled:bg-gray-600 disabled:cursor-not-allowed"
                         >
-                          Save
+                          {t('save')}
                         </button>
                         <button
                           onClick={() => { setEditingId(null); setEditText(''); setActionOpenId(null); }}
                           className="px-3 py-1.5 text-gray-300 hover:text-white text-sm"
                         >
-                          Cancel
+                          {t('cancel')}
                         </button>
                       </div>
                     </div>
@@ -649,7 +651,7 @@ export default function Comments({ movieId, type, title }: CommentsProps) {
                       className="flex items-center gap-1 sm:gap-2 text-gray-400 hover:text-blue-500 transition-colors"
                     >
                       <ChatBubbleLeftRightIcon className="h-4 w-4 sm:h-5 sm:w-5" />
-                      <span className="text-xs sm:text-sm">Reply</span>
+                      <span className="text-xs sm:text-sm">{t('reply')}</span>
                     </motion.button>
                     
                     {comment.replies && comment.replies.length > 0 && (
@@ -658,7 +660,7 @@ export default function Comments({ movieId, type, title }: CommentsProps) {
                         className="flex items-center gap-1 sm:gap-2 text-gray-400 hover:text-white transition-colors"
                       >
                         <span className="text-xs sm:text-sm">
-                          {showReplies.has(comment._id) ? 'Hide' : 'Show'} {comment.replies.length} {comment.replies.length === 1 ? 'reply' : 'replies'}
+                          {showReplies.has(comment._id) ? t('hide') : t('show')} {comment.replies.length} {comment.replies.length === 1 ? t('replyCount') : t('replyCountPlural')}
                         </span>
                       </button>
                     )}
@@ -709,7 +711,7 @@ export default function Comments({ movieId, type, title }: CommentsProps) {
                                   }
                                 }
                               }}
-                              placeholder={isAuthenticated ? `Reply to ${comment.userId?.name || 'user'}...` : 'Please log in to reply'}
+                              placeholder={isAuthenticated ? t('replyTo', { user: comment.userId?.name || t('unknownUser') }) : t('loginToReply')}
                               disabled={!isAuthenticated}
                               maxLength={500}
                               className="w-full bg-gray-700/50 border border-gray-600 rounded-lg px-2 py-1.5 sm:px-3 sm:py-2 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none text-[16px] sm:text-sm scrollbar-hide"
@@ -724,7 +726,7 @@ export default function Comments({ movieId, type, title }: CommentsProps) {
                                   : 'text-gray-400'
                               }`}>
                                 {replyText.length}/500
-                                {replyText.length >= 500 && ' (limit)'}
+                                {replyText.length >= 500 && t('limitReached')}
                               </span>
                               <div className="flex gap-1 sm:gap-2">
                                 <button
@@ -734,7 +736,7 @@ export default function Comments({ movieId, type, title }: CommentsProps) {
                                   }}
                                   className="px-2 py-1 sm:px-3 sm:py-1 text-gray-400 hover:text-white transition-colors text-xs sm:text-sm"
                                 >
-                                  Cancel
+                                  {t('cancel')}
                                 </button>
                                 <motion.button
                                   whileHover={{ scale: 1.02 }}
@@ -743,7 +745,7 @@ export default function Comments({ movieId, type, title }: CommentsProps) {
                                   disabled={!isAuthenticated || !replyText.trim() || isSubmitting}
                                   className="px-3 py-1 sm:px-4 sm:py-1 bg-red-600 text-white rounded-lg text-xs sm:text-sm font-medium hover:bg-red-700 disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors"
                                 >
-                                  {isSubmitting ? 'Posting...' : 'Reply'}
+                                  {isSubmitting ? t('posting') : t('reply')}
                                 </motion.button>
                               </div>
                             </div>
@@ -785,7 +787,7 @@ export default function Comments({ movieId, type, title }: CommentsProps) {
                             
                             <div className="flex-1 min-w-0">
                               <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mb-1">
-                                <h5 className="font-medium text-white text-xs sm:text-sm truncate">{reply.userId?.name || 'Unknown User'}</h5>
+                                <h5 className="font-medium text-white text-xs sm:text-sm truncate">{reply.userId?.name || t('unknownUser')}</h5>
                                 <span className="text-gray-400 text-xs flex items-center gap-1">
                                   <ClockIcon className="h-3 w-3" />
                                   {formatTimeAgo(reply.createdAt)}
@@ -825,8 +827,8 @@ export default function Comments({ movieId, type, title }: CommentsProps) {
         {!isLoading && comments.length === 0 && (
           <div className="text-center py-8 sm:py-12">
             <ChatBubbleLeftRightIcon className="h-12 w-12 sm:h-16 sm:w-16 text-gray-600 mx-auto mb-3 sm:mb-4" />
-            <h3 className="text-lg sm:text-xl font-semibold text-gray-400 mb-2">No comments yet</h3>
-            <p className="text-gray-500 text-sm sm:text-base">Be the first to share your thoughts about this {type}!</p>
+            <h3 className="text-lg sm:text-xl font-semibold text-gray-400 mb-2">{t('noComments')}</h3>
+            <p className="text-gray-500 text-sm sm:text-base">{t('beFirst')}</p>
           </div>
         )}
 
@@ -848,11 +850,11 @@ export default function Comments({ movieId, type, title }: CommentsProps) {
                       transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
                       className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full"
                     />
-                    <span>Loading...</span>
+                    <span>{t('loading')}</span>
                   </>
                 ) : (
                   <>
-                    <span>Show more</span>
+                    <span>{t('loadMore')}</span>
                     <span className="text-gray-500 text-sm">({comments.length}/{totalComments})</span>
                   </>
                 )}
@@ -869,7 +871,7 @@ export default function Comments({ movieId, type, title }: CommentsProps) {
                 }}
                 className="px-6 py-2.5 bg-gray-700/50 hover:bg-gray-700 text-gray-300 hover:text-white rounded-lg font-medium transition-colors"
               >
-                Show less
+                {t('hide')}
               </motion.button>
             )}
           </div>

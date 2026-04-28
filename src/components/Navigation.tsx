@@ -31,6 +31,7 @@ import Logo from '@/components/common/Logo';
 import LanguageSelector from '@/components/common/LanguageSelector';
 import dynamic from 'next/dynamic';
 import UserAvatar from '@/components/UserAvatar';
+import { useTranslations } from 'next-intl';
 
 // Lazy load heavy search component
 const AutocompleteSearch = dynamic(() => import('@/components/common/AutocompleteSearch'), {
@@ -40,17 +41,17 @@ const AutocompleteSearch = dynamic(() => import('@/components/common/Autocomplet
 });
 
 const mainNavItems = [
-  { name: 'Home', href: '/', icon: HomeIcon, priority: 1 },
-  { name: 'Movies', href: '/movies', icon: FilmIcon, priority: 2 },
-  { name: 'TV Shows', href: '/tvshows', icon: PlayCircleIcon, priority: 3 },
+  { key: 'home', href: '/', icon: HomeIcon, priority: 1 },
+  { key: 'movies', href: '/movies', icon: FilmIcon, priority: 2 },
+  { key: 'tvShows', href: '/tvshows', icon: PlayCircleIcon, priority: 3 },
 ]
 
 const moreNavItems = [
-  { name: 'News', href: '/news', icon: NewspaperIcon },
-  { name: 'About', href: '/about', icon: UserGroupIcon },
-  { name: 'FAQ', href: '/faq', icon: QuestionMarkCircleIcon },
-  { name: 'Contact', href: '/contact', icon: EnvelopeIcon },
-      { name: 'Streaming', href: '/streaming-lobby', icon: PlayCircleIcon },
+  { key: 'news', href: '/news', icon: NewspaperIcon },
+  { key: 'about', href: '/about', icon: UserGroupIcon },
+  { key: 'faq', href: '/faq', icon: QuestionMarkCircleIcon },
+  { key: 'contact', href: '/contact', icon: EnvelopeIcon },
+  { key: 'streaming', href: '/streaming-lobby', icon: PlayCircleIcon },
 ]
 
 
@@ -62,6 +63,7 @@ export default function Navigation() {
   const { setNavDropdownOpen } = useUIStore();
   const { watchlist } = useWatchlistStore();
   const hydrated = useAuthHydrated();
+  const t = useTranslations('Navigation');
 
   const [isMoreDropdownActive, setIsMoreDropdownActive] = useState(false);
   const [isProfileDropdownActive, setIsProfileDropdownActive] = useState(false);
@@ -97,7 +99,7 @@ export default function Navigation() {
         if (width < 1200) {
           // Step 1: Hide TV Shows
           step = 1;
-          const tvIndex = visible.findIndex(item => item.name === 'TV Shows');
+          const tvIndex = visible.findIndex(item => item.key === 'tvShows');
           if (tvIndex !== -1) {
             hidden.push(visible[tvIndex]);
             visible.splice(tvIndex, 1);
@@ -113,7 +115,7 @@ export default function Navigation() {
         if (width < 900) {
           // Step 3: Hide Movies
           step = 3;
-          const moviesIndex = visible.findIndex(item => item.name === 'Movies');
+          const moviesIndex = visible.findIndex(item => item.key === 'movies');
           if (moviesIndex !== -1) {
             hidden.push(visible[moviesIndex]);
             visible.splice(moviesIndex, 1);
@@ -172,7 +174,7 @@ export default function Navigation() {
               const isActive = pathname === item.href
               return (
                 <Link
-                  key={item.name}
+                  key={item.key}
                   href={item.href}
                   className={`relative px-4 py-2 rounded-lg transition-colors ${
                     isActive 
@@ -188,7 +190,7 @@ export default function Navigation() {
                     whileTap={{ scale: 0.95 }}
                   >
                     <item.icon className="h-5 w-5" />
-                    <span>{item.name}</span>
+                    <span>{t(`items.${item.key}`)}</span>
                   </motion.div>
                   {isActive && (
                     <motion.div
@@ -211,7 +213,7 @@ export default function Navigation() {
                   }`}
                 >
                   <QueueListIcon className="h-5 w-5" />
-                  <span>More</span>
+                  <span>{t('more')}</span>
                   {hiddenNavItems.length > 0 && (
                     <span className="ml-1 px-1.5 py-0.5 text-xs bg-red-500 text-white rounded-full">
                       {hiddenNavItems.length}
@@ -235,7 +237,7 @@ export default function Navigation() {
                   {hiddenNavItems.length > 0 && (
                     <div className="px-1 py-1">
                       {hiddenNavItems.map((item) => (
-                        <Menu.Item key={item.name}>
+                        <Menu.Item key={item.key}>
                           {({ active }) => (
                             <Link
                               href={item.href}
@@ -244,7 +246,7 @@ export default function Navigation() {
                               }`}
                             >
                               <item.icon className="h-5 w-5" />
-                              <span>{item.name}</span>
+                              <span>{t(`items.${item.key}`)}</span>
                             </Link>
                           )}
                         </Menu.Item>
@@ -254,7 +256,7 @@ export default function Navigation() {
                   {/* Original more items */}
                   <div className="px-1 py-1">
                     {moreNavItems.map((item) => (
-                      <Menu.Item key={item.name}>
+                      <Menu.Item key={item.key}>
                         {({ active }) => (
                           <Link
                             href={item.href}
@@ -263,7 +265,7 @@ export default function Navigation() {
                             }`}
                           >
                             <item.icon className="h-5 w-5" />
-                            <span>{item.name}</span>
+                            <span>{t(`items.${item.key}`)}</span>
                           </Link>
                         )}
                       </Menu.Item>
@@ -330,7 +332,7 @@ export default function Navigation() {
                     beforeEnter={() => setIsProfileDropdownActive(true)}
                     afterLeave={() => setIsProfileDropdownActive(false)}
                   >
-                    <Menu.Items className="absolute right-0 mt-2 w-48 origin-top-right bg-gray-900 backdrop-blur-md divide-y divide-gray-700 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-60">
+                    <Menu.Items className="absolute right-0 mt-2 w-56 origin-top-right bg-gray-900 backdrop-blur-md divide-y divide-gray-700 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-60">
                       <div className="px-1 py-1 ">
                         <Menu.Item>
                           {({ active }) => (
@@ -341,7 +343,7 @@ export default function Navigation() {
                               }`}
                             >
                               <UserIcon className="h-5 w-5" />
-                              <span>Profile</span>
+                              <span className="whitespace-nowrap">{t('profile')}</span>
                             </Link>
                           )}
                         </Menu.Item>
@@ -354,7 +356,7 @@ export default function Navigation() {
                               }`}
                             >
                               <BookmarkIcon className="h-5 w-5" />
-                              <span>Watchlist ({watchlist.length})</span>
+                              <span className="whitespace-nowrap">{t('watchlist')} ({watchlist.length})</span>
                             </Link>
                           )}
                         </Menu.Item>
@@ -367,7 +369,7 @@ export default function Navigation() {
                               }`}
                             >
                               <Settings className="h-5 w-5" />
-                              <span>Settings</span>
+                              <span className="whitespace-nowrap">{t('settings')}</span>
                             </Link>
                           )}
                         </Menu.Item>
@@ -376,7 +378,7 @@ export default function Navigation() {
                             <button
                               onClick={async () => {
                                 await logout();
-                                toast.success('Logged out!');
+                                toast.success(t('loggedOut'));
                               }}
                               className={`w-full text-left px-4 py-2 text-gray-300 ${
                                 active ? 'bg-red-500 text-white' : 'hover:bg-gray-800 hover:text-white'
@@ -384,7 +386,7 @@ export default function Navigation() {
                             >
                               <div className="flex items-center space-x-2">
                                 <LogOut className="h-5 w-5" />
-                                <span>Logout</span>
+                                <span className="whitespace-nowrap">{t('logout')}</span>
                               </div>
                             </button>
                           )}
@@ -402,7 +404,7 @@ export default function Navigation() {
                   isScrolled ? 'bg-red-700 text-white hover:bg-red-800' : 'bg-red-700 text-white hover:bg-red-800'
                 }`}
               >
-                Login
+                {t('login')}
               </Link>
             )}
           </div>
@@ -481,7 +483,7 @@ export default function Navigation() {
               const isActive = pathname === item.href;
               return (
                 <Link
-                  key={item.name}
+                  key={item.key}
                   href={item.href}
                   onClick={() => setIsOpen(false)}
                   className={`block px-3 py-2 rounded-md text-base font-medium ${
@@ -492,7 +494,7 @@ export default function Navigation() {
                 >
                   <motion.div className="flex items-center space-x-2" whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                     <item.icon className="h-5 w-5" />
-                    <span>{item.name}</span>
+                    <span>{t(`items.${item.key}`)}</span>
                   </motion.div>
                 </Link>
               );
@@ -509,7 +511,7 @@ export default function Navigation() {
               aria-expanded={isMobileMoreDropdownOpen}
             >
               <QueueListIcon className="h-5 w-5" />
-              <span>More</span>
+              <span>{t('more')}</span>
               <svg className={`ml-auto h-4 w-4 transition-transform ${isMobileMoreDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
             </button>
             <motion.div
@@ -529,7 +531,7 @@ export default function Navigation() {
                   const isActive = pathname === item.href;
                   return (
                     <Link
-                      key={item.name}
+                      key={item.key}
                       href={item.href}
                       onClick={() => { setIsOpen(false); setIsMobileMoreDropdownOpen(false); }}
                       className={`flex items-center space-x-2 px-3 py-2 rounded-md text-base font-medium ${
@@ -539,7 +541,7 @@ export default function Navigation() {
                       }`}
                     >
                       <item.icon className="h-5 w-5" />
-                      <span>{item.name}</span>
+                      <span>{t(`items.${item.key}`)}</span>
                     </Link>
                   );
                 })}
@@ -591,7 +593,7 @@ export default function Navigation() {
                       className="flex items-center space-x-2 px-3 py-2 rounded-t-md text-base font-medium text-gray-700 hover:bg-gray-200 hover:text-gray-900"
                     >
                       <BookmarkIcon className="h-5 w-5" />
-                      <span>Watchlist ({watchlist.length})</span>
+                      <span>{t('watchlist')} ({watchlist.length})</span>
                     </Link>
                     <Link
                       href="/profile"
@@ -599,7 +601,7 @@ export default function Navigation() {
                       className="flex items-center space-x-2 px-3 py-2 text-base font-medium text-gray-700 hover:bg-gray-200 hover:text-gray-900"
                     >
                       <UserIcon className="h-5 w-5" />
-                      <span>Profile</span>
+                      <span>{t('profile')}</span>
                     </Link>
                     <Link
                       href="/settings"
@@ -607,12 +609,12 @@ export default function Navigation() {
                       className="flex items-center space-x-2 px-3 py-2 rounded-b-md text-base font-medium text-gray-700 hover:bg-gray-200 hover:text-gray-900"
                     >
                       <Settings className="h-5 w-5" />
-                      <span>Settings</span>
+                      <span>{t('settings')}</span>
                     </Link>
                     <button
                       onClick={async () => {
                         await logout();
-                        toast.success('Logged out!');
+                        toast.success(t('loggedOut'));
                         setIsOpen(false);
                         setIsMobileUserDropdownOpen(false);
                       }}
@@ -620,7 +622,7 @@ export default function Navigation() {
                     >
                       <div className="flex items-center space-x-2">
                         <LogOut className="h-5 w-5" />
-                        <span>Logout</span>
+                        <span>{t('logout')}</span>
                       </div>
                     </button>
                   </div>
@@ -634,7 +636,7 @@ export default function Navigation() {
                   'bg-red-700 text-white hover:bg-red-800'
                 }`}
               >
-                Login
+                {t('login')}
               </Link>
             )}
           </div>

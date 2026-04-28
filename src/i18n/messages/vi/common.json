@@ -1,0 +1,63 @@
+{
+  "Navigation": {
+    "selectLanguage": "Chọn ngôn ngữ",
+    "more": "Thêm",
+    "profile": "Hồ sơ",
+    "watchlist": "Danh sách xem",
+    "settings": "Cài đặt",
+    "logout": "Đăng xuất",
+    "loggedOut": "Đã đăng xuất!",
+    "login": "Đăng nhập",
+    "items": {
+      "home": "Trang chủ",
+      "movies": "Phim Lẻ",
+      "tvShows": "Phim Bộ",
+      "news": "Tin tức",
+      "about": "Giới thiệu",
+      "faq": "Hỏi đáp",
+      "contact": "Liên hệ",
+      "streaming": "Xem chung"
+    }
+  },
+  "Footer": {
+    "description": "Điểm đến tuyệt vời nhất để khám phá và trải nghiệm điện ảnh với những chiều không gian mới.",
+    "quickLinks": "Liên kết nhanh",
+    "contactUs": "Liên hệ",
+    "newsletter": "Bản tin",
+    "newsletterDesc": "Cập nhật các tin tức và ưu đãi mới nhất từ chúng tôi.",
+    "emailPlaceholder": "Nhập email của bạn",
+    "subscribe": "Đăng ký",
+    "address": "123 Đường Điện Ảnh, Hollywood, CA 90028"
+  },
+  "Watchlist": {
+    "loginRequired": "Bạn cần đăng nhập để lưu phim",
+    "removed": "Đã xóa khỏi danh sách xem",
+    "added": "Đã thêm vào danh sách xem",
+    "error": "Đã xảy ra lỗi",
+    "watchNow": "Xem ngay",
+    "removeFromWatchlist": "Xóa khỏi danh sách xem",
+    "addToWatchlist": "Thêm vào danh sách xem",
+    "unlike": "Bỏ thích",
+    "like": "Thích",
+    "noImage": "Không có ảnh"
+  },
+  "Filter": {
+    "filters": "Bộ lọc",
+    "filterOptions": "Tùy chọn lọc",
+    "refineSearch": "Tinh chỉnh tìm kiếm",
+    "contentType": "Loại nội dung",
+    "sortBy": "Sắp xếp theo",
+    "year": "Năm",
+    "category": "Thể loại",
+    "country": "Quốc gia",
+    "all": "Tất cả",
+    "movies": "Phim Lẻ",
+    "tvShows": "Phim Bộ",
+    "relevance": "Liên quan",
+    "popularity": "Phổ biến",
+    "rating": "Đánh giá",
+    "date": "Ngày",
+    "allFiltersActive": "Tất cả bộ lọc đang hoạt động",
+    "resetAll": "Đặt lại"
+  }
+}

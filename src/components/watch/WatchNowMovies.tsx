@@ -11,6 +11,7 @@ import WatchNowMoviesServer1 from './WatchNowMoviesServer1'
 import WatchNowMoviesServer2 from './WatchNowMoviesServer2'
 import WatchNowMoviesServer3 from './WatchNowMoviesServer3'
 import { Radio } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 
 // Định nghĩa kiểu Movie
 interface Movie {
@@ -38,9 +39,10 @@ export default function WatchNowMovies({ movie }: WatchNowMoviesProps) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const userId = useAuthStore((s) => (s.user as any)?.id || (s.user as any)?._id)
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
-  const [streamAuthMessage, setStreamAuthMessage] = useState(false)
+  const [streamAuthMsg, setStreamAuthMsg] = useState(false)
   const searchParams = useSearchParams();
   const router = useRouter();
+  const t = useTranslations('Watch');
 
   const [selectedServer, setSelectedServer] = useState<'server1' | 'server2' | 'server3'>('server1');
   const hasInitialized = useRef(false);
@@ -178,6 +180,18 @@ export default function WatchNowMovies({ movie }: WatchNowMoviesProps) {
   // State cho các bộ lọc âm thanh (không hiển thị trong UI)
   const audioNodesRef = useRef<AudioNodes | null>(null);
 
+  const streamBtnRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (streamBtnRef.current && !streamBtnRef.current.contains(event.target as Node)) {
+        setStreamAuthMsg(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   // Khởi tạo AudioContext cho trình phát inline của server 1
   useEffect(() => {
     if (selectedServer !== 'server1' || !videoRef.current) return;
@@ -204,7 +218,7 @@ export default function WatchNowMovies({ movie }: WatchNowMoviesProps) {
   // Handler cho nút Stream
   const handleStreamClick = () => {
     if (!isAuthenticated) {
-      setStreamAuthMessage(true);
+      setStreamAuthMsg((prev) => !prev);
       return;
     }
     if (!effectiveStreamUrl) return;
@@ -220,7 +234,7 @@ export default function WatchNowMovies({ movie }: WatchNowMoviesProps) {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 text-white">
-      <h2 className="text-3xl font-bold mb-6">Watch Now</h2>
+      <h2 className="text-3xl font-bold mb-6">{t('watchNow')}</h2>
 
       {/* Server 1 Component */}
       <WatchNowMoviesServer1
@@ -252,21 +266,21 @@ export default function WatchNowMovies({ movie }: WatchNowMoviesProps) {
             className={`whitespace-nowrap px-4 py-2 rounded-md text-sm font-semibold transition-colors ${selectedServer === 'server1' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-200 hover:bg-gray-600'}`}
             onClick={() => handleServerChange('server1')}
           >
-            Server 1
+            {t('server1')}
           </button>
 
           <button
             className={`whitespace-nowrap px-4 py-2 rounded-md text-sm font-semibold transition-colors ${selectedServer === 'server2' ? 'bg-green-600 text-white' : 'bg-gray-700 text-gray-200 hover:bg-gray-600'}`}
             onClick={() => handleServerChange('server2')}
           >
-            Server 2
+            {t('server2')}
           </button>
 
           <button
             className={`whitespace-nowrap px-4 py-2 rounded-md text-sm font-semibold transition-colors ${selectedServer === 'server3' ? 'bg-amber-700 text-white' : 'bg-gray-700 text-gray-200 hover:bg-gray-600'}`}
             onClick={() => handleServerChange('server3')}
           >
-            Server 3
+            {t('server3')}
           </button>
         </div>
 
@@ -274,7 +288,7 @@ export default function WatchNowMovies({ movie }: WatchNowMoviesProps) {
         <div className="flex flex-wrap items-center min-h-[32px]">
           {selectedServer === 'server1' && (movieLinks.vietsub || movieLinks.dubbed) && (
             <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-300">Audio:</span>
+              <span className="text-xs text-gray-300">{t('audio')}</span>
               {movieLinks.vietsub && (
                 <button
                   className={`px-3 py-1 rounded text-xs font-semibold transition-colors ${selectedAudio === 'vietsub' ? 'bg-gradient-to-r from-fuchsia-600 to-pink-600 text-white' : 'bg-gray-700 text-gray-200 hover:bg-gray-600'}`}
@@ -285,7 +299,7 @@ export default function WatchNowMovies({ movie }: WatchNowMoviesProps) {
                     router.push(`${window.location.pathname}?${params.toString()}`, { scroll: false });
                   }}
                 >
-                  Vietsub
+                  {t('vietsub')}
                 </button>
               )}
               {movieLinks.dubbed && (
@@ -298,7 +312,7 @@ export default function WatchNowMovies({ movie }: WatchNowMoviesProps) {
                     router.push(`${window.location.pathname}?${params.toString()}`, { scroll: false });
                   }}
                 >
-                  Dubbed
+                  {t('dubbed')}
                 </button>
               )}
             </div>
@@ -306,13 +320,13 @@ export default function WatchNowMovies({ movie }: WatchNowMoviesProps) {
 
           {selectedServer === 'server2' && (
             <span className="text-xs text-yellow-300 bg-yellow-900/40 px-2 py-1 rounded">
-              This server may contain ads.
+              {t('adsWarning')}
             </span>
           )}
 
           {selectedServer === 'server3' && (server3Links.vietsub || server3Links.dubbed) && (
             <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-300">Audio:</span>
+              <span className="text-xs text-gray-300">{t('audio')}</span>
               {server3Links.vietsub && (
                 <button
                   className={`px-3 py-1 rounded text-xs font-semibold transition-colors ${selectedAudio === 'vietsub' ? 'bg-gradient-to-r from-fuchsia-600 to-pink-600 text-white' : 'bg-gray-700 text-gray-200 hover:bg-gray-600'}`}
@@ -323,7 +337,7 @@ export default function WatchNowMovies({ movie }: WatchNowMoviesProps) {
                     router.push(`${window.location.pathname}?${params.toString()}`, { scroll: false });
                   }}
                 >
-                  Vietsub
+                  {t('vietsub')}
                 </button>
               )}
               {server3Links.dubbed && (
@@ -336,7 +350,7 @@ export default function WatchNowMovies({ movie }: WatchNowMoviesProps) {
                     router.push(`${window.location.pathname}?${params.toString()}`, { scroll: false });
                   }}
                 >
-                  Dubbed
+                  {t('dubbed')}
                 </button>
               )}
             </div>
@@ -350,36 +364,36 @@ export default function WatchNowMovies({ movie }: WatchNowMoviesProps) {
           <h3 className="text-white text-xs sm:text-sm md:text-base font-semibold truncate" title={movie.title}>{movie.title}</h3>
           {((selectedServer === 'server1' || selectedServer === 'server3') && effectiveAudio) && (
             <span className="px-2 py-0.5 text-[10px] sm:text-xs font-semibold rounded bg-gradient-to-r from-fuchsia-600 to-pink-600 text-white whitespace-nowrap">
-              {effectiveAudio === 'vietsub' ? 'Vietsub' : 'Vietnamese Dubbed'}
+              {effectiveAudio === 'vietsub' ? t('vietsub') : t('vietnameseDubbed')}
             </span>
           )}
         </div>
 
         {/* Stream Button — chỉ hiện khi Server 1 đã load xong m3u8 */}
         {selectedServer === 'server1' && effectiveStreamUrl && (
-          <div className="relative">
+          <div className="relative" ref={streamBtnRef}>
             <button
               onClick={handleStreamClick}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-yellow-500 to-amber-500 text-black text-xs sm:text-sm font-semibold hover:from-yellow-400 hover:to-amber-400 transition-all duration-300 shadow-lg shadow-yellow-500/20 hover:shadow-yellow-500/40 whitespace-nowrap"
-              title="Start Watch Party"
+              title={t('startWatchParty')}
             >
               <Radio className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-              <span className="hidden sm:inline">Stream</span>
+              <span className="hidden sm:inline">{t('stream')}</span>
             </button>
 
             {/* Auth notification dropdown */}
-            {streamAuthMessage && (
+            {streamAuthMsg && (
               <div className="absolute top-full right-0 mt-2 p-3 bg-gray-900/95 backdrop-blur-sm border border-yellow-500/30 rounded-xl shadow-2xl z-50 w-64">
-                <p className="text-sm text-white mb-2.5">You need to sign in to use this feature.</p>
+                <p className="text-sm text-white mb-2.5">{t('signInRequired')}</p>
                 <div className="flex gap-2">
                   <button
                     onClick={() => router.push('/login')}
                     className="flex-1 px-3 py-1.5 bg-yellow-500 text-black text-xs font-semibold rounded-lg hover:bg-yellow-400 transition-colors"
                   >
-                    Sign In
+                    {t('signIn')}
                   </button>
                   <button
-                    onClick={() => { setStreamAuthMessage(false); }}
+                    onClick={() => { setStreamAuthMsg(false); }}
                     className="px-3 py-1.5 bg-gray-700 text-white text-xs font-semibold rounded-lg hover:bg-gray-600 transition-colors"
                   >
                     ✕
@@ -403,7 +417,7 @@ export default function WatchNowMovies({ movie }: WatchNowMoviesProps) {
                       transition={{ repeat: Infinity, duration: 1.5, ease: 'linear' }}
                       className="w-12 h-12 border-4 border-red-500 border-t-transparent rounded-full"
                     />
-                    <p className="text-sm text-gray-400">Please wait a moment</p>
+                    <p className="text-sm text-gray-400">{t('pleaseWait')}</p>
                   </div>
                 </div>
               );
@@ -417,8 +431,8 @@ export default function WatchNowMovies({ movie }: WatchNowMoviesProps) {
                     <svg className="w-12 h-12 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
-                    <p className="text-lg font-semibold">No video source available</p>
-                    <p className="text-sm text-gray-400">Please try another server</p>
+                    <p className="text-lg font-semibold">{t('noVideoSource')}</p>
+                    <p className="text-sm text-gray-400">{t('tryAnotherServer')}</p>
                   </div>
                 </div>
               );
@@ -458,7 +472,7 @@ export default function WatchNowMovies({ movie }: WatchNowMoviesProps) {
               />
             ) : (
               <div className="flex items-center justify-center h-full text-white text-lg font-semibold">
-                No video source available
+                {t('noVideoSource')}
               </div>
             );
           })()
@@ -484,7 +498,7 @@ export default function WatchNowMovies({ movie }: WatchNowMoviesProps) {
                       transition={{ repeat: Infinity, duration: 1.5, ease: 'linear' }}
                       className="w-12 h-12 border-4 border-red-500 border-t-transparent rounded-full"
                     />
-                    <p className="text-sm text-gray-400">Please wait a moment</p>
+                    <p className="text-sm text-gray-400">{t('pleaseWait')}</p>
                   </div>
                 </div>
               );
@@ -498,8 +512,8 @@ export default function WatchNowMovies({ movie }: WatchNowMoviesProps) {
                     <svg className="w-12 h-12 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
-                    <p className="text-lg font-semibold">No video source available</p>
-                    <p className="text-sm text-gray-400">Please try another server</p>
+                    <p className="text-lg font-semibold">{t('noVideoSource')}</p>
+                    <p className="text-sm text-gray-400">{t('tryAnotherServer')}</p>
                   </div>
                 </div>
               );
@@ -531,7 +545,7 @@ export default function WatchNowMovies({ movie }: WatchNowMoviesProps) {
               />
             ) : (
               <div className="flex items-center justify-center h-full text-white text-lg font-semibold">
-                No video source available
+                {t('noVideoSource')}
               </div>
             );
           })()

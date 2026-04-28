@@ -1,0 +1,28 @@
+{
+  "Movies": {
+    "loading": "Đang tải Phim...",
+    "noMovies": "Không tìm thấy phim.",
+    "goToPage": "Đến trang",
+    "page": "Trang",
+    "go": "Đi",
+    "randomText1": "Chán phim cũ?\nThử ngẫu nhiên! 🎲",
+    "randomText2": "Không biết\nxem gì? 🎯",
+    "randomText3": "Phim gì cũng được,\nchọn bừa đi! 🚀",
+    "randomText4": "Hết ý tưởng?\nThử ngẫu nhiên! 💡",
+    "randomText5": "Thử vận may\nvới phim ngẫu nhiên! 🍀",
+    "loginRequired": "Bạn cần đăng nhập để lưu phim!",
+    "removedFromWatchlist": "Đã xóa phim khỏi danh sách!",
+    "addedToWatchlist": "Đã thêm phim vào danh sách!",
+    "errorOccurred": "Đã xảy ra lỗi",
+    "director": "Đạo diễn",
+    "showMore": "Xem thêm",
+    "showLess": "Thu gọn",
+    "readMore": "Đọc thêm",
+    "trailer": "Trailer",
+    "added": "Đã lưu",
+    "save": "Lưu",
+    "scenes": "Cảnh phim",
+    "movieScenes": "Cảnh trong phim",
+    "tba": "Chưa rõ"
+  }
+}

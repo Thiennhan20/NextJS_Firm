@@ -30,6 +30,7 @@
     "marked": "^15.0.12",
     "next": "^15.5.7",
     "next-auth": "^4.24.11",
+    "next-intl": "^4.9.1",
     "nodemailer": "^7.0.9",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

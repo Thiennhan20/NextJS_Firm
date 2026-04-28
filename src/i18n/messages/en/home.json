@@ -1,0 +1,90 @@
+{
+  "HomePage": {
+    "comingSoon": "Coming Soon",
+    "comingSoonSubtitle": "Something extraordinary is brewing in our galaxy...",
+    "loadingContent": "Loading amazing content...",
+    "noContent": "No content available",
+    "checkApi": "Please check your API configuration",
+    "tapTrailer": "Tap for trailer",
+    "clickTrailer": "Click for trailer",
+    "watch": "Watch",
+    "watchNow": "Watch Now",
+    "save": "Save",
+    "added": "Added",
+    "saveToList": "Save to list",
+    "addedToList": "Added to list",
+    "movie": "Movie",
+    "tvShow": "TV Show",
+    "noTrailer": "No trailer available for this content",
+    "failedTrailer": "Failed to load trailer",
+    "needLogin": "You need to log in to save movies",
+    "removedWatchlist": "Removed from watchlist",
+    "addedWatchlist": "Added to watchlist",
+    "errorOccurred": "An error occurred",
+    "scrollExplore": "Scroll to explore",
+    "movieNewsTitle": "Movie News",
+    "movieNewsLoading": "Loading...",
+    "subscribeTitle": "Subscribe for Movie Updates",
+    "subscribeDesc": "Get notifications for new movies, hot trailers, and special offers!",
+    "subscribePlaceholder": "Your email...",
+    "subscribeButton": "Subscribe",
+    "subscribeSuccess": "Subscribed successfully!"
+  },
+  "RecentlyWatched": {
+    "title": "Continue Watching",
+    "savedForever": "Saved Forever",
+    "storage24h": "24h Storage",
+    "signInSave": "Sign in to save longer",
+    "noMovies": "No movies watched yet",
+    "exploreButton": "Click to explore trending movies",
+    "viewHistory": "View All History",
+    "justNow": "Just now",
+    "hoursAgo": "{count}h ago",
+    "daysAgo": "{count}d ago"
+  },
+  "Trending": {
+    "title": "Trending Now",
+    "loading": "Loading...",
+    "error": "Error loading content",
+    "swipeHint": "Swipe or click < >"
+  },
+  "ComingSoonSection": {
+    "title": "Coming Soon",
+    "loading": "Loading...",
+    "loadingMore": "Loading more...",
+    "swipeHint": "Swipe or click < >"
+  },
+  "StreamingRooms": {
+    "title": "Live Watch Parties",
+    "viewAll": "View All",
+    "playing": "Playing",
+    "paused": "Paused",
+    "waiting": "Waiting",
+    "full": "Full",
+    "join": "Join",
+    "untitled": "Untitled"
+  },
+  "Entertainment": {
+    "movies": "Movies",
+    "tvShows": "TV Shows",
+    "clickSeeMore": "Click to see more",
+    "comingSoon": "Coming Soon",
+    "ai": "AI",
+    "game": "Game"
+  },
+  "Comments": {
+    "topComments": "TOP COMMENTS",
+    "trendingNow": "TRENDING NOW",
+    "mostLiked": "MOST LIKED",
+    "newComments": "NEW COMMENTS",
+    "noComments": "No comments yet",
+    "beFirst": "Be the first to share your thoughts!",
+    "reply": "Reply",
+    "retry": "Retry",
+    "loadingTrending": "Loading trending...",
+    "loadingTopRated": "Loading top rated...",
+    "noRecentComments": "No recent comments",
+    "thisWeek": "this week",
+    "rating": "rating"
+  }
+}
