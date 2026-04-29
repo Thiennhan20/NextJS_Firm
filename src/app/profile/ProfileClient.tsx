@@ -3,24 +3,15 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
-  UserIcon,
   EnvelopeIcon,
   CalendarIcon,
   BookmarkIcon,
   ClockIcon,
-  StarIcon,
-  FilmIcon,
-  PlayCircleIcon,
-  ChartBarIcon,
-  SparklesIcon,
   TrashIcon,
   PhotoIcon,
-  EllipsisVerticalIcon
+  EllipsisVerticalIcon,
+  Cog6ToothIcon
 } from '@heroicons/react/24/outline'
-import { 
-  UserIcon as UserIconSolid,
-  BookmarkIcon as BookmarkIconSolid
-} from '@heroicons/react/24/solid'
 import useAuthStore from '@/store/useAuthStore'
 import { useWatchlistStore } from '@/store/store'
 import useAuthHydrated from '@/store/useAuthHydrated'
@@ -30,34 +21,7 @@ import UserComments from '@/components/UserComments'
 import { toast } from 'react-hot-toast'
 import imageCompression from 'browser-image-compression'
 
-interface StatCardProps {
-  icon: React.ReactNode
-  label: string
-  value: string | number
-  color: string
-  delay?: number
-}
 
-const StatCard: React.FC<StatCardProps> = ({ icon, label, value, color, delay = 0 }) => {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, delay }}
-      whileHover={{ scale: 1.02, y: -2 }}
-      className="relative group"
-    >
-      <div className="bg-gradient-to-br from-gray-900/90 to-gray-800/90 backdrop-blur-xl rounded-lg sm:rounded-xl lg:rounded-2xl p-3 sm:p-4 lg:p-6 border border-gray-700/50 hover:border-gray-600/50 transition-all duration-300 shadow-lg hover:shadow-2xl">
-        <div className={`inline-flex p-1.5 sm:p-2 lg:p-3 rounded-md sm:rounded-lg lg:rounded-xl ${color} mb-2 sm:mb-3`}>
-          {icon}
-        </div>
-        <h3 className="text-xl sm:text-2xl lg:text-3xl font-bold text-white mb-0.5 sm:mb-1">{value}</h3>
-        <p className="text-gray-400 text-[10px] sm:text-xs lg:text-sm font-medium truncate leading-tight">{label}</p>
-        <div className={`absolute inset-0 rounded-lg sm:rounded-xl lg:rounded-2xl bg-gradient-to-br ${color} opacity-0 group-hover:opacity-10 transition-opacity duration-300`} />
-      </div>
-    </motion.div>
-  )
-}
 
 export default function ProfilePage() {
   const { user, isAuthenticated, checkAuth } = useAuthStore()
@@ -490,47 +454,15 @@ export default function ProfilePage() {
               </div>
             </motion.div>
 
-            {/* Statistics Grid - Compact 2x2 on mobile */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 lg:gap-6 mb-4 sm:mb-6 lg:mb-12">
-              <StatCard
-                icon={<BookmarkIconSolid className="w-5 h-5 sm:w-6 sm:h-6 text-white" />}
-                label="Watchlist Items"
-                value={watchlist.length}
-                color="bg-gradient-to-br from-red-500 to-red-600"
-                delay={0.3}
-              />
-              <StatCard
-                icon={<UserIconSolid className="w-5 h-5 sm:w-6 sm:h-6 text-white" />}
-                label="Account Age"
-                value={accountAge}
-                color="bg-gradient-to-br from-purple-500 to-purple-600"
-                delay={0.4}
-              />
-              <StatCard
-                icon={<StarIcon className="w-5 h-5 sm:w-6 sm:h-6 text-white" />}
-                label="Member Status"
-                value="Active"
-                color="bg-gradient-to-br from-yellow-500 to-yellow-600"
-                delay={0.5}
-              />
-              <StatCard
-                icon={<SparklesIcon className="w-5 h-5 sm:w-6 sm:h-6 text-white" />}
-                label="Profile Level"
-                value="Member"
-                color="bg-gradient-to-br from-blue-500 to-blue-600"
-                delay={0.6}
-              />
-            </div>
-
             {/* Quick Actions - Responsive grid */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.7 }}
+              transition={{ duration: 0.6, delay: 0.4 }}
               className="bg-gradient-to-br from-gray-900/90 to-gray-800/90 backdrop-blur-xl rounded-2xl sm:rounded-3xl p-4 sm:p-6 lg:p-8 border border-gray-700/50 shadow-2xl mb-6 sm:mb-8 lg:mb-12"
             >
               <h3 className="text-xl sm:text-2xl lg:text-3xl font-bold text-white mb-4 sm:mb-6 flex items-center gap-2 sm:gap-3">
-                <ChartBarIcon className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-red-500" />
+                <ClockIcon className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-red-500" />
                 <span>Quick Actions</span>
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
@@ -551,7 +483,7 @@ export default function ProfilePage() {
                     </div>
                   </motion.div>
                 </Link>
-                <Link href="/movies">
+                <Link href="/recently-watched">
                   <motion.div
                     whileHover={{ scale: 1.02, x: 5 }}
                     whileTap={{ scale: 0.98 }}
@@ -559,16 +491,16 @@ export default function ProfilePage() {
                   >
                     <div className="flex items-center gap-3 sm:gap-4">
                       <div className="p-2 sm:p-3 bg-purple-500/20 rounded-lg group-hover:bg-purple-500/30 transition-colors flex-shrink-0">
-                        <FilmIcon className="w-5 h-5 sm:w-6 sm:h-6 text-purple-400" />
+                        <ClockIcon className="w-5 h-5 sm:w-6 sm:h-6 text-purple-400" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <h4 className="font-semibold text-white mb-0.5 sm:mb-1 text-sm sm:text-base truncate">Browse Movies</h4>
-                        <p className="text-xs sm:text-sm text-gray-400 truncate">Discover new content</p>
+                        <h4 className="font-semibold text-white mb-0.5 sm:mb-1 text-sm sm:text-base truncate">Recently Watched</h4>
+                        <p className="text-xs sm:text-sm text-gray-400 truncate">Continue watching</p>
                       </div>
                     </div>
                   </motion.div>
                 </Link>
-                <Link href="/tvshows">
+                <Link href="/settings">
                   <motion.div
                     whileHover={{ scale: 1.02, x: 5 }}
                     whileTap={{ scale: 0.98 }}
@@ -576,70 +508,15 @@ export default function ProfilePage() {
                   >
                     <div className="flex items-center gap-3 sm:gap-4">
                       <div className="p-2 sm:p-3 bg-blue-500/20 rounded-lg group-hover:bg-blue-500/30 transition-colors flex-shrink-0">
-                        <PlayCircleIcon className="w-5 h-5 sm:w-6 sm:h-6 text-blue-400" />
+                        <Cog6ToothIcon className="w-5 h-5 sm:w-6 sm:h-6 text-blue-400" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <h4 className="font-semibold text-white mb-0.5 sm:mb-1 text-sm sm:text-base truncate">TV Shows</h4>
-                        <p className="text-xs sm:text-sm text-gray-400 truncate">Explore series</p>
+                        <h4 className="font-semibold text-white mb-0.5 sm:mb-1 text-sm sm:text-base truncate">Settings</h4>
+                        <p className="text-xs sm:text-sm text-gray-400 truncate">Account information</p>
                       </div>
                     </div>
                   </motion.div>
                 </Link>
-              </div>
-            </motion.div>
-
-            {/* Account Information - Responsive */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.8 }}
-              className="bg-gradient-to-br from-gray-900/90 to-gray-800/90 backdrop-blur-xl rounded-2xl sm:rounded-3xl p-4 sm:p-6 lg:p-8 border border-gray-700/50 shadow-2xl"
-            >
-              <h3 className="text-xl sm:text-2xl lg:text-3xl font-bold text-white mb-4 sm:mb-6 flex items-center gap-2 sm:gap-3">
-                <UserIcon className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-red-500" />
-                <span>Account Information</span>
-              </h3>
-              <div className="space-y-3 sm:space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 bg-gray-800/50 rounded-lg sm:rounded-xl border border-gray-700/50">
-                  <div className="mb-2 sm:mb-0 min-w-0 flex-1">
-                    <p className="text-gray-400 text-xs sm:text-sm mb-1">User ID</p>
-                    <p className="text-white font-mono text-xs sm:text-sm break-all">{user.id}</p>
-                  </div>
-                </div>
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 bg-gray-800/50 rounded-lg sm:rounded-xl border border-gray-700/50">
-                  <div className="mb-2 sm:mb-0 min-w-0 flex-1">
-                    <p className="text-gray-400 text-xs sm:text-sm mb-1">Email Address</p>
-                    <p className="text-white text-sm sm:text-base break-all">{user.email}</p>
-                  </div>
-                </div>
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 bg-gray-800/50 rounded-lg sm:rounded-xl border border-gray-700/50">
-                  <div className="mb-2 sm:mb-0 min-w-0 flex-1">
-                    <p className="text-gray-400 text-xs sm:text-sm mb-1">Account Created</p>
-                    <p className="text-white text-sm sm:text-base">{formatDate(user.createdAt)}</p>
-                  </div>
-                </div>
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 bg-gray-800/50 rounded-lg sm:rounded-xl border border-gray-700/50">
-                  <div className="mb-2 sm:mb-0 min-w-0 flex-1">
-                    <p className="text-gray-400 text-xs sm:text-sm mb-1">Last Updated</p>
-                    <p className="text-white text-sm sm:text-base">{formatDate(user.updatedAt)}</p>
-                  </div>
-                </div>
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 bg-gray-800/50 rounded-lg sm:rounded-xl border border-gray-700/50">
-                  <div className="mb-2 sm:mb-0 min-w-0 flex-1">
-                    <p className="text-gray-400 text-xs sm:text-sm mb-1">Web Version (Hash)</p>
-                    <div className="flex items-center gap-2">
-                      <p className="text-white font-mono text-sm sm:text-base">
-                        #{process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA?.substring(0, 7) || 'dev'}
-                      </p>
-                    </div>
-                  </div>
-                  <button 
-                    onClick={() => window.location.reload()} 
-                    className="mt-3 sm:mt-0 px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 border border-gray-600 text-white font-medium text-xs sm:text-sm transition-colors"
-                  >
-                    Check for Updates
-                  </button>
-                </div>
               </div>
             </motion.div>
 

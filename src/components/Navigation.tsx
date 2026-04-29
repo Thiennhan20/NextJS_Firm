@@ -169,7 +169,7 @@ export default function Navigation() {
           <Logo isScrolled={isScrolled} variant="header" />
 
           {/* Desktop Navigation - Adaptive (shows when step < 4) */}
-          <div className={`${adaptiveStep < 4 ? 'flex' : 'hidden'} items-center space-x-4`}>
+          <div className={`${adaptiveStep < 4 ? 'flex' : 'hidden'} max-[700px]:!hidden items-center space-x-4`}>
             {visibleNavItems.map((item) => {
               const isActive = pathname === item.href
               return (
@@ -277,7 +277,7 @@ export default function Navigation() {
           </div>
 
           {/* Search and Auth - Adaptive (shows when step < 4) */}
-          <div className={`${adaptiveStep < 4 ? 'flex' : 'hidden'} items-center space-x-4`}>
+          <div className={`${adaptiveStep < 4 ? 'flex' : 'hidden'} max-[700px]:!hidden items-center space-x-4`}>
             {/* Search - Full bar or Icon */}
             {showSearchBar ? (
               <div className="relative">
@@ -410,7 +410,7 @@ export default function Navigation() {
           </div>
 
           {/* Mobile search icon and menu button combined (shows when step >= 4) */}
-          <div className={`${adaptiveStep >= 4 ? 'flex' : 'hidden'} items-center space-x-2`}>
+          <div className={`${adaptiveStep >= 4 ? 'flex' : 'hidden'} max-[700px]:!flex min-[701px]:!hidden items-center space-x-2`}>
             {/* Mobile Language Selector */}
             <LanguageSelector isScrolled={isScrolled} />
             

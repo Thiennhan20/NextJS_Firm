@@ -1,10 +1,17 @@
-import React from 'react';
+import { getMessages } from 'next-intl/server';
+import { NextIntlClientProvider } from 'next-intl';
+import SettingsClient from './SettingsClient';
 
-export default function SettingsPage() {
+export default async function SettingsPage() {
+  const messages = await getMessages();
+
+  const settingsMessages = {
+    Profile: messages.Profile
+  };
+
   return (
-    <div className="p-8 text-center">
-      <h1 className="text-3xl font-bold mb-4">Settings</h1>
-      <p>This is your settings page.</p>
-    </div>
+    <NextIntlClientProvider messages={settingsMessages}>
+      <SettingsClient />
+    </NextIntlClientProvider>
   );
-} 
+}

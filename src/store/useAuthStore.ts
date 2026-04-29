@@ -16,6 +16,18 @@ interface AuthStore extends AuthState {
 // Guard to prevent duplicate checkAuth calls
 let _checkAuthPromise: Promise<void> | null = null;
 
+// Clear guest watch progress from localStorage on login
+function clearGuestWatchProgress() {
+  const keysToRemove: string[] = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && (key.startsWith('movie-progress-') || key.startsWith('tvshow-progress-'))) {
+      keysToRemove.push(key);
+    }
+  }
+  keysToRemove.forEach(k => localStorage.removeItem(k));
+}
+
 const useAuthStore = create<AuthStore>()(
   persist(
     (set) => ({
@@ -33,6 +45,7 @@ const useAuthStore = create<AuthStore>()(
           const { token, user } = response.data;
           localStorage.setItem('token', token);
           localStorage.setItem('cached_user_data', JSON.stringify(user));
+          clearGuestWatchProgress();
           set({
             user: user as User,
             token,
@@ -68,6 +81,7 @@ const useAuthStore = create<AuthStore>()(
           const { token, user } = response.data;
           localStorage.setItem('token', token);
           localStorage.setItem('cached_user_data', JSON.stringify(user));
+          clearGuestWatchProgress();
           set({
             user: user as User,
             token,
@@ -145,14 +159,17 @@ const useAuthStore = create<AuthStore>()(
         
         localStorage.removeItem('token');
         localStorage.removeItem('cached_user_data');
-        // Clear watchlist khi logout - import trong function để tránh circular dependency
+        // Clear watchlist & recently watched cache khi logout
         try {
           import('./store').then(({ useWatchlistStore }) => {
             const { clearWatchlist } = useWatchlistStore.getState();
             clearWatchlist();
           });
+          import('./useRecentlyWatchedStore').then(({ useRecentlyWatchedStore }) => {
+            useRecentlyWatchedStore.getState().clearCache();
+          });
         } catch (error) {
-          console.warn('Could not clear watchlist:', error);
+          console.warn('Could not clear stores:', error);
         }
         set({
           user: null,

@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { Play, Clock, Trash2, ChevronDown, AlertCircle } from 'lucide-react'
 import useAuthStore from '@/store/useAuthStore'
+import { useRecentlyWatchedStore } from '@/store/useRecentlyWatchedStore'
 import api from '@/lib/axios'
 import { useTranslations } from 'next-intl'
 
@@ -244,7 +245,7 @@ export default function RecentlyWatched({ className = '' }: RecentlyWatchedProps
       const now = Date.now()
       // Logged-in: fetch from server and return
       if (userId) {
-        const resp = await api.get('/recently-watched', { params: { limit: 50 } })
+        const resp = await api.get('/recently-watched', { params: { page: 1, limit: 20 } })
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const srvItems: RecentlyWatchedItem[] = (resp.data?.items || []).map((it: any) => ({
           id: String(it.contentId),
@@ -260,6 +261,8 @@ export default function RecentlyWatched({ className = '' }: RecentlyWatchedProps
           episode: it.episode ?? undefined,
         }))
         setRecentItems(srvItems)
+        // Populate shared Zustand store for /recently-watched page
+        useRecentlyWatchedStore.getState().setCachedItems(srvItems)
         setLoading(false)
         return
       }
@@ -594,7 +597,7 @@ export default function RecentlyWatched({ className = '' }: RecentlyWatchedProps
             <motion.button
               whileHover={{ scale: shouldReduceMotion ? 1 : 1.05 }}
               whileTap={{ scale: shouldReduceMotion ? 1 : 0.95 }}
-              onClick={() => router.push('/profile')}
+              onClick={() => router.push('/recently-watched')}
               className="bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700 text-white px-6 py-2 rounded-lg text-sm font-medium transition-all duration-300 shadow-lg hover:shadow-xl"
             >
               {t('viewHistory')}

@@ -5,6 +5,7 @@ import Hls, { Level } from "hls.js";
 import { PlayIcon, PauseIcon, ArrowsPointingOutIcon } from "@heroicons/react/24/solid";
 import PlayerSettings from "./PlayerSettings";
 import api from '@/lib/axios';
+import { useRecentlyWatchedStore } from '@/store/useRecentlyWatchedStore';
 import { useTranslations } from 'next-intl';
 
 // ─── Types ────────────────────────────────────────────────────────
@@ -566,6 +567,13 @@ const EnhancedMoviePlayer = forwardRef<HTMLVideoElement, EnhancedMoviePlayerProp
           if (!skipDedup && Math.abs(clampedCt - lastSavedTimeRef.current) < 5) return;
           lastSavedTimeRef.current = clampedCt;
           if (userId) {
+            // Update Zustand cache so Home/RecentlyWatched pages reflect latest progress
+            useRecentlyWatchedStore.getState().upsertItem({
+              id: String(movieId), server: server || '', audio: audio || '',
+              currentTime: clampedCt, duration: dur,
+              title: title || '', poster: poster || '',
+              isTVShow: !!isTVShow, season, episode,
+            });
             if (useBeacon) {
               // Use fetch with keepalive instead of sendBeacon (sendBeacon can't send auth headers)
               let fetchBaseURL = process.env.NEXT_PUBLIC_API_URL || '';
