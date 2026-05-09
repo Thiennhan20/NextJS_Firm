@@ -86,5 +86,20 @@
     "noRecentComments": "Không có bình luận gần đây",
     "thisWeek": "tuần này",
     "rating": "đánh giá"
+  },
+  "Frames": {
+    "koreanTitle": "Phim Hàn",
+    "usukTitle": "Phim US-UK",
+    "chinaTitle": "Phim Trung Quốc",
+    "actionTitle": "Hành Động Nghẹt Thở",
+    "horrorTitle": "Kinh Dị Giật Gân",
+    "animeTitle": "Thế Giới Anime",
+    "topMoviesTitle": "Top 5 phim lẻ hôm nay",
+    "topTVShowsTitle": "Top 5 phim bộ hôm nay",
+    "movieLabel": "Phim Lẻ",
+    "tvShowLabel": "Phim Bộ",
+    "animation": "Hoạt hình",
+    "season1": "Phần 1",
+    "updatingOverview": "Đang cập nhật nội dung cho bộ phim này. Hãy đón xem nhé!"
   }
 }

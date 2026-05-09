@@ -20,10 +20,10 @@ import api from '@/lib/axios'
 import UserComments from '@/components/UserComments'
 import { toast } from 'react-hot-toast'
 import imageCompression from 'browser-image-compression'
-
-
+import { useTranslations } from 'next-intl'
 
 export default function ProfilePage() {
+  const t = useTranslations('Profile')
   const { user, isAuthenticated, checkAuth } = useAuthStore()
   const { watchlist } = useWatchlistStore()
   const hydrated = useAuthHydrated()
@@ -62,10 +62,10 @@ export default function ProfilePage() {
     const diffTime = Math.abs(now.getTime() - created.getTime())
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
     
-    if (diffDays < 30) return `${diffDays} days`
-    if (diffDays < 365) return `${Math.floor(diffDays / 30)} months`
-    return `${Math.floor(diffDays / 365)} years`
-  }, [user?.createdAt])
+    if (diffDays < 30) return t('days', { count: diffDays })
+    if (diffDays < 365) return t('months', { count: Math.floor(diffDays / 30) })
+    return t('years', { count: Math.floor(diffDays / 365) })
+  }, [user?.createdAt, t])
 
   // Format date
   const formatDate = (dateString: string) => {
@@ -281,13 +281,13 @@ export default function ProfilePage() {
           animate={{ opacity: 1, scale: 1 }}
           className="text-center"
         >
-          <h1 className="text-3xl font-bold text-white mb-4">Please Login</h1>
-          <p className="text-gray-400 mb-6">You need to be logged in to view your profile.</p>
+          <h1 className="text-3xl font-bold text-white mb-4">{t('pleaseLogin')}</h1>
+          <p className="text-gray-400 mb-6">{t('loginRequiredHint')}</p>
           <Link
             href="/login"
             className="inline-block px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors"
           >
-            Go to Login
+            {t('goToLogin')}
           </Link>
         </motion.div>
       </div>
@@ -338,7 +338,7 @@ export default function ProfilePage() {
                       {isUploading && (
                         <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center z-20">
                           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mb-2"></div>
-                          <p className="text-white text-xs">Loading...</p>
+                          <p className="text-white text-xs">{t('loading')}</p>
                         </div>
                       )}
                     </div>
@@ -359,7 +359,7 @@ export default function ProfilePage() {
                       {isUploading && (
                         <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center z-20">
                           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mb-2"></div>
-                          <p className="text-white text-xs">Uploading...</p>
+                          <p className="text-white text-xs">{t('uploading')}</p>
                         </div>
                       )}
                     </div>
@@ -392,7 +392,7 @@ export default function ProfilePage() {
                             className="w-full flex items-center gap-3 px-4 py-3 text-left text-white hover:bg-gray-700/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             <PhotoIcon className="w-5 h-5 text-blue-400 flex-shrink-0" />
-                            <span className="text-sm font-medium">Change Avatar</span>
+                            <span className="text-sm font-medium">{t('changeAvatar')}</span>
                           </button>
                           
                           {/* Chỉ hiển thị Remove/Restore nếu:
@@ -410,8 +410,8 @@ export default function ProfilePage() {
                                 <TrashIcon className="w-5 h-5 text-red-400 flex-shrink-0" />
                                 <span className="text-sm font-medium">
                                   {user.avatar !== user.originalAvatar && user.originalAvatar 
-                                    ? 'Restore Original' 
-                                    : 'Remove Avatar'}
+                                    ? t('restoreOriginal') 
+                                    : t('removeAvatar')}
                                 </span>
                               </button>
                             )
@@ -443,11 +443,11 @@ export default function ProfilePage() {
                     </div>
                     <div className="flex items-center justify-center sm:justify-start gap-1.5 sm:gap-2 text-gray-300">
                       <CalendarIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4 lg:w-5 lg:h-5 text-gray-400 flex-shrink-0" />
-                      <span className="text-[11px] sm:text-xs lg:text-sm">Member since {formatDate(user.createdAt)}</span>
+                      <span className="text-[11px] sm:text-xs lg:text-sm">{t('memberSince', { date: formatDate(user.createdAt) })}</span>
                     </div>
                     <div className="flex items-center justify-center sm:justify-start gap-1.5 sm:gap-2 text-gray-300">
                       <ClockIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4 lg:w-5 lg:h-5 text-gray-400 flex-shrink-0" />
-                      <span className="text-[11px] sm:text-xs lg:text-sm">Active for {accountAge}</span>
+                      <span className="text-[11px] sm:text-xs lg:text-sm">{t('activeFor', { age: accountAge })}</span>
                     </div>
                   </div>
                 </div>
@@ -463,7 +463,7 @@ export default function ProfilePage() {
             >
               <h3 className="text-xl sm:text-2xl lg:text-3xl font-bold text-white mb-4 sm:mb-6 flex items-center gap-2 sm:gap-3">
                 <ClockIcon className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-red-500" />
-                <span>Quick Actions</span>
+                <span>{t('quickActions')}</span>
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                 <Link href="/watchlist">
@@ -477,8 +477,8 @@ export default function ProfilePage() {
                         <BookmarkIcon className="w-5 h-5 sm:w-6 sm:h-6 text-red-400" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <h4 className="font-semibold text-white mb-0.5 sm:mb-1 text-sm sm:text-base truncate">My Watchlist</h4>
-                        <p className="text-xs sm:text-sm text-gray-400 truncate">{watchlist.length} items</p>
+                        <h4 className="font-semibold text-white mb-0.5 sm:mb-1 text-sm sm:text-base truncate">{t('myWatchlist')}</h4>
+                        <p className="text-xs sm:text-sm text-gray-400 truncate">{t('itemsCount', { count: watchlist.length })}</p>
                       </div>
                     </div>
                   </motion.div>
@@ -494,8 +494,8 @@ export default function ProfilePage() {
                         <ClockIcon className="w-5 h-5 sm:w-6 sm:h-6 text-purple-400" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <h4 className="font-semibold text-white mb-0.5 sm:mb-1 text-sm sm:text-base truncate">Recently Watched</h4>
-                        <p className="text-xs sm:text-sm text-gray-400 truncate">Continue watching</p>
+                        <h4 className="font-semibold text-white mb-0.5 sm:mb-1 text-sm sm:text-base truncate">{t('recentlyWatched')}</h4>
+                        <p className="text-xs sm:text-sm text-gray-400 truncate">{t('continueWatching')}</p>
                       </div>
                     </div>
                   </motion.div>
@@ -511,8 +511,8 @@ export default function ProfilePage() {
                         <Cog6ToothIcon className="w-5 h-5 sm:w-6 sm:h-6 text-blue-400" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <h4 className="font-semibold text-white mb-0.5 sm:mb-1 text-sm sm:text-base truncate">Settings</h4>
-                        <p className="text-xs sm:text-sm text-gray-400 truncate">Account information</p>
+                        <h4 className="font-semibold text-white mb-0.5 sm:mb-1 text-sm sm:text-base truncate">{t('settings')}</h4>
+                        <p className="text-xs sm:text-sm text-gray-400 truncate">{t('accountInformation')}</p>
                       </div>
                     </div>
                   </motion.div>

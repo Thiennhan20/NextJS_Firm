@@ -6,7 +6,8 @@ export default async function ProfilePage() {
   const messages = await getMessages();
   
   const userMessages = {
-    Profile: messages.Profile
+    Profile: messages.Profile,
+    UserComments: messages.UserComments
   };
 
   return (

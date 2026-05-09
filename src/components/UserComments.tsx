@@ -4,6 +4,7 @@ import { ChatBubbleLeftRightIcon, ChevronRightIcon, TrashIcon } from '@heroicons
 import Link from 'next/link'
 import api from '@/lib/axios'
 import { toast } from 'react-hot-toast'
+import { useTranslations } from 'next-intl'
 
 interface Comment {
   _id: string
@@ -15,33 +16,34 @@ interface Comment {
   likes: number
 }
 
-const timeAgo = (dateString: string) => {
+const timeAgo = (dateString: string, t: (key: string, values?: Record<string, string | number>) => string) => {
   const date = new Date(dateString)
   const now = new Date()
   const seconds = Math.floor((now.getTime() - date.getTime()) / 1000)
 
-  if (seconds < 60) return `Just now`
+  if (seconds < 60) return t('justNow')
   const minutes = Math.floor(seconds / 60)
-  if (minutes < 60) return `${minutes}m ago`
+  if (minutes < 60) return t('minAgo', { count: minutes })
   const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `${hours}h ago`
+  if (hours < 24) return t('hrAgo', { count: hours })
   const days = Math.floor(hours / 24)
-  if (days < 30) return `${days}d ago`
+  if (days < 30) return t('dayAgo', { count: days })
   const months = Math.floor(days / 30)
-  if (months < 12) return `${months}mo ago`
+  if (months < 12) return t('moAgo', { count: months })
   const years = Math.floor(months / 12)
-  return `${years}y ago`
+  return t('yrAgo', { count: years })
 }
 
-const getLinkText = (comment: Comment, filter: string) => {
-  const typeText = comment.type === 'tvshow' ? 'TV Show' : 'Movie'
+const getLinkText = (comment: Comment, filter: string, t: (key: string, values?: Record<string, string>) => string) => {
+  const typeText = comment.type === 'tvshow' ? t('tvShow') : t('movie')
   if (filter === 'liked') {
-    return `View liked ${comment.parentId ? 'reply' : 'comment'} on ${typeText}`
+    return t(comment.parentId ? 'viewLikedReply' : 'viewLikedComment', { type: typeText })
   }
-  return `View ${comment.parentId ? 'reply' : 'comment'} on ${typeText}`
+  return t(comment.parentId ? 'viewReply' : 'viewComment', { type: typeText })
 }
 
 export default function UserComments() {
+  const t = useTranslations('UserComments')
   const [comments, setComments] = useState<Comment[]>([])
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
@@ -64,11 +66,11 @@ export default function UserComments() {
       }
     } catch (error) {
       console.error('Error fetching user comments:', error)
-      toast.error('Failed to load your comments')
+      toast.error(t('loadFailed'))
     } finally {
       setLoading(false)
     }
-  }, [activeFilter])
+  }, [activeFilter, t])
 
   useEffect(() => {
     fetchComments(1, activeFilter)
@@ -83,14 +85,14 @@ export default function UserComments() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm('Are you sure you want to delete this comment?')) return
+    if (!window.confirm(t('deleteConfirm'))) return
     setDeletingId(id)
     try {
       await api.delete(`/comments/${id}`)
       setComments(prev => prev.filter(c => c._id !== id))
-      toast.success('Comment deleted')
+      toast.success(t('commentDeleted'))
     } catch {
-      toast.error('Failed to delete comment')
+      toast.error(t('deleteFailed'))
     } finally {
       setDeletingId(null)
     }
@@ -106,15 +108,15 @@ export default function UserComments() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 sm:mb-6 gap-3 sm:gap-0">
         <h3 className="text-xl sm:text-2xl lg:text-3xl font-bold text-white flex items-center gap-2 sm:gap-3">
           <ChatBubbleLeftRightIcon className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-blue-500" />
-          <span>My Comments</span>
+          <span>{t('title')}</span>
         </h3>
         
         {/* Filter Tabs */}
         <div className="flex bg-gray-900/80 p-1 rounded-lg border border-gray-700/50 self-start sm:self-auto w-full sm:w-auto">
           {[ 
-            { id: 'comments', label: 'Comments' },
-            { id: 'replies', label: 'Replies' },
-            { id: 'liked', label: 'Liked' }
+            { id: 'comments', label: t('filterComments') },
+            { id: 'replies', label: t('filterReplies') },
+            { id: 'liked', label: t('filterLiked') }
           ].map((tab) => (
             <button
               key={tab.id}
@@ -137,7 +139,9 @@ export default function UserComments() {
         </div>
       ) : comments.length === 0 ? (
         <div className="text-center py-10 bg-gray-800/20 rounded-xl border border-gray-800/50">
-          <p className="text-gray-400">No {activeFilter} comments found.</p>
+          <p className="text-gray-400">
+            {t('noCommentsFound', { filter: activeFilter === 'comments' ? t('filterComments').toLowerCase() : activeFilter === 'replies' ? t('filterReplies').toLowerCase() : t('filterLiked').toLowerCase() })}
+          </p>
         </div>
       ) : (
         <div className="space-y-4">
@@ -164,12 +168,12 @@ export default function UserComments() {
                       activeFilter === 'liked' ? 'text-red-400 hover:text-red-300' : 'text-blue-400 hover:text-blue-300'
                     }`}
                   >
-                    {getLinkText(comment, activeFilter)}
+                    {getLinkText(comment, activeFilter, t)}
                     <ChevronRightIcon className="w-4 h-4" />
                   </Link>
                   <div className="flex items-center gap-3">
                     <span className="text-xs text-gray-500">
-                      {timeAgo(comment.createdAt)}
+                      {timeAgo(comment.createdAt, t)}
                     </span>
                     <button
                       onClick={() => handleDelete(comment._id)}
@@ -186,7 +190,7 @@ export default function UserComments() {
                   <div className={`text-xs font-semibold px-2 py-0.5 rounded inline-block w-fit ${
                     activeFilter === 'liked' ? 'bg-red-900/30 text-red-400' : 'bg-indigo-900/40 text-indigo-300'
                   }`}>
-                    Reply
+                    {t('reply')}
                   </div>
                 )}
                 
@@ -194,7 +198,7 @@ export default function UserComments() {
                 
                 {comment.likes > 0 && (
                   <div className="text-xs text-red-400 flex items-center gap-1">
-                    ❤️ {comment.likes} {comment.likes === 1 ? 'like' : 'likes'}
+                    ❤️ {comment.likes === 1 ? t('like', { count: 1 }) : t('likes', { count: comment.likes })}
                   </div>
                 )}
               </motion.div>
@@ -206,7 +210,7 @@ export default function UserComments() {
               onClick={() => fetchComments(page + 1)}
               className="w-full py-3 mt-2 text-center text-sm font-medium text-gray-400 hover:text-white bg-gray-800/30 hover:bg-gray-800/60 rounded-xl border border-gray-700/50 transition-colors"
             >
-              Load More
+              {t('loadMore')}
             </button>
           )}
         </div>

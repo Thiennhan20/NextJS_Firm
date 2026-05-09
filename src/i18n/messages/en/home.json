@@ -86,5 +86,20 @@
     "noRecentComments": "No recent comments",
     "thisWeek": "this week",
     "rating": "rating"
+  },
+  "Frames": {
+    "koreanTitle": "Korean Movies & Drama",
+    "usukTitle": "US-UK Movies & Shows",
+    "chinaTitle": "Chinese Movies & Drama",
+    "actionTitle": "Action & Thriller",
+    "horrorTitle": "Horror & Suspense",
+    "animeTitle": "Anime World",
+    "topMoviesTitle": "Top 5 Movies Today",
+    "topTVShowsTitle": "Top 5 TV Shows Today",
+    "movieLabel": "Movie",
+    "tvShowLabel": "TV Show",
+    "animation": "Animation",
+    "season1": "Season 1",
+    "updatingOverview": "Content is being updated for this title. Stay tuned!"
   }
 }

@@ -19,9 +19,16 @@ import HeroMovies from '@/components/home/HeroMovies'
 const RecentlyWatchedMovies = lazy(() => import('@/components/home').then(m => ({ default: m.RecentlyWatched })))
 const ActiveStreamingRooms = lazy(() => import('@/components/home').then(m => ({ default: m.ActiveStreamingRooms })))
 const EntertainmentFrames = lazy(() => import('@/components/home').then(m => ({ default: m.EntertainmentFrames })))
-const TrendingMovies = lazy(() => import('@/components/home').then(m => ({ default: m.TrendingMovies })))
+const KoreanFrame = lazy(() => import('@/components/home/frames/KoreanFrame'))
+const USUKFrame = lazy(() => import('@/components/home/frames/USUKFrame'))
+const ChinaFrame = lazy(() => import('@/components/home/frames/ChinaFrame'))
+const MoviesFrame = lazy(() => import('@/components/home').then(m => ({ default: m.MoviesFrame })))
 const ComingSoonMovies = lazy(() => import('@/components/home').then(m => ({ default: m.ComingSoonMovies })))
+const TVShowsFrame = lazy(() => import('@/components/home').then(m => ({ default: m.TVShowsFrame })))
+const AnimeFrame = lazy(() => import('@/components/home').then(m => ({ default: m.AnimeFrame })))
 const TopComments = lazy(() => import('@/components/home').then(m => ({ default: m.TopComments })))
+const ActionFrame = lazy(() => import('@/components/home/frames/ActionFrame'))
+const HorrorFrame = lazy(() => import('@/components/home/frames/HorrorFrame'))
 
 // Skeleton loader
 const SectionSkeleton = () => (
@@ -110,49 +117,113 @@ export default function Home() {
       {/* Hero Movies Section - Load immediately (above the fold) */}
       <HeroMovies />
 
-      {/* Recently Watched Movies Section - Lazy load when scrolling */}
-      <LazySection rootMargin="400px" minHeight="300px">
+      {/* Recently Watched Movies Section - Near fold, load early */}
+      <LazySection rootMargin="200px" minHeight="300px">
         <Suspense fallback={<SectionSkeleton />}>
           <RecentlyWatchedMovies />
         </Suspense>
       </LazySection>
 
-      {/* Active Streaming Rooms Section - Lazy load */}
-      <LazySection rootMargin="400px" minHeight="200px">
+      {/* Active Streaming Rooms Section */}
+      <LazySection rootMargin="200px" minHeight="200px">
         <Suspense fallback={<SectionSkeleton />}>
           <ActiveStreamingRooms />
         </Suspense>
       </LazySection>
 
-      {/* Entertainment Frames Section - Lazy load */}
-      <LazySection rootMargin="400px" minHeight="500px">
+      {/* Korean Frame - Each frame gets its own LazySection */}
+      <LazySection rootMargin="150px" minHeight="350px">
         <Suspense fallback={<SectionSkeleton />}>
-          <EntertainmentFrames />
-        </Suspense>
-      </LazySection>
-
-      {/* Trending Movies Section - Lazy load */}
-      <LazySection rootMargin="400px" minHeight="350px">
-        <Suspense fallback={<SectionSkeleton />}>
-          <div data-section="trending">
-            <TrendingMovies />
+          <div className="max-w-7xl mx-auto py-4 sm:py-6">
+            <KoreanFrame />
           </div>
         </Suspense>
       </LazySection>
 
-      {/* Coming Soon Movies Section - Lazy load */}
-      <LazySection rootMargin="400px" minHeight="350px">
+      {/* US-UK Frame */}
+      <LazySection rootMargin="150px" minHeight="350px">
+        <Suspense fallback={<SectionSkeleton />}>
+          <div className="max-w-7xl mx-auto py-4 sm:py-6">
+            <USUKFrame />
+          </div>
+        </Suspense>
+      </LazySection>
+
+      {/* China Frame */}
+      <LazySection rootMargin="150px" minHeight="350px">
+        <Suspense fallback={<SectionSkeleton />}>
+          <div className="max-w-7xl mx-auto py-4 sm:py-6">
+            <ChinaFrame />
+          </div>
+        </Suspense>
+      </LazySection>
+
+      {/* Top Comments Section */}
+      <LazySection rootMargin="150px" minHeight="500px">
+        <Suspense fallback={<SectionSkeleton />}>
+          <TopComments />
+        </Suspense>
+      </LazySection>
+
+      {/* Top Movies Section */}
+      <LazySection rootMargin="150px" minHeight="350px">
+        <Suspense fallback={<SectionSkeleton />}>
+          <div className="max-w-7xl mx-auto">
+            <MoviesFrame />
+          </div>
+        </Suspense>
+      </LazySection>
+
+      {/* Coming Soon Movies Section */}
+      <LazySection rootMargin="150px" minHeight="350px">
         <Suspense fallback={<SectionSkeleton />}>
           <ComingSoonMovies />
         </Suspense>
       </LazySection>
 
-      {/* Top Comments Section - Lazy load */}
-      <LazySection rootMargin="400px" minHeight="500px">
+      {/* Top TV Shows Section */}
+      <LazySection rootMargin="150px" minHeight="350px">
         <Suspense fallback={<SectionSkeleton />}>
-          <TopComments />
+          <div className="max-w-7xl mx-auto">
+            <TVShowsFrame />
+          </div>
         </Suspense>
       </LazySection>
+
+      {/* Anime Frame Section */}
+      <LazySection rootMargin="150px" minHeight="500px">
+        <Suspense fallback={<SectionSkeleton />}>
+          <div className="max-w-7xl mx-auto pb-12">
+            <AnimeFrame />
+          </div>
+        </Suspense>
+      </LazySection>
+
+      {/* Action Frame - Separate LazySection */}
+      <LazySection rootMargin="150px" minHeight="350px">
+        <Suspense fallback={<SectionSkeleton />}>
+          <div className="max-w-7xl mx-auto py-4 sm:py-6">
+            <ActionFrame />
+          </div>
+        </Suspense>
+      </LazySection>
+
+      {/* Horror Frame - Separate LazySection */}
+      <LazySection rootMargin="150px" minHeight="350px">
+        <Suspense fallback={<SectionSkeleton />}>
+          <div className="max-w-7xl mx-auto py-4 sm:py-6">
+            <HorrorFrame />
+          </div>
+        </Suspense>
+      </LazySection>
+
+      {/* Entertainment Frames Section */}
+      <LazySection rootMargin="150px" minHeight="500px">
+        <Suspense fallback={<SectionSkeleton />}>
+          <EntertainmentFrames />
+        </Suspense>
+      </LazySection>
+
 
       {/* Call to Action Section */}
       <section className="py-20 px-4 sm:px-6 lg:px-8 relative overflow-hidden">

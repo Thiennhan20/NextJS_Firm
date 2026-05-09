@@ -66,5 +66,32 @@
     "rating": "Rating",
     "newComments": "New Comments",
     "noRecentComments": "No recent comments yet"
+  },
+  "UserComments": {
+    "title": "My Comments",
+    "filterComments": "Comments",
+    "filterReplies": "Replies",
+    "filterLiked": "Liked",
+    "noCommentsFound": "No {filter} found.",
+    "viewComment": "View comment on {type}",
+    "viewReply": "View reply on {type}",
+    "viewLikedComment": "View liked comment on {type}",
+    "viewLikedReply": "View liked reply on {type}",
+    "tvShow": "TV Show",
+    "movie": "Movie",
+    "justNow": "Just now",
+    "minAgo": "{count}m ago",
+    "hrAgo": "{count}h ago",
+    "dayAgo": "{count}d ago",
+    "moAgo": "{count}mo ago",
+    "yrAgo": "{count}y ago",
+    "reply": "Reply",
+    "likes": "{count} likes",
+    "like": "{count} like",
+    "deleteConfirm": "Are you sure you want to delete this comment?",
+    "commentDeleted": "Comment deleted",
+    "deleteFailed": "Failed to delete comment",
+    "loadFailed": "Failed to load your comments",
+    "loadMore": "Load More"
   }
 }

@@ -1,0 +1,146 @@
+'use client'
+
+import { useCallback } from 'react'
+
+import Image from 'next/image'
+import axios from 'axios'
+
+import { useRouter } from 'next/navigation'
+import { useApiCache } from '@/hooks/useApiCache'
+import CardWithHover from '@/components/common/CardWithHover'
+import { useTranslations } from 'next-intl'
+
+interface MovieItem {
+  id: number;
+  title?: string;
+  name?: string;
+  original_title?: string;
+  original_name?: string;
+  poster_path?: string;
+  release_date?: string;
+}
+
+const CATEGORY = {
+  id: 'top-movies',
+  title: 'Top 5 Movies Today',
+  endpoint: '/trending/movie/day',
+  type: 'movie' as const,
+};
+
+export default function MoviesFrame() {
+  const router = useRouter();
+  const t = useTranslations('Frames');
+
+  const fetchData = useCallback(async () => {
+    const response = await axios.get(`/api/tmdb-proxy?endpoint=${encodeURIComponent(CATEGORY.endpoint)}`);
+    return response.data.results.slice(0, 5) as MovieItem[];
+  }, []);
+
+  const { data: items, loading, error } = useApiCache<MovieItem[]>(
+    'home-movies-frame',
+    fetchData,
+    30 * 60 * 1000
+  );
+
+  const getRoute = (item: MovieItem) => `/movies/${item.id}`;
+  const getTitle = (item: MovieItem) => item.title || item.name || 'Unknown';
+  const getOriginalTitle = (item: MovieItem) => item.original_title || item.original_name || '';
+  const getYear = (item: MovieItem) => {
+    const date = item.release_date;
+    return date ? date.slice(0, 4) : '';
+  };
+
+  if (error) return null;
+  if (loading && !items) return (
+    <div className="mb-10 sm:mb-12 px-3">
+      <div className="h-8 w-64 bg-gray-800 rounded-lg mb-6 animate-pulse" />
+      <div className="flex gap-4 overflow-hidden">
+        {[1, 2, 3, 4, 5].map((i) => (
+          <div key={i} className="flex-1 aspect-[2/3] bg-gray-800 rounded-xl animate-pulse" />
+        ))}
+      </div>
+    </div>
+  );
+  if (!items || items.length === 0) return null;
+
+  return (
+    <div className="mb-10 sm:mb-12">
+      <div className="flex items-center gap-3 mb-4 px-3">
+        <div className="w-1.5 h-6 sm:h-8 rounded-full bg-gradient-to-b from-red-500 to-orange-500" />
+        <h3 className="text-xl sm:text-2xl font-bold text-white tracking-wide">
+          {t('topMoviesTitle')}
+        </h3>
+      </div>
+      
+      <div 
+        className="flex gap-4 px-3 pt-6 overflow-x-auto pb-6 snap-x snap-mandatory" 
+        style={{ WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+      >
+        {items.map((item, index) => (
+          <div key={item.id} className="flex flex-col group cursor-pointer snap-start min-w-[220px] md:min-w-0 md:flex-1 shrink-0" onClick={() => router.push(getRoute(item))}>
+            {/* Poster */}
+            <CardWithHover
+                id={item.id}
+                type={CATEGORY.type}
+                title={getTitle(item)}
+                posterPath={item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : ''}
+                onWatchClick={() => router.push(getRoute(item))}
+                onDetailsClick={() => router.push(getRoute(item))}
+                hoverDelay={1000}
+            >
+              <div className="relative w-full aspect-[2/3] mb-4">
+                <div 
+                  className="absolute inset-0 rounded-xl overflow-hidden bg-gray-900 shadow-lg transition-transform duration-500 group-hover:!transform-none"
+                  style={{
+                    transform: index % 2 === 0 
+                      ? 'perspective(1000px) rotateY(30deg)' 
+                      : 'perspective(1000px) rotateY(-30deg)',
+                    transformOrigin: index % 2 === 0 ? 'right center' : 'left center'
+                  }}
+                >
+                  {item.poster_path ? (
+                    <Image 
+                      src={`https://image.tmdb.org/t/p/w500${item.poster_path}`}
+                      alt={getTitle(item)}
+                      fill
+                      sizes="(max-width: 768px) 50vw, 20vw"
+                      className="object-cover transition-transform duration-500"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-[#1a1c23] flex items-center justify-center">
+                      <span className="text-4xl text-gray-500">🎬</span>
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300" />
+                </div>
+              </div>
+            </CardWithHover>
+
+            {/* Content & Rank */}
+            <div className="flex items-start gap-3">
+              {/* Giant Number */}
+              <div className="text-5xl md:text-6xl font-black italic text-[#fcd53f] drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] tracking-tighter leading-none mt-1">
+                {index + 1}
+              </div>
+              
+              {/* Text Info */}
+              <div className="flex flex-col flex-1 overflow-hidden pt-1">
+                <h4 className="text-white font-bold text-sm sm:text-base line-clamp-1 drop-shadow-sm" title={getTitle(item)}>
+                  {getTitle(item)}
+                </h4>
+                <p className="text-gray-400 text-xs line-clamp-1 mb-1" title={getOriginalTitle(item)}>
+                  {getOriginalTitle(item)}
+                </p>
+                <div className="flex items-center gap-2 text-[10px] sm:text-xs font-semibold text-gray-300">
+                  <span className="text-gray-100">T16</span>
+                  <span className="w-1 h-1 rounded-full bg-gray-500" />
+                  <span>{getYear(item)}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}

@@ -66,5 +66,32 @@
     "rating": "Đánh giá",
     "newComments": "Bình luận mới",
     "noRecentComments": "Chưa có bình luận mới nào"
+  },
+  "UserComments": {
+    "title": "Bình luận của tôi",
+    "filterComments": "Bình luận",
+    "filterReplies": "Phản hồi",
+    "filterLiked": "Đã thích",
+    "noCommentsFound": "Chưa có {filter} nào.",
+    "viewComment": "Xem bình luận trong {type}",
+    "viewReply": "Xem phản hồi trong {type}",
+    "viewLikedComment": "Xem bình luận đã thích trong {type}",
+    "viewLikedReply": "Xem phản hồi đã thích trong {type}",
+    "tvShow": "Phim Bộ",
+    "movie": "Phim Lẻ",
+    "justNow": "Vừa xong",
+    "minAgo": "{count}ph trước",
+    "hrAgo": "{count}g trước",
+    "dayAgo": "{count}n trước",
+    "moAgo": "{count}th trước",
+    "yrAgo": "{count}năm trước",
+    "reply": "Phản hồi",
+    "likes": "{count} lượt thích",
+    "like": "{count} lượt thích",
+    "deleteConfirm": "Bạn có chắc chắn muốn xóa bình luận này không?",
+    "commentDeleted": "Đã xóa bình luận",
+    "deleteFailed": "Lỗi khi xóa bình luận",
+    "loadFailed": "Không thể tải bình luận của bạn",
+    "loadMore": "Tải Thêm"
   }
 }

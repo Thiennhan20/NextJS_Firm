@@ -14,7 +14,8 @@ export default async function Home() {
     StreamingRooms: messages.StreamingRooms,
     Entertainment: messages.Entertainment,
     Comments: messages.Comments,
-    Watchlist: messages.Watchlist
+    Watchlist: messages.Watchlist,
+    Frames: messages.Frames
   };
 
   return (

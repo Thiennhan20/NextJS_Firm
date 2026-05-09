@@ -6,6 +6,16 @@ export { default as MovieNews } from './MovieNews';
 export { default as RecentlyWatched } from './RecentlyWatched';
 export { default as SubscribeSection } from './SubscribeSection';
 export { default as TopComments } from './TopComments';
-export { default as TrendingMovies } from './TrendingMovies';
+export { default as CategoryRows } from './CategoryRows';
 
-
+// Re-export individual frames from frames/ folder
+export {
+  KoreanFrame,
+  USUKFrame,
+  ActionFrame,
+  HorrorFrame,
+  AnimeFrame,
+  ComingSoonFrame,
+  MoviesFrame,
+  TVShowsFrame,
+} from './frames';
