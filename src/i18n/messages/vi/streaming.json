@@ -54,11 +54,24 @@
     "deleteRoomQ": "Xóa phòng?",
     "closeRoomDesc": "Hành động này sẽ đóng phòng và ngắt kết nối tất cả người xem.",
     "delete": "Xóa",
-    "loading": "Đang tải..."
+    "loading": "Đang tải...",
+    "duplicateRoomError": "Bạn đã tạo phòng xem chung cho phim này với audio này rồi.",
+    "goToExistingRoom": "Vào phòng đã tạo",
+    "roomNotFound": "Mã phòng không đúng hoặc phòng không còn tồn tại."
   },
   "StreamingRoom": {
     "lobby": "Sảnh chờ",
     "watchParty": "Xem Chung",
-    "roomChat": "Trò chuyện"
+    "roomChat": "Trò chuyện",
+    "noRoomId": "Không tìm thấy Phòng",
+    "noRoomDesc": "Vui lòng tham gia phòng từ sảnh hoặc sử dụng liên kết mời.",
+    "goToLobby": "Về Sảnh chờ",
+    "signInRequired": "Yêu cầu đăng nhập",
+    "signInDesc": "Bạn cần đăng nhập để tham gia phòng xem chung.",
+    "signIn": "Đăng nhập",
+    "backToLobby": "Trở về Sảnh",
+    "sessionEnded": "Phiên đã kết thúc",
+    "sessionEndedDefaultDesc": "Chủ phòng đã đóng phiên xem chung này.",
+    "redirectingLobby": "Đang chuyển hướng về sảnh..."
   }
 }

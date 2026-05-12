@@ -51,16 +51,7 @@ export default function MoviesFrame() {
   };
 
   if (error) return null;
-  if (loading && !items) return (
-    <div className="mb-10 sm:mb-12 px-3">
-      <div className="h-8 w-64 bg-gray-800 rounded-lg mb-6 animate-pulse" />
-      <div className="flex gap-4 overflow-hidden">
-        {[1, 2, 3, 4, 5].map((i) => (
-          <div key={i} className="flex-1 aspect-[2/3] bg-gray-800 rounded-xl animate-pulse" />
-        ))}
-      </div>
-    </div>
-  );
+  if (loading && !items) return null;
   if (!items || items.length === 0) return null;
 
   return (
@@ -73,11 +64,11 @@ export default function MoviesFrame() {
       </div>
       
       <div 
-        className="flex gap-4 px-3 pt-6 overflow-x-auto pb-6 snap-x snap-mandatory" 
+        className="flex md:grid md:grid-cols-5 gap-4 px-3 pt-6 overflow-x-auto md:overflow-visible pb-6 snap-x snap-mandatory" 
         style={{ WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
         {items.map((item, index) => (
-          <div key={item.id} className="flex flex-col group cursor-pointer snap-start min-w-[220px] md:min-w-0 md:flex-1 shrink-0" onClick={() => router.push(getRoute(item))}>
+          <div key={item.id} className="flex flex-col group cursor-pointer snap-start min-w-[220px] md:min-w-0 w-[220px] md:w-auto shrink-0" onClick={() => router.push(getRoute(item))}>
             {/* Poster */}
             <CardWithHover
                 id={item.id}
@@ -104,7 +95,7 @@ export default function MoviesFrame() {
                       alt={getTitle(item)}
                       fill
                       sizes="(max-width: 768px) 50vw, 20vw"
-                      className="object-cover transition-transform duration-500"
+                      className="object-cover w-full h-full transition-transform duration-500"
                     />
                   ) : (
                     <div className="w-full h-full bg-[#1a1c23] flex items-center justify-center">
@@ -117,12 +108,15 @@ export default function MoviesFrame() {
             </CardWithHover>
 
             {/* Content & Rank */}
-            <div className="flex items-start gap-3">
+            <div className="flex items-start gap-3 sm:gap-4">
               {/* Giant Number */}
-              <div className="text-5xl md:text-6xl font-black italic text-[#fcd53f] drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] tracking-tighter leading-none mt-1">
+              <div className="text-5xl md:text-6xl font-black italic text-[#fcd53f] drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] tracking-tighter leading-none mt-1 shrink-0 min-w-[36px] md:min-w-[44px]">
                 {index + 1}
               </div>
               
+              {/* Decorative Divider */}
+              <div className="w-1 h-10 bg-gradient-to-b from-[#fcd53f] to-transparent mt-2 shrink-0 rounded-full opacity-80" />
+
               {/* Text Info */}
               <div className="flex flex-col flex-1 overflow-hidden pt-1">
                 <h4 className="text-white font-bold text-sm sm:text-base line-clamp-1 drop-shadow-sm" title={getTitle(item)}>

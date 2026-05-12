@@ -26,18 +26,24 @@ function StreamingLobbyContent() {
   // Pre-filled params from Stream button
   const streamUrlFromParams = searchParams.get('streamUrl') || '';
   const titleFromParams = searchParams.get('title') || '';
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const _movieIdFromParams = searchParams.get('movieId') || '';
+  const movieIdFromParams = searchParams.get('movieId') || '';
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const _posterFromParams = searchParams.get('poster') || '';
   const typeFromParams = searchParams.get('type') || 'movie'; // 'movie' | 'tvshow'
   const seasonFromParams = searchParams.get('season') || '';
   const episodeFromParams = searchParams.get('episode') || '';
+  const audioFromParams = searchParams.get('audio') || '';
 
   // State
   const [joinRoomId, setJoinRoomId] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [joinError, setJoinError] = useState('');
+  const [isJoining, setIsJoining] = useState(false);
+  const [duplicateInfo, setDuplicateInfo] = useState<{
+    existingRoomId: string;
+    audio: string;
+  } | null>(null);
   const [particles, setParticles] = useState<Particle[]>([]);
   const [copied, setCopied] = useState(false);
   const [showAuthPopup, setShowAuthPopup] = useState(false);
@@ -161,10 +167,13 @@ function StreamingLobbyContent() {
 
     setLoading(true);
     setError('');
+    setDuplicateInfo(null);
     try {
       const response = await api.post('/rooms', {
         title: titleFromParams,
         stream_url: streamUrlFromParams,
+        movie_id: movieIdFromParams,
+        audio: audioFromParams,
       });
 
       const { room_id, expires_at } = response.data;
@@ -178,17 +187,53 @@ function StreamingLobbyContent() {
       });
     } catch (err: unknown) {
       console.error('Error creating room:', err);
-      const axiosErr = err as { response?: { data?: { error?: string } } };
-      setError(axiosErr?.response?.data?.error || 'Failed to create room. Please try again.');
+      const axiosErr = err as { response?: { data?: { error?: string; code?: string; existing_room_id?: string } } };
+      const errData = axiosErr?.response?.data;
+
+      if (errData?.code === 'DUPLICATE_ROOM') {
+        setDuplicateInfo({
+          existingRoomId: errData.existing_room_id || '',
+          audio: audioFromParams,
+        });
+        setError(errData.error || t('duplicateRoomError'));
+      } else {
+        setError(errData?.error || 'Failed to create room. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  const handleJoinById = () => {
+  const handleJoinById = async () => {
     if (!requireAuth()) return;
-    if (joinRoomId.trim()) {
-      router.push(`/streaming-room?room=${joinRoomId.trim()}`);
+    if (!joinRoomId.trim()) return;
+
+    setIsJoining(true);
+    setJoinError('');
+
+    try {
+      // Strip exactly ONE '#' from the beginning if it exists
+      let roomId = joinRoomId.trim();
+      if (roomId.startsWith('#')) {
+        roomId = roomId.substring(1);
+      }
+      roomId = roomId.toUpperCase();
+
+      // Validate room existence before joining. Use encodeURIComponent to handle special characters like '#' safely.
+      await api.get(`/rooms/${encodeURIComponent(roomId)}`);
+      
+      // If no error, room exists, navigate to it
+      router.push(`/streaming-room?room=${encodeURIComponent(roomId)}`);
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { status?: number, data?: { error?: string } } };
+      if (axiosErr?.response?.status === 404) {
+        setJoinError(t('roomNotFound'));
+      } else {
+        console.error('Error joining room:', err);
+        setJoinError(axiosErr?.response?.data?.error || 'Failed to join room.');
+      }
+    } finally {
+      setIsJoining(false);
     }
   };
 
@@ -365,9 +410,14 @@ function StreamingLobbyContent() {
                       Season {seasonFromParams} • Episode {episodeFromParams}
                     </p>
                   )}
-                  <div className="flex items-center gap-1 mt-2">
+                  <div className="flex items-center gap-2 mt-2">
                     <div className="w-1.5 h-1.5 bg-green-400 rounded-full" />
                     <span className="text-xs text-green-400">{t('streamReady')}</span>
+                    {audioFromParams && (
+                      <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded bg-gradient-to-r from-fuchsia-600 to-pink-600 text-white uppercase">
+                        {audioFromParams}
+                      </span>
+                    )}
                   </div>
                 </div>
 
@@ -408,9 +458,18 @@ function StreamingLobbyContent() {
 
                 {/* Error message */}
                 {error && (
-                  <p className="text-xs text-red-400 bg-red-900/20 border border-red-500/20 rounded-lg px-3 py-2">
-                    {error}
-                  </p>
+                  <div className="text-xs text-red-400 bg-red-900/20 border border-red-500/20 rounded-lg px-3 py-2">
+                    <p>{error}</p>
+                    {duplicateInfo?.existingRoomId && (
+                      <button
+                        onClick={() => router.push(`/streaming-room?room=${duplicateInfo.existingRoomId}`)}
+                        className="mt-2 w-full px-3 py-1.5 bg-gradient-to-r from-yellow-500 to-amber-500 text-black text-xs font-semibold rounded-lg hover:from-yellow-400 hover:to-amber-400 transition-all flex items-center justify-center gap-1.5"
+                      >
+                        <Radio className="h-3 w-3" />
+                        {t('goToExistingRoom')} ({duplicateInfo.existingRoomId})
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
             ) : (
@@ -456,12 +515,27 @@ function StreamingLobbyContent() {
 
               <button
                 onClick={handleJoinById}
-                disabled={!joinRoomId.trim()}
+                disabled={!joinRoomId.trim() || isJoining}
                 className="w-full px-4 py-2.5 bg-gradient-to-r from-purple-600 to-purple-700 text-white font-semibold rounded-lg hover:from-purple-500 hover:to-purple-600 disabled:from-gray-600 disabled:to-gray-700 disabled:text-gray-400 disabled:cursor-not-allowed transition-all duration-300 flex items-center justify-center gap-2 text-sm shadow-lg shadow-purple-500/10 disabled:shadow-none"
               >
-                <ArrowRight className="h-4 w-4" />
-                {t('joinRoom')}
+                {isJoining ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                    {t('loading')}
+                  </>
+                ) : (
+                  <>
+                    <ArrowRight className="h-4 w-4" />
+                    {t('joinRoom')}
+                  </>
+                )}
               </button>
+
+              {joinError && (
+                <p className="text-xs text-red-400 bg-red-900/20 border border-red-500/20 rounded-lg px-3 py-2 text-center">
+                  {joinError}
+                </p>
+              )}
 
               <p className="text-xs text-gray-500 text-center">
                 {t('askHostJoin')}

@@ -30,22 +30,8 @@ const TopComments = lazy(() => import('@/components/home').then(m => ({ default:
 const ActionFrame = lazy(() => import('@/components/home/frames/ActionFrame'))
 const HorrorFrame = lazy(() => import('@/components/home/frames/HorrorFrame'))
 
-// Skeleton loader
-const SectionSkeleton = () => (
-  <div className="py-8 px-4">
-    <div className="max-w-7xl mx-auto">
-      <div className="h-8 w-64 bg-gray-800 rounded-lg mb-6 mx-auto animate-pulse" />
-      <div className="flex gap-4 overflow-hidden">
-        {[1, 2, 3, 4, 5].map((i) => (
-          <div
-            key={i}
-            className="min-w-[200px] h-64 bg-gray-800 rounded-xl animate-pulse"
-          />
-        ))}
-      </div>
-    </div>
-  </div>
-)
+// Minimal placeholder - no skeleton animation, sections appear when ready
+const SectionSkeleton = () => <div />
 
 interface Particle {
   x: number;

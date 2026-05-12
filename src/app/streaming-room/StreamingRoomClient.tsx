@@ -486,11 +486,11 @@ function StreamingRoomContent() {
           <div className="mb-6 mx-auto w-20 h-20 rounded-full bg-yellow-500/20 border border-yellow-500/30 flex items-center justify-center">
             <AlertTriangle className="h-9 w-9 text-yellow-400" />
           </div>
-          <h1 className="text-2xl font-bold mb-3 bg-gradient-to-r from-yellow-400 to-amber-400 bg-clip-text text-transparent">Sign In Required</h1>
-          <p className="text-gray-400 mb-6 text-sm">You need to sign in to join a streaming room.</p>
+          <h1 className="text-2xl font-bold mb-3 bg-gradient-to-r from-yellow-400 to-amber-400 bg-clip-text text-transparent">{t('signInRequired')}</h1>
+          <p className="text-gray-400 mb-6 text-sm">{t('signInDesc')}</p>
           <div className="flex gap-3 justify-center">
-            <button onClick={() => router.push('/login')} className="px-6 py-2.5 bg-gradient-to-r from-yellow-500 to-amber-500 text-black font-semibold rounded-lg hover:from-yellow-400 hover:to-amber-400 transition-all text-sm">Sign In</button>
-            <button onClick={() => router.push('/streaming-lobby')} className="px-6 py-2.5 bg-gray-800 text-gray-300 font-semibold rounded-lg hover:bg-gray-700 transition-all border border-gray-700 text-sm">Back to Lobby</button>
+            <button onClick={() => router.push('/login')} className="px-6 py-2.5 bg-gradient-to-r from-yellow-500 to-amber-500 text-black font-semibold rounded-lg hover:from-yellow-400 hover:to-amber-400 transition-all text-sm">{t('signIn')}</button>
+            <button onClick={() => router.push('/streaming-lobby')} className="px-6 py-2.5 bg-gray-800 text-gray-300 font-semibold rounded-lg hover:bg-gray-700 transition-all border border-gray-700 text-sm">{t('backToLobby')}</button>
           </div>
         </motion.div>
       </div>
@@ -502,9 +502,9 @@ function StreamingRoomContent() {
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 text-white flex items-center justify-center px-4">
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center max-w-md">
           <Hash className="h-12 w-12 text-gray-500 mx-auto mb-4" />
-          <h1 className="text-xl font-bold mb-2">No Room ID</h1>
-          <p className="text-gray-400 text-sm mb-6">Please join a room from the lobby or use an invite link.</p>
-          <button onClick={() => router.push('/streaming-lobby')} className="px-6 py-2.5 bg-gradient-to-r from-yellow-500 to-amber-500 text-black font-semibold rounded-lg text-sm">Go to Lobby</button>
+          <h1 className="text-xl font-bold mb-2">{t('noRoomId')}</h1>
+          <p className="text-gray-400 text-sm mb-6">{t('noRoomDesc')}</p>
+          <button onClick={() => router.push('/streaming-lobby')} className="px-6 py-2.5 bg-gradient-to-r from-yellow-500 to-amber-500 text-black font-semibold rounded-lg text-sm">{t('goToLobby')}</button>
         </motion.div>
       </div>
     );
@@ -519,9 +519,9 @@ function StreamingRoomContent() {
           <div className="mb-6 mx-auto w-20 h-20 rounded-full bg-red-500/20 border border-red-500/30 flex items-center justify-center">
             <LogOut className="h-9 w-9 text-red-400" />
           </div>
-          <h1 className="text-2xl font-bold mb-3 text-red-300">Session Ended</h1>
-          <p className="text-gray-400 text-sm mb-2">{notification || 'The host ended this session.'}</p>
-          <p className="text-gray-500 text-xs">Redirecting to lobby...</p>
+          <h1 className="text-2xl font-bold mb-3 text-red-300">{t('sessionEnded')}</h1>
+          <p className="text-gray-400 text-sm mb-2">{notification || t('sessionEndedDefaultDesc')}</p>
+          <p className="text-gray-500 text-xs">{t('redirectingLobby')}</p>
         </motion.div>
       </div>
     );

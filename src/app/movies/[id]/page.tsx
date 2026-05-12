@@ -5,7 +5,7 @@ import MovieDetailClient from './MovieDetailClient';
 export default async function MovieDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const messages = await getMessages();
   return (
-    <NextIntlClientProvider messages={{ Movies: messages.Movies, Watch: messages.Watch, Comments: messages.Comments, Watchlist: messages.Watchlist }}>
+    <NextIntlClientProvider messages={{ Movies: messages.Movies, Watch: messages.Watch, Comments: messages.Comments, Watchlist: messages.Watchlist, StreamingLobby: messages.StreamingLobby }}>
       <MovieDetailClient params={params} />
     </NextIntlClientProvider>
   );

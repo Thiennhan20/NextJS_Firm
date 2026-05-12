@@ -9,8 +9,9 @@ import { proxyHlsUrl } from '@/lib/hlsProxy'
 import WatchNowTVShowsServer1 from './WatchNowTVShowsServer1'
 import WatchNowTVShowsServer2 from './WatchNowTVShowsServer2'
 import WatchNowTVShowsServer3 from './WatchNowTVShowsServer3'
-import { Radio, SkipForward } from 'lucide-react'
+import { Radio, SkipForward, Loader2 } from 'lucide-react'
 import { useTranslations } from 'next-intl'
+import api from '@/lib/axios'
 
 // Định nghĩa kiểu TVShow
 interface TVShow {
@@ -58,12 +59,14 @@ export default function WatchNowTVShows({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const userId = useAuthStore((s) => (s.user as any)?.id || (s.user as any)?._id)
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
-  const [streamAuthMessage, setStreamAuthMessage] = useState(false)
+  const [streamPopup, setStreamPopup] = useState<{ type: 'auth' } | { type: 'duplicate', roomId: string } | null>(null)
+  const [isCheckingStream, setIsCheckingStream] = useState(false)
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const episodes = _episodes;
   const searchParams = useSearchParams();
   const router = useRouter();
   const t = useTranslations('Watch');
+  const tStreaming = useTranslations('StreamingLobby');
 
   const [selectedServer, setSelectedServer] = useState<'server1' | 'server2' | 'server3'>('server1');
   const hasInitialized = useRef(false);
@@ -93,7 +96,7 @@ export default function WatchNowTVShows({
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (streamBtnRef.current && !streamBtnRef.current.contains(event.target as Node)) {
-        setStreamAuthMessage(false);
+        setStreamPopup(null);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -273,12 +276,30 @@ export default function WatchNowTVShows({
   }, []);
 
   // Handler cho nút Stream
-  const handleStreamClick = () => {
+  const handleStreamClick = async () => {
     if (!isAuthenticated) {
-      setStreamAuthMessage((prev) => !prev);
+      setStreamPopup({ type: 'auth' });
       return;
     }
     if (!effectiveStreamUrl) return;
+
+    // Determine effective audio for streaming
+    const streamAudio = selectedAudio || (tvShowLinks.vietsub ? 'vietsub' : tvShowLinks.dubbed ? 'dubbed' : '');
+
+    // Check for duplicate room first
+    setIsCheckingStream(true);
+    try {
+      const res = await api.get(`/rooms/check-duplicate?movieId=${tvShow.id}&audio=${streamAudio}`);
+      if (res.data.duplicate) {
+        setStreamPopup({ type: 'duplicate', roomId: res.data.existing_room_id });
+        setIsCheckingStream(false);
+        return; // Don't navigate
+      }
+    } catch (error) {
+      console.error('Error checking duplicate room:', error);
+      // Proceed to lobby if check fails
+    }
+    setIsCheckingStream(false);
 
     const params = new URLSearchParams({
       streamUrl: effectiveStreamUrl,
@@ -288,6 +309,7 @@ export default function WatchNowTVShows({
       type: 'tvshow',
       season: String(selectedSeason),
       episode: String(selectedEpisode),
+      audio: streamAudio,
     });
     router.push(`/streaming-lobby?${params.toString()}`);
   };
@@ -480,31 +502,55 @@ export default function WatchNowTVShows({
                 <div className="relative" ref={streamBtnRef}>
                   <button
                     onClick={handleStreamClick}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-yellow-500 to-amber-500 text-black text-xs sm:text-sm font-semibold hover:from-yellow-400 hover:to-amber-400 transition-all duration-300 shadow-lg shadow-yellow-500/20 hover:shadow-yellow-500/40 whitespace-nowrap"
+                    disabled={isCheckingStream}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-yellow-500 to-amber-500 text-black text-xs sm:text-sm font-semibold hover:from-yellow-400 hover:to-amber-400 disabled:opacity-70 transition-all duration-300 shadow-lg shadow-yellow-500/20 hover:shadow-yellow-500/40 whitespace-nowrap"
                     title={t('startWatchParty')}
                   >
-                    <Radio className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                    {isCheckingStream ? <Loader2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 animate-spin" /> : <Radio className="h-3.5 w-3.5 sm:h-4 sm:w-4" />}
                     <span className="hidden sm:inline">{t('stream')}</span>
                   </button>
 
-                  {/* Auth notification dropdown */}
-                  {streamAuthMessage && (
-                    <div className="absolute top-full right-0 mt-2 p-3 bg-gray-900/95 backdrop-blur-sm border border-yellow-500/30 rounded-xl shadow-2xl z-50 w-64">
-                      <p className="text-sm text-white mb-2.5">{t('signInRequired')}</p>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => router.push('/login')}
-                          className="flex-1 px-3 py-1.5 bg-yellow-500 text-black text-xs font-semibold rounded-lg hover:bg-yellow-400 transition-colors"
-                        >
-                          {t('signIn')}
-                        </button>
-                        <button
-                          onClick={() => { setStreamAuthMessage(false); }}
-                          className="px-3 py-1.5 bg-gray-700 text-white text-xs font-semibold rounded-lg hover:bg-gray-600 transition-colors"
-                        >
-                          ✕
-                        </button>
-                      </div>
+                  {/* Auth/Duplicate notification dropdown */}
+                  {streamPopup && (
+                    <div className="absolute top-full right-0 mt-2 p-3 bg-gray-900/95 backdrop-blur-sm border border-yellow-500/30 rounded-xl shadow-2xl z-50 w-64 md:w-72">
+                      {streamPopup.type === 'auth' ? (
+                        <>
+                          <p className="text-sm text-white mb-2.5">{t('signInRequired')}</p>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => router.push('/login')}
+                              className="flex-1 px-3 py-1.5 bg-yellow-500 text-black text-xs font-semibold rounded-lg hover:bg-yellow-400 transition-colors"
+                            >
+                              {t('signIn')}
+                            </button>
+                            <button
+                              onClick={() => setStreamPopup(null)}
+                              className="px-3 py-1.5 bg-gray-700 text-white text-xs font-semibold rounded-lg hover:bg-gray-600 transition-colors"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <p className="text-sm text-red-400 mb-2.5 font-medium leading-tight">{tStreaming('duplicateRoomError')}</p>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => router.push(`/streaming-room?room=${streamPopup.roomId}`)}
+                              className="flex-1 px-3 py-1.5 bg-gradient-to-r from-yellow-500 to-amber-500 text-black text-xs font-semibold rounded-lg hover:from-yellow-400 hover:to-amber-400 transition-colors flex items-center justify-center gap-1.5"
+                            >
+                              <Radio className="w-3 h-3" />
+                              {tStreaming('goToExistingRoom')}
+                            </button>
+                            <button
+                              onClick={() => setStreamPopup(null)}
+                              className="px-3 py-1.5 bg-gray-700 text-white text-xs font-semibold rounded-lg hover:bg-gray-600 transition-colors"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        </>
+                      )}
                     </div>
                   )}
                 </div>

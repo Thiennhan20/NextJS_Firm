@@ -54,11 +54,24 @@
     "deleteRoomQ": "Delete Room?",
     "closeRoomDesc": "This will close the room and disconnect all viewers.",
     "delete": "Delete",
-    "loading": "Loading..."
+    "loading": "Loading...",
+    "duplicateRoomError": "You already have an active room for this content with the same audio track.",
+    "goToExistingRoom": "Go to existing room",
+    "roomNotFound": "Invalid Room ID or the room no longer exists."
   },
   "StreamingRoom": {
     "lobby": "Lobby",
     "watchParty": "Watch Party",
-    "roomChat": "Room Chat"
+    "roomChat": "Room Chat",
+    "noRoomId": "No Room ID",
+    "noRoomDesc": "Please join a room from the lobby or use an invite link.",
+    "goToLobby": "Go to Lobby",
+    "signInRequired": "Sign In Required",
+    "signInDesc": "You need to sign in to join a streaming room.",
+    "signIn": "Sign In",
+    "backToLobby": "Back to Lobby",
+    "sessionEnded": "Session Ended",
+    "sessionEndedDefaultDesc": "The host ended this session.",
+    "redirectingLobby": "Redirecting to lobby..."
   }
 }

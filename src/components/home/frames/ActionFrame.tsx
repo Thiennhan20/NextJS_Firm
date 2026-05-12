@@ -102,16 +102,7 @@ export default function ActionFrame() {
   };
 
   if (error) return null;
-  if (loading && !items) return (
-    <div className="mb-10 sm:mb-12 px-3">
-      <div className="h-8 w-48 bg-gray-800 rounded-lg mb-4 animate-pulse" />
-      <div className="flex gap-4 overflow-hidden">
-        {[1, 2, 3, 4, 5].map((i) => (
-          <div key={i} className="min-w-[160px] h-64 bg-gray-800 rounded-xl animate-pulse" />
-        ))}
-      </div>
-    </div>
-  );
+  if (loading && !items) return null;
   if (!items || items.length === 0) return null;
 
   return (
