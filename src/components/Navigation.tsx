@@ -28,10 +28,10 @@ import { useUIStore } from '@/store/store';
 import { useWatchlistStore } from '@/store/store';
 import useAuthHydrated from '@/store/useAuthHydrated';
 import Logo from '@/components/common/Logo';
-import LanguageSelector from '@/components/common/LanguageSelector';
 import dynamic from 'next/dynamic';
 import UserAvatar from '@/components/UserAvatar';
 import { useTranslations } from 'next-intl';
+import NotificationBell from '@/components/notifications/NotificationBell';
 
 // Lazy load heavy search component
 const AutocompleteSearch = dynamic(() => import('@/components/common/AutocompleteSearch'), {
@@ -53,6 +53,40 @@ const moreNavItems = [
   { key: 'contact', href: '/contact', icon: EnvelopeIcon },
   { key: 'streaming', href: '/streaming-lobby', icon: PlayCircleIcon },
 ]
+
+const HEADER_DROPDOWN_OPEN_EVENT = 'header-dropdown-open'
+
+type HeaderDropdownSource = 'more' | 'user' | 'notifications'
+
+function notifyHeaderDropdownOpen(source: HeaderDropdownSource) {
+  if (typeof window === 'undefined') return
+
+  window.dispatchEvent(new CustomEvent(HEADER_DROPDOWN_OPEN_EVENT, {
+    detail: { source }
+  }))
+}
+
+function HeaderDropdownAutoClose({
+  source,
+  close
+}: {
+  source: HeaderDropdownSource
+  close: () => void
+}) {
+  useEffect(() => {
+    const onHeaderDropdownOpen = (event: Event) => {
+      const openedSource = (event as CustomEvent<{ source?: HeaderDropdownSource }>).detail?.source
+      if (openedSource && openedSource !== source) {
+        close()
+      }
+    }
+
+    window.addEventListener(HEADER_DROPDOWN_OPEN_EVENT, onHeaderDropdownOpen as EventListener)
+    return () => window.removeEventListener(HEADER_DROPDOWN_OPEN_EVENT, onHeaderDropdownOpen as EventListener)
+  }, [close, source])
+
+  return null
+}
 
 
 
@@ -81,6 +115,20 @@ export default function Navigation() {
   useEffect(() => {
     setNavDropdownOpen(isOpen || isMoreDropdownActive || isProfileDropdownActive);
   }, [isOpen, isMoreDropdownActive, isProfileDropdownActive, setNavDropdownOpen]);
+
+  useEffect(() => {
+    const onHeaderDropdownOpen = (event: Event) => {
+      const openedSource = (event as CustomEvent<{ source?: HeaderDropdownSource }>).detail?.source
+      if (openedSource === 'notifications') {
+        setIsOpen(false)
+        setIsMobileMoreDropdownOpen(false)
+        setIsMobileUserDropdownOpen(false)
+      }
+    }
+
+    window.addEventListener(HEADER_DROPDOWN_OPEN_EVENT, onHeaderDropdownOpen as EventListener)
+    return () => window.removeEventListener(HEADER_DROPDOWN_OPEN_EVENT, onHeaderDropdownOpen as EventListener)
+  }, [])
 
   // Simplified adaptive navigation logic (debounced)
   useEffect(() => {
@@ -169,7 +217,7 @@ export default function Navigation() {
           <Logo isScrolled={isScrolled} variant="header" />
 
           {/* Desktop Navigation - Adaptive (shows when step < 4) */}
-          <div className={`${adaptiveStep < 4 ? 'flex' : 'hidden'} max-[700px]:!hidden items-center space-x-4`}>
+          <div className={`${adaptiveStep < 4 ? 'flex' : 'hidden'} max-[700px]:!hidden items-center gap-2.5`}>
             {visibleNavItems.map((item) => {
               const isActive = pathname === item.href
               return (
@@ -206,8 +254,12 @@ export default function Navigation() {
             })}
             {/* More dropdown - includes hidden nav items + original more items */}
             <Menu as="div" className="relative inline-block text-left">
+              {({ close }) => (
+              <>
+              <HeaderDropdownAutoClose source="more" close={close} />
               <div>
                 <Menu.Button
+                  onClick={() => notifyHeaderDropdownOpen('more')}
                   className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
                     isScrolled ? 'text-white hover:text-red-500' : 'text-gray-700 hover:text-red-500'
                   }`}
@@ -273,11 +325,13 @@ export default function Navigation() {
                   </div>
                 </Menu.Items>
               </Transition>
+              </>
+              )}
             </Menu>
           </div>
 
           {/* Search and Auth - Adaptive (shows when step < 4) */}
-          <div className={`${adaptiveStep < 4 ? 'flex' : 'hidden'} max-[700px]:!hidden items-center space-x-4`}>
+          <div className={`${adaptiveStep < 4 ? 'flex' : 'hidden'} max-[700px]:!hidden items-center gap-2.5`}>
             {/* Search - Full bar or Icon */}
             {showSearchBar ? (
               <div className="relative">
@@ -295,8 +349,7 @@ export default function Navigation() {
               </button>
             )}
             
-            {/* Language Selector */}
-            <LanguageSelector isScrolled={isScrolled} />
+            <NotificationBell isScrolled={isScrolled} />
 
             {!hydrated || isLoading ? (
               <div className="flex items-center space-x-2 px-4 py-2">
@@ -304,11 +357,15 @@ export default function Navigation() {
                 <div className="w-20 h-4 bg-gray-300 rounded animate-pulse" />
               </div>
             ) : isAuthenticated ? (
-              <div className="flex items-center space-x-4">
+              <div className="flex items-center">
                 <Menu as="div" className="relative inline-block text-left">
+                  {({ close }) => (
+                  <>
+                  <HeaderDropdownAutoClose source="user" close={close} />
                   <div>
                     <Menu.Button
-                      className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
+                      onClick={() => notifyHeaderDropdownOpen('user')}
+                      className={`flex h-10 items-center gap-2 rounded-lg px-2.5 py-1.5 transition-colors ${
                         isScrolled ? 'text-white hover:text-red-500' : 'text-gray-700 hover:text-red-500'
                       }`}
                     >
@@ -318,7 +375,7 @@ export default function Navigation() {
                         size="sm"
                         priority={true}
                       />
-                      <span>{user?.name || 'User'}</span>
+                      <span className="whitespace-nowrap">{user?.name || 'User'}</span>
                     </Menu.Button>
                   </div>
                   <Transition
@@ -395,38 +452,95 @@ export default function Navigation() {
                       </div>
                     </Menu.Items>
                   </Transition>
+                  </>
+                  )}
                 </Menu>
               </div>
             ) : (
-              <Link
-                href="/login"
-                className={`relative px-4 py-2 rounded-lg transition-colors font-medium ${
-                  isScrolled ? 'bg-red-700 text-white hover:bg-red-800' : 'bg-red-700 text-white hover:bg-red-800'
-                }`}
-              >
-                {t('login')}
-              </Link>
+              <Menu as="div" className="relative inline-block text-left">
+                {({ close }) => (
+                <>
+                <HeaderDropdownAutoClose source="user" close={close} />
+                <Menu.Button
+                  onClick={() => notifyHeaderDropdownOpen('user')}
+                  className={`inline-flex items-center justify-center p-2 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 ${
+                    isScrolled ? 'text-white hover:text-red-500 hover:bg-white/10' : 'text-gray-700 hover:text-red-500 hover:bg-gray-100'
+                  }`}
+                  aria-label={t('login')}
+                >
+                  <UserIcon className="h-5 w-5" />
+                </Menu.Button>
+                <Transition
+                  as={Fragment}
+                  enter="transition ease-out duration-100"
+                  enterFrom="transform opacity-0 scale-95"
+                  enterTo="transform opacity-100 scale-100"
+                  leave="transition ease-in duration-75"
+                  leaveFrom="transform opacity-100 scale-100"
+                  leaveTo="transform opacity-0 scale-95"
+                  beforeEnter={() => setIsProfileDropdownActive(true)}
+                  afterLeave={() => setIsProfileDropdownActive(false)}
+                >
+                  <Menu.Items className="absolute right-0 mt-2 w-44 origin-top-right rounded-md bg-gray-900 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-60 border border-gray-700">
+                    <div className="px-1 py-1">
+                      <Menu.Item>
+                        {({ active }) => (
+                          <Link
+                            href="/login"
+                            className={`flex items-center space-x-2 rounded-md px-3 py-2 text-sm ${
+                              active ? 'bg-red-500 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                            }`}
+                          >
+                            <UserIcon className="h-5 w-5" />
+                            <span className="whitespace-nowrap">{t('login')}</span>
+                          </Link>
+                        )}
+                      </Menu.Item>
+                      <Menu.Item>
+                        {({ active }) => (
+                          <Link
+                            href="/settings"
+                            className={`flex items-center space-x-2 rounded-md px-3 py-2 text-sm ${
+                              active ? 'bg-gray-700 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                            }`}
+                          >
+                            <Settings className="h-5 w-5" />
+                            <span className="whitespace-nowrap">{t('settings')}</span>
+                          </Link>
+                        )}
+                      </Menu.Item>
+                    </div>
+                  </Menu.Items>
+                </Transition>
+                </>
+                )}
+              </Menu>
             )}
           </div>
 
           {/* Mobile search icon and menu button combined (shows when step >= 4) */}
           <div className={`${adaptiveStep >= 4 ? 'flex' : 'hidden'} max-[700px]:!flex min-[701px]:!hidden items-center space-x-2`}>
-            {/* Mobile Language Selector */}
-            <LanguageSelector isScrolled={isScrolled} />
-            
             <button
               onClick={() => {
                 setShowMobileSearch(true);
               }}
-              className="p-1 rounded-full bg-white shadow border border-red-200 text-red-600 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-400 transition"
+              className="p-1.5 rounded-full bg-white shadow border border-red-200 text-red-600 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-400 transition"
               aria-label="Open search"
               style={{ boxShadow: '0 2px 8px 0 rgba(0,0,0,0.08)' }}
             >
-              <MagnifyingGlassIcon className="h-3 w-3" />
+              <MagnifyingGlassIcon className="h-4 w-4" />
             </button>
+
+            <NotificationBell isScrolled={isScrolled} compact />
             
             <button
-              onClick={() => setIsOpen(!isOpen)}
+              onClick={() => {
+                setIsOpen((prev) => {
+                  const nextOpen = !prev
+                  if (nextOpen) notifyHeaderDropdownOpen('more')
+                  return nextOpen
+                })
+              }}
               className={`inline-flex items-center justify-center p-2 rounded-md focus:outline-none focus:ring-2 focus:ring-inset focus:ring-red-500 transition-colors duration-200 ${
                 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
               }`}
@@ -504,7 +618,10 @@ export default function Navigation() {
               className="flex items-center w-full px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-200 hover:text-gray-900 focus:outline-none"
               onClick={() => {
                 setIsMobileMoreDropdownOpen((prev) => {
-                  if (!prev) setIsMobileUserDropdownOpen(false);
+                  if (!prev) {
+                    notifyHeaderDropdownOpen('more');
+                    setIsMobileUserDropdownOpen(false);
+                  }
                   return !prev;
                 });
               }}
@@ -559,7 +676,10 @@ export default function Navigation() {
                   className="block w-full px-3 py-2 rounded-md text-base font-medium text-gray-700 mb-1 bg-gray-100 flex items-center space-x-2 focus:outline-none"
                   onClick={() => {
                     setIsMobileUserDropdownOpen((prev) => {
-                      if (!prev) setIsMobileMoreDropdownOpen(false);
+                      if (!prev) {
+                        notifyHeaderDropdownOpen('user');
+                        setIsMobileMoreDropdownOpen(false);
+                      }
                       return !prev;
                     });
                   }}
@@ -629,15 +749,24 @@ export default function Navigation() {
                 </motion.div>
               </div>
             ) : (
-              <Link
-                href="/login"
-                onClick={() => setIsOpen(false)} // Close menu on click
-                className={`block w-full text-center px-4 py-2 rounded-md text-base font-medium mt-4 ${
-                  'bg-red-700 text-white hover:bg-red-800'
-                }`}
-              >
-                {t('login')}
-              </Link>
+              <div className="px-3 mt-4 space-y-2">
+                <Link
+                  href="/login"
+                  onClick={() => setIsOpen(false)} // Close menu on click
+                  className="flex items-center justify-center space-x-2 w-full px-4 py-2 rounded-md text-base font-medium bg-red-700 text-white hover:bg-red-800"
+                >
+                  <UserIcon className="h-5 w-5" />
+                  <span>{t('login')}</span>
+                </Link>
+                <Link
+                  href="/settings"
+                  onClick={() => setIsOpen(false)}
+                  className="flex items-center justify-center space-x-2 w-full px-4 py-2 rounded-md text-base font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 hover:text-gray-900"
+                >
+                  <Settings className="h-5 w-5" />
+                  <span>{t('settings')}</span>
+                </Link>
+              </div>
             )}
           </div>
         </div>

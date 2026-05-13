@@ -19,6 +19,26 @@
       "streaming": "Xem chung"
     }
   },
+  "Notifications": {
+    "label": "Thông báo",
+    "unreadCount": "{count} chưa đọc",
+    "systemUpdates": "Cập nhật hệ thống",
+    "markAllRead": "Đọc tất cả",
+    "marking": "Đang lưu...",
+    "loading": "Đang tải thông báo...",
+    "empty": "Chưa có thông báo nào",
+    "failedLoad": "Không thể tải thông báo",
+    "commentLiked": "{user} đã thích bình luận của bạn",
+    "commentReplied": "{user} đã trả lời bình luận của bạn",
+    "versionUpdated": "Web đã có phiên bản mới",
+    "versionPreview": "Nội dung web đã thay đổi. Hãy tải lại để dùng bản mới nhất.",
+    "commentPreviewFallback": "Mở bình luận để xem nội dung mới.",
+    "unknownUser": "Người dùng",
+    "justNow": "Vừa xong",
+    "minutesAgo": "{count} phút trước",
+    "hoursAgo": "{count} giờ trước",
+    "daysAgo": "{count} ngày trước"
+  },
   "Footer": {
     "description": "Điểm đến tuyệt vời nhất để khám phá và trải nghiệm điện ảnh với những chiều không gian mới.",
     "quickLinks": "Liên kết nhanh",

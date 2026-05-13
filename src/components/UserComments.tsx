@@ -5,6 +5,7 @@ import Link from 'next/link'
 import api from '@/lib/axios'
 import { toast } from 'react-hot-toast'
 import { useTranslations } from 'next-intl'
+import ConfirmDialog from '@/components/common/ConfirmDialog'
 
 interface Comment {
   _id: string
@@ -49,6 +50,7 @@ export default function UserComments() {
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [activeFilter, setActiveFilter] = useState<'comments' | 'replies' | 'liked'>('comments')
 
   const fetchComments = React.useCallback(async (pageNum: number, filterType: string = activeFilter) => {
@@ -84,17 +86,24 @@ export default function UserComments() {
     setHasMore(false)
   }
 
-  const handleDelete = async (id: string) => {
-    if (!window.confirm(t('deleteConfirm'))) return
+  const handleConfirmAction = async (id: string) => {
     setDeletingId(id)
     try {
+      if (activeFilter === 'liked') {
+        await api.put(`/comments/${id}/like`)
+        setComments(prev => prev.filter(c => c._id !== id))
+        toast.success(t('likeRemoved'))
+        return
+      }
+
       await api.delete(`/comments/${id}`)
       setComments(prev => prev.filter(c => c._id !== id))
       toast.success(t('commentDeleted'))
     } catch {
-      toast.error(t('deleteFailed'))
+      toast.error(activeFilter === 'liked' ? t('removeLikeFailed') : t('deleteFailed'))
     } finally {
       setDeletingId(null)
+      setConfirmDeleteId(null)
     }
   }
 
@@ -105,6 +114,16 @@ export default function UserComments() {
       transition={{ duration: 0.6, delay: 0.9 }}
       className="bg-gradient-to-br from-gray-900/90 to-gray-800/90 backdrop-blur-xl rounded-2xl sm:rounded-3xl p-4 sm:p-6 lg:p-8 border border-gray-700/50 shadow-2xl mt-6 sm:mt-8 lg:mt-12"
     >
+      <ConfirmDialog
+        open={!!confirmDeleteId}
+        title={activeFilter === 'liked' ? t('removeLikeTitle') : t('deleteTitle')}
+        description={activeFilter === 'liked' ? t('removeLikeDescription') : t('deleteDescription')}
+        confirmText={activeFilter === 'liked' ? t('removeLikeAction') : t('deleteAction')}
+        cancelText={t('cancel')}
+        onConfirm={() => confirmDeleteId && handleConfirmAction(confirmDeleteId)}
+        onCancel={() => setConfirmDeleteId(null)}
+      />
+
       <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 sm:mb-6 gap-3 sm:gap-0">
         <h3 className="text-xl sm:text-2xl lg:text-3xl font-bold text-white flex items-center gap-2 sm:gap-3">
           <ChatBubbleLeftRightIcon className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-blue-500" />
@@ -176,10 +195,11 @@ export default function UserComments() {
                       {timeAgo(comment.createdAt, t)}
                     </span>
                     <button
-                      onClick={() => handleDelete(comment._id)}
+                      onClick={() => setConfirmDeleteId(comment._id)}
                       disabled={deletingId === comment._id}
                       className="text-gray-500 hover:text-red-400 transition-colors disabled:opacity-50"
-                      title="Delete comment"
+                      title={t('deleteButtonLabel')}
+                      aria-label={t('deleteButtonLabel')}
                     >
                       <TrashIcon className="w-4 h-4" />
                     </button>

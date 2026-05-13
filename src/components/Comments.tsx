@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
   ChatBubbleLeftRightIcon, 
@@ -13,7 +13,7 @@ import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
 import useAuthStore from '@/store/useAuthStore'
 import toast from 'react-hot-toast'
 import api from '@/lib/axios'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import ConfirmDialog from '@/components/common/ConfirmDialog'
 import Image from 'next/image'
 import { useTranslations } from 'next-intl'
@@ -63,12 +63,20 @@ export default function Comments({ movieId, type, title }: CommentsProps) {
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
   const [totalComments, setTotalComments] = useState(0)
+  const [highlightedCommentId, setHighlightedCommentId] = useState<string | null>(null)
   
   const { isAuthenticated, user } = useAuthStore()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const replyTextareaRef = useRef<HTMLTextAreaElement>(null)
+  const deepLinkHandledRef = useRef<string | null>(null)
+  const deepLinkThreadAttemptedRef = useRef<Set<string>>(new Set())
+  const deepLinkThreadPendingRef = useRef<Set<string>>(new Set())
   const t = useTranslations('Comments')
+  const deepLinkCommentId = searchParams?.get('comment') || null
+  const deepLinkParentCommentId = searchParams?.get('parentComment') || null
+  const deepLinkFocusComment = searchParams?.get('focusComment') || null
 
   // Check auth on component mount - REMOVED to prevent infinite loop
   // AuthChecker in layout.tsx already handles this
@@ -119,7 +127,7 @@ export default function Comments({ movieId, type, title }: CommentsProps) {
   }, [movieId, type, sortBy, t])
 
   // Load more comments
-  const loadMoreComments = async () => {
+  const loadMoreComments = useCallback(async () => {
     if (isLoadingMore || !hasMore) return
     
     setIsLoadingMore(true)
@@ -128,7 +136,11 @@ export default function Comments({ movieId, type, title }: CommentsProps) {
     try {
       const response = await api.get(`/comments/${movieId}/${type}?sortBy=${sortBy}&page=${nextPage}&limit=${COMMENTS_PER_PAGE}`)
       if (response.data.success) {
-        setComments(prev => [...prev, ...response.data.data])
+        setComments(prev => {
+          const existingIds = new Set(prev.map(comment => comment._id))
+          const newComments = response.data.data.filter((comment: Comment) => !existingIds.has(comment._id))
+          return [...prev, ...newComments]
+        })
         setPage(nextPage)
         setHasMore(response.data.page < response.data.totalPages)
       }
@@ -138,7 +150,190 @@ export default function Comments({ movieId, type, title }: CommentsProps) {
     } finally {
       setIsLoadingMore(false)
     }
-  }
+  }, [hasMore, isLoadingMore, movieId, page, sortBy, t, type])
+
+  useEffect(() => {
+    const getHashCommentId = () => {
+      if (typeof window === 'undefined') return null
+
+      const hash = decodeURIComponent(window.location.hash || '')
+      return hash.startsWith('#comment-') ? hash.replace('#comment-', '') : null
+    }
+
+    const targetCommentId = deepLinkCommentId || getHashCommentId()
+    const parentCommentId = deepLinkParentCommentId
+    const focusComment = deepLinkFocusComment
+
+    if (!targetCommentId || isLoading) return
+
+    const deepLinkKey = `${movieId}:${type}:${sortBy}:${targetCommentId}:${parentCommentId || ''}:${focusComment || ''}`
+    if (deepLinkHandledRef.current === deepLinkKey) return
+
+    let foundTarget: {
+      parentId?: string
+      targetId: string
+      fallbackId?: string
+      shouldOpenReplies: boolean
+    } | null = null
+
+    for (const comment of comments) {
+      if (comment._id === targetCommentId) {
+        foundTarget = {
+          targetId: targetCommentId,
+          shouldOpenReplies: false
+        }
+        break
+      }
+
+      const matchedReply = comment.replies?.find((reply) => reply._id === targetCommentId)
+      if (matchedReply) {
+        foundTarget = {
+          parentId: comment._id,
+          targetId: matchedReply._id,
+          shouldOpenReplies: true
+        }
+        break
+      }
+
+      if (parentCommentId && comment._id === parentCommentId) {
+        if (!deepLinkThreadAttemptedRef.current.has(deepLinkKey)) {
+          break
+        }
+
+        foundTarget = {
+          parentId: comment._id,
+          targetId: targetCommentId,
+          fallbackId: comment._id,
+          shouldOpenReplies: true
+        }
+        break
+      }
+    }
+
+    if (foundTarget) {
+      const resolvedTarget = foundTarget
+
+      if (resolvedTarget.parentId) {
+        const parentId = resolvedTarget.parentId
+
+        setShowReplies((prev) => {
+          if (prev.has(parentId)) return prev
+
+          const next = new Set(prev)
+          next.add(parentId)
+          return next
+        })
+      }
+
+      deepLinkHandledRef.current = deepLinkKey
+      const scrollWhenReady = (attempt = 0) => {
+        const targetElement = document.getElementById(`comment-${resolvedTarget.targetId}`)
+        const fallbackElement = resolvedTarget.fallbackId
+          ? document.getElementById(`comment-${resolvedTarget.fallbackId}`)
+          : null
+        const element = targetElement || fallbackElement
+
+        if (!element) {
+          if (attempt < 24) {
+            window.setTimeout(() => scrollWhenReady(attempt + 1), 100)
+          }
+          return
+        }
+
+        const activeId = element.id.replace('comment-', '')
+        const targetTop = element.getBoundingClientRect().top + window.scrollY - 120
+
+        setHighlightedCommentId(activeId)
+        window.scrollTo({
+          top: Math.max(targetTop, 0),
+          behavior: 'smooth'
+        })
+        window.setTimeout(() => {
+          setHighlightedCommentId((current) => (current === activeId ? null : current))
+        }, 2600)
+      }
+
+      window.setTimeout(() => scrollWhenReady(), resolvedTarget.shouldOpenReplies ? 120 : 60)
+      return
+    }
+
+    if (isLoadingMore) {
+      return
+    }
+
+    if (
+      !deepLinkThreadAttemptedRef.current.has(deepLinkKey) &&
+      !deepLinkThreadPendingRef.current.has(deepLinkKey)
+    ) {
+      deepLinkThreadAttemptedRef.current.add(deepLinkKey)
+      deepLinkThreadPendingRef.current.add(deepLinkKey)
+
+      api.get(`/comments/thread/${targetCommentId}`)
+        .then((response) => {
+          if (!response.data.success || !response.data.data) return
+
+          const threadComment = response.data.data as Comment
+          if (threadComment.movieId !== movieId || threadComment.type !== type) return
+
+          setComments((prev) => {
+            const existingIndex = prev.findIndex(comment => comment._id === threadComment._id)
+            if (existingIndex >= 0) {
+              return prev.map(comment => (
+                comment._id === threadComment._id ? threadComment : comment
+              ))
+            }
+
+            return [...prev, threadComment]
+          })
+
+          const responseTargetId = String(response.data.targetCommentId || targetCommentId)
+          const responseParentId = String(response.data.parentCommentId || threadComment._id)
+
+          if (responseTargetId !== responseParentId || parentCommentId) {
+            setShowReplies((prev) => {
+              if (prev.has(threadComment._id)) return prev
+
+              const next = new Set(prev)
+              next.add(threadComment._id)
+              return next
+            })
+          }
+        })
+        .catch(() => {
+          if (hasMore) {
+            loadMoreComments()
+          }
+        })
+        .finally(() => {
+          deepLinkThreadPendingRef.current.delete(deepLinkKey)
+        })
+
+      return
+    }
+
+    if (deepLinkThreadPendingRef.current.has(deepLinkKey)) {
+      return
+    }
+
+    if (hasMore) {
+      loadMoreComments()
+      return
+    }
+
+    deepLinkHandledRef.current = deepLinkKey
+  }, [
+    comments,
+    deepLinkCommentId,
+    deepLinkFocusComment,
+    deepLinkParentCommentId,
+    hasMore,
+    isLoading,
+    isLoadingMore,
+    loadMoreComments,
+    movieId,
+    sortBy,
+    type
+  ])
 
   const handleSubmitComment = async () => {
     if (!isAuthenticated) {
@@ -368,7 +563,7 @@ export default function Comments({ movieId, type, title }: CommentsProps) {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-8 sm:py-12">
+    <div id="comments" className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-8 sm:py-12 scroll-mt-24">
       <ConfirmDialog
         open={!!confirmDeleteId}
         title={t('deleteTitle')}
@@ -528,11 +723,16 @@ export default function Comments({ movieId, type, title }: CommentsProps) {
             {comments.map((comment, index) => (
             <motion.div
               key={comment._id}
+              id={`comment-${comment._id}`}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
               transition={{ delay: index * 0.1 }}
-              className="bg-gray-800/30 backdrop-blur-sm rounded-xl p-4 sm:p-6"
+              className={`bg-gray-800/30 backdrop-blur-sm rounded-xl p-4 sm:p-6 scroll-mt-24 transition-colors duration-500 ${
+                highlightedCommentId === comment._id
+                  ? 'bg-red-500/10 ring-2 ring-red-500/70 shadow-lg shadow-red-950/30'
+                  : ''
+              }`}
             >
               <div className="flex gap-3 sm:gap-4">
                 <div className="flex-shrink-0">
@@ -765,7 +965,15 @@ export default function Comments({ movieId, type, title }: CommentsProps) {
                         className="mt-4 space-y-4"
                       >
                         {comment.replies.map((reply) => (
-                          <div key={reply._id} className="flex gap-2 sm:gap-3 pl-2 sm:pl-4 border-l-2 border-gray-700">
+                          <div
+                            key={reply._id}
+                            id={`comment-${reply._id}`}
+                            className={`flex gap-2 sm:gap-3 pl-2 sm:pl-4 border-l-2 border-gray-700 rounded-lg scroll-mt-24 transition-colors duration-500 ${
+                              highlightedCommentId === reply._id
+                                ? 'bg-red-500/10 ring-1 ring-red-500/60'
+                                : ''
+                            }`}
+                          >
                             <div className="flex-shrink-0">
                               {reply.userId?.avatar ? (
                                 <Image

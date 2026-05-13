@@ -62,6 +62,7 @@ export default async function RootLayout({
       <body suppressHydrationWarning className={`${inter.className} bg-black text-white min-h-screen flex flex-col`}>
         <NextIntlClientProvider messages={{
           Navigation: messages.Navigation,
+          Notifications: messages.Notifications,
           Search: messages.Search,
           Footer: messages.Footer,
           Watchlist: messages.Watchlist,

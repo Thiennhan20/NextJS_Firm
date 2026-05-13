@@ -19,6 +19,26 @@
       "streaming": "Streaming"
     }
   },
+  "Notifications": {
+    "label": "Notifications",
+    "unreadCount": "{count} unread",
+    "systemUpdates": "System updates",
+    "markAllRead": "Mark all read",
+    "marking": "Saving...",
+    "loading": "Loading notifications...",
+    "empty": "No notifications yet",
+    "failedLoad": "Could not load notifications",
+    "commentLiked": "{user} liked your comment",
+    "commentReplied": "{user} replied to your comment",
+    "versionUpdated": "A new web version is available",
+    "versionPreview": "The website content has changed. Reload to use the latest version.",
+    "commentPreviewFallback": "Open the comment thread to see the update.",
+    "unknownUser": "User",
+    "justNow": "Just now",
+    "minutesAgo": "{count}m ago",
+    "hoursAgo": "{count}h ago",
+    "daysAgo": "{count}d ago"
+  },
   "Footer": {
     "description": "Your ultimate destination for discovering and experiencing movies in new dimensions.",
     "quickLinks": "Quick Links",
