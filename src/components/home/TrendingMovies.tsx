@@ -8,7 +8,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline'
 import { useApiCache } from '@/hooks/useApiCache'
-import CardWithHover from '@/components/common/CardWithHover'
+import CardWithHover, { batchPrefetchDetails } from '@/components/common/CardWithHover'
 import { useTranslations } from 'next-intl'
 
 interface Movie {
@@ -135,8 +135,17 @@ export default function TrendingMovies() {
   const { data: trending = [], loading, error } = useApiCache(
     'trending-movies-tv',
     fetchTrendingData,
-    10 * 60 * 1000 // 10 minutes cache
+    8 * 60 * 60 * 1000 // 8 tiếng
   );
+
+  // Batch prefetch details cho CardWithHover
+  useEffect(() => {
+    if (trending && trending.length > 0) {
+      batchPrefetchDetails(
+        trending.map(item => ({ type: item.type, id: item.id }))
+      );
+    }
+  }, [trending]);
 
 
   // Scroll functions

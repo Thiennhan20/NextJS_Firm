@@ -1,13 +1,13 @@
 'use client'
 
-import { useCallback } from 'react'
+import { useCallback, useEffect } from 'react'
 
 import Image from 'next/image'
 import axios from 'axios'
 
 import { useRouter } from 'next/navigation'
 import { useApiCache } from '@/hooks/useApiCache'
-import CardWithHover from '@/components/common/CardWithHover'
+import CardWithHover, { batchPrefetchDetails } from '@/components/common/CardWithHover'
 import { useTranslations } from 'next-intl'
 
 interface MovieItem {
@@ -39,8 +39,17 @@ export default function MoviesFrame() {
   const { data: items, loading, error } = useApiCache<MovieItem[]>(
     'home-movies-frame',
     fetchData,
-    30 * 60 * 1000
+    8 * 60 * 60 * 1000 // 8 tiếng
   );
+
+  // Batch prefetch details cho CardWithHover
+  useEffect(() => {
+    if (items && items.length > 0) {
+      batchPrefetchDetails(
+        items.map(item => ({ type: CATEGORY.type, id: item.id }))
+      );
+    }
+  }, [items]);
 
   const getRoute = (item: MovieItem) => `/movies/${item.id}`;
   const getTitle = (item: MovieItem) => item.title || item.name || 'Unknown';

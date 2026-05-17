@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import LoginForm from '@/components/auth/LoginForm';
 import RegisterForm from '@/components/auth/RegisterForm';
 import dynamic from 'next/dynamic';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, type Easing } from 'framer-motion';
 import useAuthStore from '@/store/useAuthStore';
 import { useTranslations } from 'next-intl';
 
@@ -37,7 +37,7 @@ const pageVariants = {
     y: 0,
     transition: {
       duration: 0.3,
-      ease: [0.4, 0, 0.2, 1], // Custom easing for smoother animation
+      ease: [0.4, 0, 0.2, 1] as Easing, // Custom easing for smoother animation
     },
   },
   exit: {
@@ -46,24 +46,27 @@ const pageVariants = {
     y: -20,
     transition: {
       duration: 0.2,
-      ease: [0.4, 0, 1, 1],
+      ease: [0.4, 0, 1, 1] as Easing,
     },
   },
 };
+
+const buttonEaseOut: Easing = 'easeOut';
+const buttonEaseIn: Easing = 'easeIn';
 
 const buttonVariants = {
   hover: {
     scale: 1.02,
     transition: {
       duration: 0.2,
-      ease: "easeOut",
+      ease: buttonEaseOut,
     },
   },
   tap: {
     scale: 0.98,
     transition: {
       duration: 0.1,
-      ease: "easeIn",
+      ease: buttonEaseIn,
     },
   },
 };

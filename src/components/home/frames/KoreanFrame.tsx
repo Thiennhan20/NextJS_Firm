@@ -8,7 +8,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline'
 import { useApiCache } from '@/hooks/useApiCache'
-import CardWithHover from '@/components/common/CardWithHover'
+import CardWithHover, { batchPrefetchDetails } from '@/components/common/CardWithHover'
 import { useTranslations } from 'next-intl'
 
 interface MovieItem {
@@ -58,8 +58,17 @@ export default function KoreanFrame() {
   const { data: items, loading, error } = useApiCache<MovieItem[]>(
     'home-korean-frame',
     fetchData,
-    30 * 60 * 1000
+    8 * 60 * 60 * 1000 // 8 tiếng
   );
+
+  // Batch prefetch details cho CardWithHover
+  useEffect(() => {
+    if (items && items.length > 0) {
+      batchPrefetchDetails(
+        items.map(item => ({ type: item.media_type || 'movie', id: item.id }))
+      );
+    }
+  }, [items]);
 
   const scrollLeft = () => {
     if (scrollRef.current) scrollRef.current.scrollBy({ left: -300, behavior: 'smooth' });

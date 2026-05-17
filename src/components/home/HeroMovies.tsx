@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useEffect, useState, useCallback } from 'react'
+import { useRef, useEffect, useState, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Image from 'next/image'
 import Head from 'next/head'
@@ -14,6 +14,7 @@ import { toast } from 'react-hot-toast'
 import api from '@/lib/axios'
 import { ChevronDownIcon } from 'lucide-react'
 import { useTranslations } from 'next-intl'
+import { useApiCache } from '@/hooks/useApiCache'
 
 interface Movie {
   id: number;
@@ -158,8 +159,6 @@ const DesktopTrailerHint = () => {
 };
 
 export default function HeroMovies() {
-  const [heroItems, setHeroItems] = useState<HeroItem[]>([]);
-  const [loading, setLoading] = useState(true);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [showTrailer, setShowTrailer] = useState(false);
@@ -173,6 +172,49 @@ export default function HeroMovies() {
   const { addToWatchlist, removeFromWatchlist, isInWatchlist, fetchWatchlistFromServer } = useWatchlistStore();
   const { isAuthenticated, token } = useAuthStore();
   const t = useTranslations('HomePage');
+
+  // Fetch hero data with useApiCache (cached 8h, instant on revisit)
+  const fetchHeroData = useCallback(async () => {
+    const [moviesResponse, tvShowsResponse] = await Promise.all([
+      axios.get('/api/tmdb-proxy?endpoint=/trending/movie/week'),
+      axios.get('/api/tmdb-proxy?endpoint=/trending/tv/week')
+    ]);
+
+    const movies = moviesResponse.data.results.slice(0, 3).map((movie: TMDBMovie) => ({
+      id: movie.id,
+      title: movie.title,
+      image: movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : '',
+      backdrop: movie.backdrop_path ? `https://image.tmdb.org/t/p/w1280${movie.backdrop_path}` : '',
+      year: movie.release_date ? Number(movie.release_date.slice(0, 4)) : 0,
+      type: 'movie' as const,
+      release_date: movie.release_date || '',
+      original_language: movie.original_language || 'en',
+      description: movie.overview || '',
+      vote_average: movie.vote_average || 0
+    }));
+
+    const tvShows = tvShowsResponse.data.results.slice(0, 2).map((tvShow: TMDBTVShow) => ({
+      id: tvShow.id,
+      name: tvShow.name,
+      image: tvShow.poster_path ? `https://image.tmdb.org/t/p/w500${tvShow.poster_path}` : '',
+      backdrop: tvShow.backdrop_path ? `https://image.tmdb.org/t/p/w1280${tvShow.backdrop_path}` : '',
+      year: tvShow.first_air_date ? Number(tvShow.first_air_date.slice(0, 4)) : 0,
+      type: 'tv' as const,
+      first_air_date: tvShow.first_air_date || '',
+      original_language: tvShow.original_language || 'en',
+      description: tvShow.overview || '',
+      vote_average: tvShow.vote_average || 0
+    }));
+
+    return [...movies, ...tvShows] as HeroItem[];
+  }, []);
+
+  const { data: cachedHeroItems, loading } = useApiCache<HeroItem[]>(
+    'home-hero-movies',
+    fetchHeroData,
+    8 * 60 * 60 * 1000 // 8 tiếng
+  );
+  const heroItems = useMemo(() => cachedHeroItems || [], [cachedHeroItems]);
 
   // Enhanced slider functions with smooth transitions
   const nextSlide = useCallback(() => {
@@ -268,53 +310,6 @@ export default function HeroMovies() {
     };
   }, [currentIndex, heroItems]);
 
-  useEffect(() => {
-    const fetchHeroItems = async () => {
-      setLoading(true);
-      try {
-        const [moviesResponse, tvShowsResponse] = await Promise.all([
-          axios.get('/api/tmdb-proxy?endpoint=/trending/movie/week'),
-          axios.get('/api/tmdb-proxy?endpoint=/trending/tv/week')
-        ]);
-
-        const movies = moviesResponse.data.results.slice(0, 3).map((movie: TMDBMovie) => ({
-          id: movie.id,
-          title: movie.title,
-          image: movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : '',
-          backdrop: movie.backdrop_path ? `https://image.tmdb.org/t/p/w1280${movie.backdrop_path}` : '',
-          year: movie.release_date ? Number(movie.release_date.slice(0, 4)) : 0,
-          type: 'movie' as const,
-          release_date: movie.release_date || '',
-          original_language: movie.original_language || 'en',
-          description: movie.overview || '',
-          vote_average: movie.vote_average || 0
-        }));
-
-        const tvShows = tvShowsResponse.data.results.slice(0, 2).map((tvShow: TMDBTVShow) => ({
-          id: tvShow.id,
-          name: tvShow.name,
-          image: tvShow.poster_path ? `https://image.tmdb.org/t/p/w500${tvShow.poster_path}` : '',
-          backdrop: tvShow.backdrop_path ? `https://image.tmdb.org/t/p/w1280${tvShow.backdrop_path}` : '',
-          year: tvShow.first_air_date ? Number(tvShow.first_air_date.slice(0, 4)) : 0,
-          type: 'tv' as const,
-          first_air_date: tvShow.first_air_date || '',
-          original_language: tvShow.original_language || 'en',
-          description: tvShow.overview || '',
-          vote_average: tvShow.vote_average || 0
-        }));
-
-        // Combine movies first, then TV shows
-        const combined = [...movies, ...tvShows];
-        setHeroItems(combined);
-      } catch (error) {
-        console.error('Error fetching data:', error);
-        setHeroItems([]);
-      }
-      setLoading(false);
-    };
-    
-    fetchHeroItems();
-  }, []);
 
   // Start auto-play when component mounts and items are loaded
   useEffect(() => {

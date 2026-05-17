@@ -11,6 +11,7 @@ import Image from 'next/image'
 import { Suspense } from 'react'
 import CardWithHover from '@/components/common/CardWithHover'
 import { useTranslations } from 'next-intl'
+import apiCache from '@/hooks/useApiCache'
 
 // Định nghĩa kiểu TVShow rõ ràng
 interface TVShow {
@@ -39,7 +40,7 @@ interface TMDBTV {
   genre_ids?: number[];
 }
 
-function TVShowsPageContent() {
+function TVShowsPageContent({ initialTVShows }: { initialTVShows: TVShow[] }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const t = useTranslations('TVShows');
@@ -55,7 +56,11 @@ function TVShowsPageContent() {
   const [selectedCategory, setSelectedCategory] = useState<string>(urlCategory)
   const [selectedCountry, setSelectedCountry] = useState<string>(urlCountry)
   const [page, setPage] = useState(urlPage)
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(() => {
+    // No loading if we have SSR data for default filter page 1
+    if (initialTVShows.length > 0 && urlPage === 1 && urlYear === 'All' && urlCategory === 'All' && urlCountry === 'All') return false;
+    return false;
+  })
   const [isRolling, setIsRolling] = useState(false)
   const [showThoughtBubble, setShowThoughtBubble] = useState(true)
   const [thoughtText, setThoughtText] = useState(t('randomText1'))
@@ -63,9 +68,24 @@ function TVShowsPageContent() {
 
   
   // Cache các trang đã load: { [filterKey]: { [page]: TVShow[] } }
-  const [pagesCache, setPagesCache] = useState<{ [filterKey: string]: { [page: number]: TVShow[] } }>({})
+  // Khôi phục từ: 1) SSR initialTVShows (page 1), 2) global apiCache (revisit)
+  const [pagesCache, setPagesCache] = useState<{ [filterKey: string]: { [page: number]: TVShow[] } }>(() => {
+    const cached = apiCache.get<{ [filterKey: string]: { [page: number]: TVShow[] } }>('tvshows-pages-cache');
+    if (cached && Object.keys(cached).length > 0) return cached;
+    if (initialTVShows.length > 0) {
+      return { 'All-All-All': { 1: initialTVShows } };
+    }
+    return {};
+  })
   // Lưu các trang đã load cho từng filter: { [filterKey]: number[] }
-  const [loadedPages, setLoadedPages] = useState<{ [filterKey: string]: number[] }>({})
+  const [loadedPages, setLoadedPages] = useState<{ [filterKey: string]: number[] }>(() => {
+    const cached = apiCache.get<{ [filterKey: string]: number[] }>('tvshows-loaded-pages');
+    if (cached && Object.keys(cached).length > 0) return cached;
+    if (initialTVShows.length > 0) {
+      return { 'All-All-All': [1] };
+    }
+    return {};
+  })
 
   // Helper functions để làm việc với cache theo filter
   const getCurrentFilterKey = () => {
@@ -100,6 +120,19 @@ function TVShowsPageContent() {
       [filterKey]: pages
     }));
   };
+
+  // Đồng bộ pagesCache và loadedPages vào global apiCache (persist across navigations)
+  useEffect(() => {
+    if (Object.keys(pagesCache).length > 0) {
+      apiCache.set('tvshows-pages-cache', pagesCache, 8 * 60 * 60 * 1000);
+    }
+  }, [pagesCache]);
+
+  useEffect(() => {
+    if (Object.keys(loadedPages).length > 0) {
+      apiCache.set('tvshows-loaded-pages', loadedPages, 8 * 60 * 60 * 1000);
+    }
+  }, [loadedPages]);
 
   // Track previous values to avoid infinite loops
   const prevPageRef = useRef(page);
@@ -139,6 +172,7 @@ function TVShowsPageContent() {
   }, [searchParams]);
 
   // Khởi tạo cache cho filter đầu tiên khi component mount
+  // Chỉ cache page 1 (từ SSR/Redis) — các trang khác load on-demand khi user bấm pagination
   useEffect(() => {
     if (!getCurrentFilterCache()[urlPage]) {
       const initCache = async () => {
@@ -152,8 +186,6 @@ function TVShowsPageContent() {
           setCurrentFilterLoadedPages([urlPage]);
         }
         setLoading(false);
-        // Prefetch các trang tiếp theo
-        loadNext10Pages(urlPage + 1);
       };
       initCache();
     }
@@ -438,25 +470,24 @@ function TVShowsPageContent() {
   // Xác định maxLoadedPage
   const maxLoadedPage = getCurrentFilterLoadedPages().length > 0 ? Math.max(...getCurrentFilterLoadedPages()) : 1;
 
-  // Xử lý khi đổi trang - Fix logic để đảm bảo window.scrollTo() được gọi đúng thời điểm
+  // Xử lý khi đổi trang - scroll lên top ngay lập tức trước khi load data
   const handlePageChange = (p: number) => {
     if (p < 1) return;
     setPageInput(String(p));
+    // Scroll lên top ngay lập tức, không chờ data load
+    window.scrollTo({ top: 0, behavior: 'smooth' });
     
     // Nếu bấm vào trang cuối cùng đã load, tự động load tiếp 10 trang mới
     if (p === maxLoadedPage) {
       loadNext10Pages(maxLoadedPage + 1).then(() => {
         setPage(p);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
       });
     } else if (p === maxLoadedPage + 1 || p === maxLoadedPage + 2) {
       loadNext10Pages(maxLoadedPage + 1).then(() => {
         setPage(p);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
       });
     } else {
       setPage(p);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   }
 
@@ -739,10 +770,10 @@ function TVShowsPageContent() {
   )
 }
 
-export default function TVShowsClient() {
+export default function TVShowsClient({ initialTVShows = [] }: { initialTVShows?: TVShow[] }) {
   return (
     <Suspense>
-      <TVShowsPageContent />
+      <TVShowsPageContent initialTVShows={initialTVShows} />
     </Suspense>
   );
 } 

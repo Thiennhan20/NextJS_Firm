@@ -117,7 +117,7 @@ export default function AnimeFrame() {
   const { data: items, loading, error } = useApiCache<MovieItem[]>(
     'home-anime-frame',
     fetchData,
-    30 * 60 * 1000
+    8 * 60 * 60 * 1000 // 8 tiếng
   );
 
   // Auto-play timer

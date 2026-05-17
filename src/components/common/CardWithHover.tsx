@@ -20,14 +20,36 @@ interface CacheEntry {
 }
 
 const detailsCache = new Map<string, CacheEntry>()
-const CACHE_TTL = 30 * 60 * 1000 // 30 phút
-const MAX_CACHE_SIZE = 30 // Giảm từ 50 xuống 30 để tiết kiệm memory
+const SCROLL_IDLE_DELAY = 150
+const WHEEL_DELTA_THRESHOLD = 1
+
+function isHorizontalScrollable(element: HTMLElement) {
+  const style = window.getComputedStyle(element)
+  const canScrollX = ['auto', 'scroll', 'overlay'].includes(style.overflowX)
+  return canScrollX && element.scrollWidth > element.clientWidth
+}
+
+function getHorizontalScrollParent(element: HTMLElement | null) {
+  let current = element?.parentElement ?? null
+
+  while (current && current !== document.body && current !== document.documentElement) {
+    if (isHorizontalScrollable(current)) {
+      return current
+    }
+    current = current.parentElement
+  }
+
+  return null
+}
+
+const CLIENT_CACHE_TTL = 8 * 60 * 60 * 1000 // 8 tiếng
+const MAX_CACHE_SIZE = 200 // Tăng lên để chứa batch prefetch từ các frame
 
 // Prefetch function - fetch ngay khi hover vào, tận dụng hoverDelay
 function prefetchDetails(type: 'movie' | 'tv', id: number) {
   const cacheKey = `${type}-${id}`
   const cached = detailsCache.get(cacheKey)
-  if (cached && Date.now() - cached.timestamp < CACHE_TTL) return // already cached
+  if (cached && Date.now() - cached.timestamp < CLIENT_CACHE_TTL) return // already cached
 
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), 5000)
@@ -46,6 +68,50 @@ function prefetchDetails(type: 'movie' | 'tv', id: number) {
     .finally(() => clearTimeout(timeoutId))
 }
 
+/**
+ * Batch prefetch details cho tất cả phim trong 1 frame.
+ * Gọi từ các frame ở trang home sau khi load danh sách phim.
+ * Kết quả được cache cả ở client (Map) và server (Redis/Upstash).
+ */
+export async function batchPrefetchDetails(items: Array<{ type: 'movie' | 'tv'; id: number }>) {
+  // Lọc bỏ các item đã có trong client cache
+  const uncached = items.filter(item => {
+    const cacheKey = `${item.type}-${item.id}`
+    const cached = detailsCache.get(cacheKey)
+    return !cached || Date.now() - cached.timestamp >= CLIENT_CACHE_TTL
+  })
+
+  if (uncached.length > 0) {
+    try {
+      const response = await axios.post('/api/tmdb-proxy/batch-details', { items: uncached })
+      const { results } = response.data as { results: Record<string, MovieDetails> }
+
+      for (const [key, data] of Object.entries(results)) {
+        detailsCache.set(key, { data, timestamp: Date.now() })
+      }
+
+      // Giới hạn kích thước cache
+      while (detailsCache.size > MAX_CACHE_SIZE) {
+        const firstKey = detailsCache.keys().next().value
+        if (firstKey) detailsCache.delete(firstKey)
+      }
+    } catch {
+      // Silent fail on batch prefetch
+    }
+  }
+
+  // Preload backdrop images vào browser cache cho tất cả items
+  // Khi hover → ảnh đã có sẵn trong browser HTTP cache → hiển thị tức thì
+  for (const item of items) {
+    const cacheKey = `${item.type}-${item.id}`
+    const cached = detailsCache.get(cacheKey)
+    if (cached?.data.backdrop_path) {
+      const img = new window.Image()
+      img.src = `https://image.tmdb.org/t/p/w500${cached.data.backdrop_path}`
+    }
+  }
+}
+
 interface CardWithHoverProps {
   id: number
   type: 'movie' | 'tv'
@@ -59,7 +125,7 @@ interface CardWithHoverProps {
   hoverDelay?: number
 }
 
-interface MovieDetails {
+export interface MovieDetails {
   backdrop_path?: string
   vote_average?: number
   release_date?: string
@@ -115,7 +181,7 @@ const HoverCard = memo(function HoverCard({
     
     // Check cache first với TTL
     const cached = detailsCache.get(cacheKey)
-    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    if (cached && Date.now() - cached.timestamp < CLIENT_CACHE_TTL) {
       setDetails(cached.data)
       setLoading(false)
       return
@@ -254,6 +320,7 @@ const HoverCard = memo(function HoverCard({
     <AnimatePresence>
       {isVisible && anchorRect && (
         <motion.div
+          data-hover-card-popup="true"
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.8 }}
@@ -407,6 +474,24 @@ export default function CardWithHover({
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
+  const dismissForScroll = useCallback(() => {
+    setShowCard(false)
+    setIsScrolling(true)
+
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current)
+      hoverTimeoutRef.current = null
+    }
+
+    if (scrollTimeoutRef.current) {
+      clearTimeout(scrollTimeoutRef.current)
+    }
+
+    scrollTimeoutRef.current = setTimeout(() => {
+      setIsScrolling(false)
+    }, SCROLL_IDLE_DELAY)
+  }, [])
+
   // Detect hover capability sau khi mount (tránh SSR mismatch)
   useEffect(() => {
     const mq = window.matchMedia('(hover: hover) and (pointer: fine)')
@@ -424,22 +509,7 @@ export default function CardWithHover({
     const handleScroll = () => {
       if (!ticking) {
         window.requestAnimationFrame(() => {
-          setShowCard(false)
-          setIsScrolling(true)
-
-          if (hoverTimeoutRef.current) {
-            clearTimeout(hoverTimeoutRef.current)
-            hoverTimeoutRef.current = null
-          }
-
-          if (scrollTimeoutRef.current) {
-            clearTimeout(scrollTimeoutRef.current)
-          }
-
-          scrollTimeoutRef.current = setTimeout(() => {
-            setIsScrolling(false)
-          }, 150)
-          
+          dismissForScroll()
           ticking = false
         })
         ticking = true
@@ -447,13 +517,52 @@ export default function CardWithHover({
     }
 
     window.addEventListener('scroll', handleScroll, { passive: true })
+    document.addEventListener('scroll', handleScroll, { passive: true, capture: true })
     return () => {
       window.removeEventListener('scroll', handleScroll)
+      document.removeEventListener('scroll', handleScroll, { capture: true })
       if (scrollTimeoutRef.current) {
         clearTimeout(scrollTimeoutRef.current)
       }
     }
-  }, [isHoverDevice])
+  }, [isHoverDevice, dismissForScroll])
+
+  useEffect(() => {
+    if (!isHoverDevice || !showCard) return
+
+    const scrollParent = getHorizontalScrollParent(wrapperRef.current)
+
+    const handleWheel = (event: WheelEvent) => {
+      const horizontalDelta = Math.abs(event.deltaX) > WHEEL_DELTA_THRESHOLD
+        ? event.deltaX
+        : event.shiftKey
+          ? event.deltaY
+          : 0
+
+      if (Math.abs(horizontalDelta) <= WHEEL_DELTA_THRESHOLD) return
+
+      dismissForScroll()
+
+      const target = event.target instanceof Element ? event.target : null
+      const isPopupTarget = Boolean(target?.closest('[data-hover-card-popup="true"]'))
+      const shouldForwardWheel =
+        scrollParent &&
+        target &&
+        isPopupTarget &&
+        !scrollParent.contains(target) &&
+        scrollParent.scrollWidth > scrollParent.clientWidth
+
+      if (shouldForwardWheel && scrollParent) {
+        event.preventDefault()
+        scrollParent.scrollBy({ left: horizontalDelta, behavior: 'auto' })
+      }
+    }
+
+    document.addEventListener('wheel', handleWheel, { passive: false, capture: true })
+    return () => {
+      document.removeEventListener('wheel', handleWheel, { capture: true })
+    }
+  }, [isHoverDevice, showCard, dismissForScroll])
 
   // Keep anchor rect updated với throttle
   useEffect(() => {
@@ -474,9 +583,11 @@ export default function CardWithHover({
     
     updateRect()
     window.addEventListener('scroll', updateRect, { passive: true })
+    document.addEventListener('scroll', updateRect, { passive: true, capture: true })
     window.addEventListener('resize', updateRect, { passive: true })
     return () => {
       window.removeEventListener('scroll', updateRect)
+      document.removeEventListener('scroll', updateRect, { capture: true })
       window.removeEventListener('resize', updateRect)
     }
   }, [showCard])
@@ -486,6 +597,9 @@ export default function CardWithHover({
     return () => {
       if (hoverTimeoutRef.current) {
         clearTimeout(hoverTimeoutRef.current)
+      }
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current)
       }
     }
   }, [])

@@ -7,7 +7,7 @@ import axios from 'axios'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline'
-import CardWithHover from '@/components/common/CardWithHover'
+import CardWithHover, { batchPrefetchDetails } from '@/components/common/CardWithHover'
 import { useTranslations } from 'next-intl'
 
 interface Movie {
@@ -210,6 +210,15 @@ export default function ComingSoonFrame() {
     fetchMovies(1, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Batch prefetch details cho CardWithHover
+  useEffect(() => {
+    if (featuredContent && featuredContent.length > 0) {
+      batchPrefetchDetails(
+        featuredContent.map(item => ({ type: 'movie' as const, id: item.id }))
+      );
+    }
+  }, [featuredContent]);
 
   // Check for daily updates
   useEffect(() => {

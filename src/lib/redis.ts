@@ -27,16 +27,16 @@ export function getRedisClient(): Redis | null {
  * Designed to minimize Redis commands while keeping data fresh
  */
 export const CACHE_TTL = {
-  /** Trending/Popular data - changes daily, cache 8h */
+  /** Trending/Popular data - cache 8h */
   TRENDING: 8 * 60 * 60,
-  /** Discover data (genre/country filters) - changes slowly, cache 12h */
-  DISCOVER: 12 * 60 * 60,
-  /** Movie/TV details - rarely changes, cache 24h */
-  DETAILS: 24 * 60 * 60,
-  /** Coming soon - date-dependent, cache 6h */
-  COMING_SOON: 6 * 60 * 60,
-  /** Search results - cache 1h */
-  SEARCH: 60 * 60,
+  /** Discover data (genre/country filters) - cache 8h */
+  DISCOVER: 8 * 60 * 60,
+  /** Movie/TV details - cache 8h */
+  DETAILS: 8 * 60 * 60,
+  /** Coming soon - cache 8h */
+  COMING_SOON: 8 * 60 * 60,
+  /** Search results - cache 8h */
+  SEARCH: 8 * 60 * 60,
 } as const
 
 /**

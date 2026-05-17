@@ -5,7 +5,7 @@ import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
 import { io, Socket } from 'socket.io-client'
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
+import { AnimatePresence, type Easing, motion, useReducedMotion } from 'framer-motion'
 import {
   ArrowPathIcon,
   BellIcon,
@@ -527,6 +527,8 @@ export default function NotificationBell({ isScrolled = false, compact = false }
     ? 'fixed left-3 right-3 top-[4.25rem] z-[70] flex max-h-[min(72vh,34rem)] origin-top flex-col overflow-hidden rounded-lg border border-gray-700 bg-gray-900 shadow-2xl will-change-transform'
     : 'absolute right-0 z-[70] mt-2 flex max-h-[min(72vh,34rem)] w-[min(24rem,calc(100vw-1.5rem))] origin-top-right flex-col overflow-hidden rounded-lg border border-gray-700 bg-gray-900 shadow-2xl will-change-transform'
 
+  const ease: Easing = 'easeOut'
+
   const panelMotion = shouldReduceMotion
     ? {
         initial: { opacity: 0 },
@@ -538,7 +540,7 @@ export default function NotificationBell({ isScrolled = false, compact = false }
         initial: { opacity: 0, y: -6, scale: 0.98 },
         animate: { opacity: 1, y: 0, scale: 1 },
         exit: { opacity: 0, y: -4, scale: 0.985 },
-        transition: { duration: 0.18, ease: 'easeOut' }
+        transition: { duration: 0.18, ease }
       }
 
   const getItemMotion = (index: number) => (
@@ -554,7 +556,7 @@ export default function NotificationBell({ isScrolled = false, compact = false }
           transition: {
             duration: 0.18,
             delay: Math.min(index * 0.025, 0.14),
-            ease: 'easeOut'
+            ease
           }
         }
   )

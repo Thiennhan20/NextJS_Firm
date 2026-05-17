@@ -75,10 +75,14 @@ export async function GET(request: NextRequest) {
     });
 
     // --- LAYER 1: Check Redis Cache ---
+    // Skip Redis for discover pages > 1 (only page 1 is cached)
     const redis = getRedisClient();
     const cacheKey = buildCacheKey(endpoint, params);
+    const isDiscover = /\/discover\//.test(endpoint);
+    const reqPage = Number(params['page'] || '1');
+    const useRedisCache = !isDiscover || reqPage <= 1;
 
-    if (redis) {
+    if (redis && useRedisCache) {
       try {
         const cached = await redis.get<object>(cacheKey);
         if (cached) {
@@ -117,7 +121,8 @@ export async function GET(request: NextRequest) {
     }
 
     // --- LAYER 3: Store in Redis (non-blocking) ---
-    if (redis) {
+    // Skip caching discover pages > 1 to save Redis storage (only page 1 is SSR-cached)
+    if (redis && useRedisCache) {
       const ttl = getTTLForEndpoint(endpoint);
       // Fire and forget - don't block the response
       redis.set(cacheKey, data, { ex: ttl }).catch((err: unknown) => {

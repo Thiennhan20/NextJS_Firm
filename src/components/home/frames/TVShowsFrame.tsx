@@ -1,13 +1,13 @@
 'use client'
 
-import { useCallback } from 'react'
+import { useCallback, useEffect } from 'react'
 
 import Image from 'next/image'
 import axios from 'axios'
 
 import { useRouter } from 'next/navigation'
 import { useApiCache } from '@/hooks/useApiCache'
-import CardWithHover from '@/components/common/CardWithHover'
+import CardWithHover, { batchPrefetchDetails } from '@/components/common/CardWithHover'
 import { useTranslations } from 'next-intl'
 
 interface TVShowItem {
@@ -39,8 +39,17 @@ export default function TVShowsFrame() {
   const { data: items, loading, error } = useApiCache<TVShowItem[]>(
     'home-tvshows-frame',
     fetchData,
-    30 * 60 * 1000
+    8 * 60 * 60 * 1000 // 8 tiếng
   );
+
+  // Batch prefetch details cho CardWithHover
+  useEffect(() => {
+    if (items && items.length > 0) {
+      batchPrefetchDetails(
+        items.map(item => ({ type: CATEGORY.type, id: item.id }))
+      );
+    }
+  }, [items]);
 
   const getRoute = (item: TVShowItem) => `/tvshows/${item.id}`;
   const getTitle = (item: TVShowItem) => item.title || item.name || 'Unknown';
