@@ -29,6 +29,8 @@ export default getRequestConfig(async () => {
   const tvshowsNs = (await import(`./messages/${locale}/tvshows.json`)).default;
   const watchNs = (await import(`./messages/${locale}/watch.json`)).default;
   const commentsNs = (await import(`./messages/${locale}/comments.json`)).default;
+  const friendsNs = (await import(`./messages/${locale}/friends.json`)).default;
+  const notFoundNs = (await import(`./messages/${locale}/notFound.json`)).default;
 
   return {
     locale,
@@ -42,7 +44,9 @@ export default getRequestConfig(async () => {
       ...moviesNs,
       ...tvshowsNs,
       ...watchNs,
-      ...commentsNs
+      ...commentsNs,
+      ...friendsNs,
+      ...notFoundNs,
     }
   };
 });

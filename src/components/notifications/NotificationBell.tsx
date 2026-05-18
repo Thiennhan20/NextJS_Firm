@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
@@ -9,8 +10,11 @@ import { AnimatePresence, type Easing, motion, useReducedMotion } from 'framer-m
 import {
   ArrowPathIcon,
   BellIcon,
-  ChatBubbleOvalLeftEllipsisIcon,
-  HeartIcon
+  ChatBubbleLeftIcon,
+  HeartIcon,
+  InformationCircleIcon,
+  UserPlusIcon,
+  CheckBadgeIcon
 } from '@heroicons/react/24/outline'
 import api from '@/lib/axios'
 import useAuthStore from '@/store/useAuthStore'
@@ -18,7 +22,7 @@ import useAuthStore from '@/store/useAuthStore'
 const CURRENT_HASH = process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA || 'dev'
 const HEADER_DROPDOWN_OPEN_EVENT = 'header-dropdown-open'
 
-type NotificationType = 'comment_liked' | 'comment_replied' | 'version_updated'
+export type NotificationType = 'comment_liked' | 'comment_replied' | 'version_updated' | 'friend_request' | 'friend_accept'
 
 interface NotificationActor {
   _id: string
@@ -152,6 +156,7 @@ export default function NotificationBell({ isScrolled = false, compact = false }
   const [notifications, setNotifications] = useState<ApiNotification[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [versionNotification, setVersionNotification] = useState<VersionNotification | null>(null)
+  const [selectedVersionNotification, setSelectedVersionNotification] = useState<VersionNotification | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [isMarkingAll, setIsMarkingAll] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -348,6 +353,14 @@ export default function NotificationBell({ isScrolled = false, compact = false }
     const metadata = notification.metadata || {}
     const focusToken = `${notification._id}-${Date.now()}`
 
+    if (notification.type === 'friend_request') {
+      return '/friends?tab=received'
+    }
+
+    if (notification.type === 'friend_accept') {
+      return `/profile/${notification.actor?._id}`
+    }
+
     if (notification.type !== 'comment_liked' && notification.type !== 'comment_replied') {
       return buildCommentTargetPath(metadata, focusToken)
     }
@@ -377,6 +390,8 @@ export default function NotificationBell({ isScrolled = false, compact = false }
   const handleNotificationClick = async (notification: DisplayNotification) => {
     if (!isApiNotification(notification)) {
       markVersionRead()
+      setSelectedVersionNotification(notification as VersionNotification)
+      setIsOpen(false)
       return
     }
 
@@ -458,6 +473,12 @@ export default function NotificationBell({ isScrolled = false, compact = false }
     if (notification.type === 'comment_liked') {
       return t('commentLiked', { user: actorName })
     }
+    if (notification.type === 'friend_request') {
+      return t('friendRequest', { user: actorName })
+    }
+    if (notification.type === 'friend_accept') {
+      return t('friendAccept', { user: actorName })
+    }
 
     return t('commentReplied', { user: actorName })
   }
@@ -467,6 +488,12 @@ export default function NotificationBell({ isScrolled = false, compact = false }
     if (notification.type === 'version_updated') {
       return metadata.versionMessage || t('versionPreview')
     }
+    if (notification.type === 'friend_request') {
+      return t('friendRequestPreview')
+    }
+    if (notification.type === 'friend_accept') {
+      return t('friendAcceptPreview')
+    }
 
     return metadata.commentPreview || t('commentPreviewFallback')
   }
@@ -475,12 +502,17 @@ export default function NotificationBell({ isScrolled = false, compact = false }
     if (type === 'comment_liked') {
       return <HeartIcon className="h-4 w-4 text-red-400" />
     }
-
     if (type === 'comment_replied') {
-      return <ChatBubbleOvalLeftEllipsisIcon className="h-4 w-4 text-blue-400" />
+      return <ChatBubbleLeftIcon className="h-4 w-4 text-blue-400" />
+    }
+    if (type === 'friend_request') {
+      return <UserPlusIcon className="h-4 w-4 text-blue-400" />
+    }
+    if (type === 'friend_accept') {
+      return <CheckBadgeIcon className="h-4 w-4 text-green-400" />
     }
 
-    return <ArrowPathIcon className="h-4 w-4 text-orange-400" />
+    return <InformationCircleIcon className="h-4 w-4 text-purple-400" />
   }
 
   const renderAvatar = (notification: DisplayNotification) => {
@@ -676,6 +708,51 @@ export default function NotificationBell({ isScrolled = false, compact = false }
         </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Version Notification Modal */}
+      {typeof document !== 'undefined' && createPortal(
+        <AnimatePresence>
+          {selectedVersionNotification && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setSelectedVersionNotification(null)}
+                className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              />
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                className="relative z-10 w-full max-w-md overflow-hidden rounded-2xl bg-gray-900 border border-gray-700 shadow-2xl"
+              >
+                <div className="p-6">
+                  <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-orange-500/20">
+                    <ArrowPathIcon className="h-6 w-6 text-orange-400" />
+                  </div>
+                  <h3 className="mb-2 text-center text-xl font-bold text-white">
+                    {t('versionUpdated')}
+                  </h3>
+                  <div className="mb-6 text-center text-sm text-gray-300 whitespace-pre-wrap">
+                    {selectedVersionNotification.metadata.versionMessage || t('versionPreview')}
+                  </div>
+                  <div className="flex justify-center">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedVersionNotification(null)}
+                      className="w-full rounded-xl bg-gray-800 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-600"
+                    >
+                      {t('close')}
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </div>
   )
 }

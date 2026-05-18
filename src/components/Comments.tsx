@@ -16,6 +16,7 @@ import api from '@/lib/axios'
 import { useRouter, useSearchParams } from 'next/navigation'
 import ConfirmDialog from '@/components/common/ConfirmDialog'
 import Image from 'next/image'
+import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 
 interface Comment {
@@ -757,7 +758,7 @@ export default function Comments({ movieId, type, title }: CommentsProps) {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start sm:items-center justify-between gap-2 mb-2">
                     <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 min-w-0">
-                      <h4 className="font-semibold text-white truncate text-sm sm:text-base">{comment.userId?.name || t('unknownUser')}</h4>
+                      <Link href={`/profile/${comment.userId?._id || comment.userId}`} className="block max-w-full"><h4 className="font-semibold text-white hover:text-red-400 transition-colors truncate text-sm sm:text-base">{comment.userId?.name || t('unknownUser')}</h4></Link>
                       <span className="text-gray-400 text-xs sm:text-sm flex items-center gap-1">
                         <ClockIcon className="h-3 w-3" />
                         {formatTimeAgo(comment.createdAt)}
@@ -995,7 +996,7 @@ export default function Comments({ movieId, type, title }: CommentsProps) {
                             
                             <div className="flex-1 min-w-0">
                               <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mb-1">
-                                <h5 className="font-medium text-white text-xs sm:text-sm truncate">{reply.userId?.name || t('unknownUser')}</h5>
+                                <Link href={`/profile/${reply.userId?._id || reply.userId}`} className="block max-w-full"><h5 className="font-medium text-white hover:text-red-400 transition-colors text-xs sm:text-sm truncate">{reply.userId?.name || t('unknownUser')}</h5></Link>
                                 <span className="text-gray-400 text-xs flex items-center gap-1">
                                   <ClockIcon className="h-3 w-3" />
                                   {formatTimeAgo(reply.createdAt)}

@@ -467,8 +467,16 @@ function TVShowsPageContent({ initialTVShows }: { initialTVShows: TVShow[] }) {
     show: { opacity: 1, y: 0 },
   }
 
-  // Xác định maxLoadedPage
-  const maxLoadedPage = getCurrentFilterLoadedPages().length > 0 ? Math.max(...getCurrentFilterLoadedPages()) : 1;
+  // Xác định các trang hợp lệ (nếu một trang trước đó có < 20 phim, coi như đó là trang cuối)
+  const currentCache = getCurrentFilterCache();
+  const validLoadedPages = getCurrentFilterLoadedPages().filter(p => {
+    for (let i = 1; i < p; i++) {
+      if (currentCache[i] && currentCache[i].length < 20) return false;
+    }
+    return true;
+  });
+  const maxLoadedPage = validLoadedPages.length > 0 ? Math.max(...validLoadedPages) : 1;
+  const isLastPage = currentCache[page] ? currentCache[page].length < 20 : false;
 
   // Xử lý khi đổi trang - scroll lên top ngay lập tức trước khi load data
   const handlePageChange = (p: number) => {
@@ -737,8 +745,9 @@ function TVShowsPageContent({ initialTVShows }: { initialTVShows: TVShow[] }) {
           <div className="max-w-7xl mx-auto px-2 md:px-4 pb-8 md:pb-12">
             <Pagination
               currentPage={page}
-              loadedPages={getCurrentFilterLoadedPages()}
+              loadedPages={validLoadedPages}
               onPageChange={handlePageChange}
+              isLastPage={isLastPage}
             />
             {/* Go to page input */}
             <div className="mt-4 flex flex-col items-center gap-2">

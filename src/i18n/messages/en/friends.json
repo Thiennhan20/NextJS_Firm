@@ -1,0 +1,32 @@
+{
+  "Friends": {
+    "title": "Friends List",
+    "tabFriends": "Friends ({count})",
+    "tabReceived": "Received Requests ({count})",
+    "tabSent": "Sent Requests ({count})",
+    "emptyFriends": "No friends yet.",
+    "emptyReceived": "No friend requests received.",
+    "emptySent": "No friend requests sent.",
+    "unfriend": "Unfriend",
+    "accept": "Accept",
+    "decline": "Decline",
+    "cancelRequest": "Cancel Request",
+    "errorLoading": "Error loading friends list",
+    "acceptSuccess": "Friend request accepted",
+    "acceptError": "Error accepting request",
+    "declineSuccess": "Request declined",
+    "declineError": "Error declining request",
+    "cancelSuccess": "Request canceled",
+    "cancelError": "Error canceling request",
+    "unfriendSuccess": "Unfriended successfully",
+    "unfriendError": "Error unfriending",
+    "pleaseLogin": "Please Login",
+    "loginRequired": "You need to log in to view your friends list.",
+    "loginNow": "Log in now",
+    "viewProfile": "View profile",
+    "confirmRemoveTitle": "Unfriend",
+    "confirmRemoveDesc": "Are you sure you want to unfriend this user?",
+    "confirmText": "Unfriend",
+    "cancelText": "Cancel"
+  }
+}

@@ -33,11 +33,17 @@
     "versionUpdated": "Web đã có phiên bản mới",
     "versionPreview": "Nội dung web đã thay đổi. Hãy tải lại để dùng bản mới nhất.",
     "commentPreviewFallback": "Mở bình luận để xem nội dung mới.",
+    "friendRequest": "{user} đã gửi cho bạn lời mời kết bạn",
+    "friendAccept": "{user} đã chấp nhận lời mời kết bạn của bạn",
+    "friendRequestPreview": "Nhấn để xem lời mời kết bạn.",
+    "friendAcceptPreview": "Nhấn để xem hồ sơ của họ.",
     "unknownUser": "Người dùng",
     "justNow": "Vừa xong",
     "minutesAgo": "{count} phút trước",
     "hoursAgo": "{count} giờ trước",
-    "daysAgo": "{count} ngày trước"
+    "daysAgo": "{count} ngày trước",
+    "close": "Đóng",
+    "reload": "Tải lại trang"
   },
   "Footer": {
     "description": "Điểm đến tuyệt vời nhất để khám phá và trải nghiệm điện ảnh với những chiều không gian mới.",

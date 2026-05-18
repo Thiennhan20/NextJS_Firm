@@ -1,0 +1,32 @@
+{
+  "Friends": {
+    "title": "Danh sách bạn bè",
+    "tabFriends": "Bạn bè ({count})",
+    "tabReceived": "Lời mời nhận ({count})",
+    "tabSent": "Lời mời đã gửi ({count})",
+    "emptyFriends": "Không có bạn bè nào.",
+    "emptyReceived": "Không có lời mời kết bạn nào.",
+    "emptySent": "Chưa gửi lời mời kết bạn nào.",
+    "unfriend": "Hủy kết bạn",
+    "accept": "Chấp nhận",
+    "decline": "Từ chối",
+    "cancelRequest": "Hủy lời mời",
+    "errorLoading": "Lỗi khi tải danh sách bạn bè",
+    "acceptSuccess": "Đã chấp nhận kết bạn",
+    "acceptError": "Lỗi khi chấp nhận kết bạn",
+    "declineSuccess": "Đã từ chối lời mời",
+    "declineError": "Lỗi khi từ chối",
+    "cancelSuccess": "Đã hủy lời mời",
+    "cancelError": "Lỗi khi hủy lời mời",
+    "unfriendSuccess": "Đã hủy kết bạn",
+    "unfriendError": "Lỗi khi hủy kết bạn",
+    "pleaseLogin": "Vui lòng đăng nhập",
+    "loginRequired": "Bạn cần đăng nhập để xem danh sách bạn bè.",
+    "loginNow": "Đăng nhập ngay",
+    "viewProfile": "Xem hồ sơ",
+    "confirmRemoveTitle": "Hủy kết bạn",
+    "confirmRemoveDesc": "Bạn có chắc chắn muốn hủy kết bạn với người này không?",
+    "confirmText": "Hủy kết bạn",
+    "cancelText": "Quay lại"
+  }
+}

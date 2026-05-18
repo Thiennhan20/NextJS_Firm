@@ -8,6 +8,7 @@ interface PaginationProps {
   currentPage: number
   loadedPages: number[] // các trang đã load
   onPageChange: (page: number) => void
+  isLastPage?: boolean
 }
 
 function getPaginationDisplay(currentPage: number, loadedPages: number[], isMobile: boolean) {
@@ -50,7 +51,7 @@ function getPaginationDisplay(currentPage: number, loadedPages: number[], isMobi
   return result
 }
 
-export default function Pagination({ currentPage, loadedPages, onPageChange }: PaginationProps) {
+export default function Pagination({ currentPage, loadedPages, onPageChange, isLastPage = false }: PaginationProps) {
   const [isMobile, setIsMobile] = useState(false)
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 640)
@@ -99,9 +100,10 @@ export default function Pagination({ currentPage, loadedPages, onPageChange }: P
       {/* Next button */}
       <motion.button
         onClick={() => onPageChange(currentPage + 1)}
+        disabled={isLastPage}
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.9 }}
-        className={`rounded-full bg-gray-800 text-white min-w-[36px] min-h-[36px] ${isMobile ? 'p-2 text-base' : 'p-2 sm:p-2 md:p-2'}`}
+        className={`rounded-full bg-gray-800 text-white disabled:opacity-50 disabled:cursor-not-allowed min-w-[36px] min-h-[36px] ${isMobile ? 'p-2 text-base' : 'p-2 sm:p-2 md:p-2'}`}
       >
         <ChevronRightIcon className="h-5 w-5" aria-hidden="true" />
       </motion.button>

@@ -1,0 +1,8 @@
+{
+  "NotFound": {
+    "title": "Không Tìm Thấy Trang",
+    "description": "Trang bạn đang tìm kiếm không tồn tại hoặc đã bị xóa. Hãy quay lại và tiếp tục trải nghiệm.",
+    "goHome": "Trang Chủ",
+    "goBack": "Quay Lại"
+  }
+}

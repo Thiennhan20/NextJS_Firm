@@ -33,11 +33,17 @@
     "versionUpdated": "A new web version is available",
     "versionPreview": "The website content has changed. Reload to use the latest version.",
     "commentPreviewFallback": "Open the comment thread to see the update.",
+    "friendRequest": "{user} sent you a friend request",
+    "friendAccept": "{user} accepted your friend request",
+    "friendRequestPreview": "Click to view friend request.",
+    "friendAcceptPreview": "Click to view their profile.",
     "unknownUser": "User",
     "justNow": "Just now",
     "minutesAgo": "{count}m ago",
     "hoursAgo": "{count}h ago",
-    "daysAgo": "{count}d ago"
+    "daysAgo": "{count}d ago",
+    "close": "Close",
+    "reload": "Reload page"
   },
   "Footer": {
     "description": "Your ultimate destination for discovering and experiencing movies in new dimensions.",
